@@ -59,9 +59,10 @@ save(strcat(file_path, "randorisf_cells_tbl.mat"), "cells_tbl");
 
 clearvars; close all;
 file_path = "/Users/ryan.gorzek/Library/CloudStorage/GoogleDrive-ryan.gorzek@gmail.com/Shared drives/Astrocytes - Protocadherins/";
+addpath(genpath(fullfile(file_path)));
 cells_tbl = load(strcat(file_path, "randorisf_cells_tbl.mat")).cells_tbl;
 
-subj_ids = ["john01"]; % , "john02", "john03"
+subj_ids = ["john01", "john02", "john03"]; % 
 genotypes = ["KO", "KO", "Het"];
 plane_ids = ["000"]; % , "001", "002"
 for subj = subj_ids
@@ -537,14 +538,14 @@ insetColorScatter(sf_est_ipsi(bino_idx), cv_ipsi(bino_idx), ...
 ax = nexttile(tile_idx(6,40), [4,4]); axis off;
 insetDensityPlot(sf_est_contra(contra_idx), cv_contra(contra_idx), ...
                  sf_est_ipsi(ipsi_idx), cv_ipsi(ipsi_idx), ...
-                 {[1,0,0], [0,1,0]}, ...
+                 {[0,0,0.9], [0.9,0,0]}, ...
                  f, ...
                  ax);
 
 ax = nexttile(tile_idx(10,40), [4,4]); axis off;
 insetDensityPlot(sf_est_contra(bino_idx), cv_contra(bino_idx), ...
                  sf_est_ipsi(bino_idx), cv_ipsi(bino_idx), ...
-                 {[1,0,0], [0,1,0]}, ...
+                 {[0,0,0.9], [0.9,0,0]}, ...
                  f, ...
                  ax);
 
@@ -583,8 +584,9 @@ annotation("textbox", ...
            "Rotation",0, ...
            "Position",[0.245, 0.9, 0.1, 0]);
 
-f.Position = [487, 1552, 1368, 576]; % lab
+f.Position = [112, 1363, 1368, 576]; % lab
 % f.Position = [541, 1416, 1094, 461]; % home
+
 % title(t, NVAs.title, ...
 %          "Interpreter", "none", ...
 %          "FontWeight", "bold", ...
@@ -709,7 +711,7 @@ close(f_temp);
 end
 
 function insetDensityPlot(X1, Y1, X2, Y2, colors, fig, ax, NVAs)
-% INSETPOLARSCATTER Add polar scatterplot to TiledLayout Chart.
+% INSETDENSITYPLOT Add density plot to TiledLayout Chart.
 arguments
     X1
     Y1
@@ -718,6 +720,7 @@ arguments
     colors
     fig
     ax
+    NVAs.clims = {}
     NVAs.pos_adj (1,4) double = [-0.0005, -0.0005, 0.001, 0.001]
     NVAs.title (1,1) string = ""
     NVAs.xticks = []
@@ -735,10 +738,13 @@ yq = yq(:);
 xi = [xq yq];
 % X1, Y1
 dens1 = ksdensity([X1, Y1], xi);
-imagesc(reshape(dens1, [nrows, ncols])', "AlphaData",0.1); hold on;
+cmap1 = colormapData(dens1, [0, max(dens1)], colors{1}, 100);
 % X2, Y2
 dens2 = ksdensity([X2, Y2], xi);
-imagesc(reshape(dens2, [nrows, ncols])', "AlphaData",0.5);
+cmap2 = colormapData(dens2, [0, max(dens2)], colors{2}, 100);
+cmap_mean = mean(cat(3,cmap1,cmap2),3);
+im = permute(reshape(permute(cmap_mean, [1, 3, 2]), [nrows, ncols, 3]), [1, 2, 3]);
+imagesc(im, "AlphaData",1);
 setStyle(title = NVAs.title, ...
          xticks = NVAs.xticks, ...
          xlabel = NVAs.xlabel, ...
@@ -747,6 +753,29 @@ setStyle(title = NVAs.title, ...
 copyobj(ax_imagesc, fig);
 fig.Children(1).Position = outer_position + NVAs.pos_adj;
 close(f_temp);
+
+end
+
+function data_map = colormapData(data, clim, color, nvals)
+
+arguments
+    data
+    clim
+    color
+    nvals
+end
+
+cmap_idx = linspace(0, 1, nvals);
+cmap = vertcat(linspace(1, color(1), nvals), ...
+               linspace(1, color(2), nvals), ...
+               linspace(1, color(3), nvals))';
+% Max-normalize data and set values greater than 1 to 1.
+norm_data = (data - clim(1))/clim(2);
+norm_data(norm_data > 1) = 1;
+% Interpolate colormap at data points.
+data_map = horzcat(interp1(cmap_idx, cmap(:,1), norm_data), ...
+                   interp1(cmap_idx, cmap(:,2), norm_data), ...
+                   interp1(cmap_idx, cmap(:,3), norm_data));
 
 end
 
