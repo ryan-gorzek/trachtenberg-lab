@@ -97,11 +97,11 @@ end
 % Plot by genotype.
 % KO
 title = sprintf("KO, 2 mice, %i cells", size(KO_tbl, 1));
-save_path = strcat(file_path, "plots", filesep, "Pcdh_KO", "_orisf_tuning_stats.jpeg");
+save_path = strcat(file_path, "plots", filesep, "Pcdh_KO", "_orisf_tuning_stats.png");
 statsPlot(KO_tbl, title=title, save_path=save_path);
 % Het
 title = sprintf("Het, 1 mouse, %i cells", size(Het_tbl, 1));
-save_path = strcat(file_path, "plots", filesep, "Pcdh_Het", "_orisf_tuning_stats.jpeg");
+save_path = strcat(file_path, "plots", filesep, "Pcdh_Het", "_orisf_tuning_stats.png");
 statsPlot(Het_tbl, title=title, save_path=save_path);
 
 % Define plotting functions.
@@ -714,10 +714,7 @@ f.Position = [112, 1363, 1368, 576];
 
 % Save the figure to file.
 imwrite(getframe(f).cdata, ...
-        NVAs.save_path, ...
-        "jpeg", ...
-        "Mode", "lossless", ...
-        "Quality", 100);
+        NVAs.save_path);
 
 end
 
