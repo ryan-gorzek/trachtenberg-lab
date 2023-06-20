@@ -1,0 +1,79 @@
+```{r}
+
+library("Seurat")
+library("reticulate")
+library("leiden")
+library("arrow")
+options(Seurat.object.assay.version = "v5")
+
+matrix <- readRDS("E:/Mouse_M1/Mouse_M1_10xV3_Matrix.RDS")
+meta_tb <- arrow::read_feather("E:/Mouse_M1/Mouse_M1_10xV3_Metadata.feather")
+meta_df <- as.data.frame(meta_tb)
+row.names(meta_df) <- meta_df[, "sample_id"]
+obj <- CreateSeuratObject(counts = matrix, meta.data = meta_df)
+
+```
+
+```{r}
+
+obj <- AddMetaData(obj, metadata = unlist(rep(list("Mouse_M1"), ncol(obj))), col.name = "dataset")
+Idents(object = obj) <- obj[["dataset"]]
+obj[["percent.mt"]] <- PercentageFeatureSet(obj, pattern = "^mt-")
+VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+
+```
+
+```{r}
+
+plot1 <- FeatureScatter(obj, feature1 = "nCount_RNA", feature2 = "percent.mt")
+plot2 <- FeatureScatter(obj, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+plot1 + plot2
+
+```
+```{r}
+
+obj <- NormalizeData(obj, normalization.method = "LogNormalize", scale.factor = 10000)
+
+```
+
+
+```{r}
+obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000)
+```
+
+
+```{r}
+
+all.genes <- rownames(obj)
+obj <- ScaleData(obj, features = all.genes)
+
+```
+
+
+
+```{r}
+obj <- RunPCA(obj, features = VariableFeatures(object = obj))
+```
+
+```{r}
+obj <- JackStraw(obj, num.replicate = 100)
+obj <- ScoreJackStraw(obj, dims = 1:50)
+```
+
+```{r}
+ElbowPlot(obj)
+```
+
+```{r}
+
+# obj <- FindNeighbors(obj, dims = 1:25)
+obj <- FindClusters(obj, resolution = 0.5, algorithm = 4)
+
+```
+
+```{r}
+obj <- RunUMAP(obj, dims = 1:25)
+plot <- DimPlot(obj, reduction = "umap")
+LabelClusters(plot = plot, id = "")
+```
+
