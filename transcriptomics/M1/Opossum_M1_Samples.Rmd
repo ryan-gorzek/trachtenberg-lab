@@ -1,0 +1,324 @@
+---
+title: "Opossum M1 Samples"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(dplyr)
+
+data_path <- "E:/Opossum_M1/output/"
+sample_IDs <- c("NW_TX0055-4", "NW_TX0055-5", "NW_TX0055-6", "NW_TX0064-3", 
+                "NW_TX0064-4", "NW_TX0064-5", "NW_TX0077-7", "NW_TX0077-8", 
+                "NW_TX0078-1", "NW_TX0090-11", "NW_TX0092-7", "NW_TX0092-8")
+
+objs <- c()
+
+for (sample in sample_IDs) {
+  
+  temp.obj.path <- paste(data_path, sample, "/outs/filtered_feature_bc_matrix/", sep = "")
+  temp.obj.data <- Read10X(temp.obj.path)
+  temp.obj <- CreateSeuratObject(counts = temp.obj.data, project = "Opossum_M1")
+  temp.obj$sample <- sample
+  temp.obj <- scrublet_R(seurat_obj = temp.obj)
+  objs <- append(objs, temp.obj)
+  
+}
+
+```
+
+```{r}
+
+obj <- merge(objs[[1]], y = objs[2:12], add.cell.ids = sample_IDs, project = "Opossum_M1")
+
+```
+
+```{r}
+
+VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA"), ncol = 2, raster = FALSE)
+FeatureScatter(obj, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", raster = FALSE)
+
+```
+
+```{r}
+
+cell_mask <- Reduce(intersect,list(WhichCells(obj, expression = nFeature_RNA > 700), 
+                                   WhichCells(obj, expression = nFeature_RNA < 6500),
+                                   WhichCells(obj, expression = nCount_RNA < 40000)))
+
+gene_mask <- rownames(obj)[Matrix::rowSums(obj) > 8]
+
+obj.filt <- subset(obj, features = gene_mask, cells = cell_mask)
+
+```
+
+
+```{r}
+
+obj.filt <- NormalizeData(obj.filt, normalization.method = "LogNormalize", scale.factor = 10000)
+obj.filt <- FindVariableFeatures(obj.filt, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.filt)
+obj.filt <- ScaleData(obj.filt, features = all.genes)
+obj.filt <- RunPCA(obj.filt, features = VariableFeatures(object = obj.filt))
+ElbowPlot(obj.filt, ndims = 50)
+
+```
+
+```{r}
+
+obj.filt <- FindNeighbors(obj.filt, dims = 1:30)
+obj.filt <- FindClusters(obj.filt, resolution = 1, algorithm = 4, method = "igraph")
+obj.filt <- RunUMAP(obj.filt, dims = 1:30, method="umap-learn")
+
+```
+
+```{r}
+
+DimPlot(obj.filt, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
+DimPlot(obj.filt, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
+DimPlot(obj.filt, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
+
+```
+
+```{r}
+
+cells.glutamatergic <- WhichCells(obj.filt, ident = c(1, 2, 3, 4, 5, 7, 9, 11, 12, 14, 15, 16, 18, 22, 27, 31))
+obj.filt$class <- ifelse(colnames(obj.filt) %in% cells.glutamatergic, "glutamatergic", "ambiguous")
+
+cells.gabaergic <- WhichCells(obj.filt, ident = c(6, 13, 17, 26, 29, 30))
+obj.filt$class[cells.gabaergic] <- "gabaergic"
+
+cells.nonneuronal <- WhichCells(obj.filt, ident = c(8, 10, 19, 20, 24, 25, 28, 32))
+obj.filt$class[cells.nonneuronal] <- "nonneuronal"
+
+cells.ambiguous <- WhichCells(obj.filt, ident = c(21))
+obj.filt$class[cells.ambiguous] <- "ambiguous"
+
+```
+
+
+```{r}
+
+DimPlot(obj.filt, reduction = "umap", group.by = "class", raster = FALSE) + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.filt.gabaergic <- subset(obj.filt, subset = class == "gabaergic")
+
+```
+
+```{r}
+
+obj.filt.gabaergic <- FindVariableFeatures(obj.filt.gabaergic, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.filt.gabaergic)
+obj.filt.gabaergic <- ScaleData(obj.filt.gabaergic, features = all.genes)
+obj.filt.gabaergic <- RunPCA(obj.filt.gabaergic, features = VariableFeatures(object = obj.filt.gabaergic))
+ElbowPlot(obj.filt.gabaergic, ndims = 50)
+
+```
+
+
+```{r}
+
+obj.filt.gabaergic <- FindNeighbors(obj.filt.gabaergic, dims = 1:30)
+obj.filt.gabaergic <- FindClusters(obj.filt.gabaergic, resolution = 1, algorithm = 4, method = "igraph")
+obj.filt.gabaergic <- RunUMAP(obj.filt.gabaergic, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+gabaergic.subclass <- WhichCells(obj.filt, ident = c(6, 13, 17, 26, 29, 30))
+obj.filt.gabaergic$subclass <- obj.filt$seurat_clusters[gabaergic.subclass]
+
+```
+
+
+```{r}
+
+obj.filt.gabaergic <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic.h5seurat")
+
+```
+
+
+```{r}
+
+DimPlot(obj.filt.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.filt.gabaergic, reduction = "umap", group.by = "subclass", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.filt.gabaergic, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-15, 12) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.filt.gabaergic, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+```{r}
+
+FeaturePlot(obj.filt.gabaergic, reduction = "umap", features = c("SST")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.filt.gabaergic, reduction = "umap", features = c("ENSMODG00000000783")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal() + ggtitle("PVALB")
+FeaturePlot(obj.filt.gabaergic, reduction = "umap", features = c("VIP")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.filt.gabaergic, reduction = "umap", features = c("LAMP5")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.filt.gabaergic, reduction = "umap", features = c("SNCG")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.filt.gabaergic, reduction = "umap", features = c("MEIS2")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.filt.gabaergic <- FindClusters(obj.filt.gabaergic, resolution = 0.5, algorithm = 4, method = "igraph")
+obj.filt.gabaergic <- FindClusters(obj.filt.gabaergic, resolution = 1.5, algorithm = 4, method = "igraph")
+obj.filt.gabaergic <- FindClusters(obj.filt.gabaergic, resolution = 2, algorithm = 4, method = "igraph")
+obj.filt.gabaergic <- FindClusters(obj.filt.gabaergic, resolution = 2.5, algorithm = 4, method = "igraph")
+obj.filt.gabaergic <- FindClusters(obj.filt.gabaergic, resolution = 3, algorithm = 4, method = "igraph")
+
+```
+
+
+```{r}
+
+DimPlot(obj.filt.gabaergic, reduction = "umap", group.by="RNA_snn_res.0.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.filt.gabaergic, reduction = "umap", group.by="RNA_snn_res.1", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.filt.gabaergic, reduction = "umap", group.by="RNA_snn_res.1.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.filt.gabaergic, reduction = "umap", group.by="RNA_snn_res.2", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.filt.gabaergic, reduction = "umap", group.by="RNA_snn_res.2.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.filt.gabaergic, reduction = "umap", group.by="RNA_snn_res.3", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+# SST resolution = 0.5
+obj.filt.gabaergic.sst <- subset(obj.filt.gabaergic, subset = RNA_snn_res.0.5 == c("2", "8", "9", "12"))
+Idents(obj.filt.gabaergic.sst) <- "RNA_snn_res.0.5"
+sst.markers <- FindAllMarkers(obj.filt.gabaergic.sst, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25, test.use = "roc")
+sst.markers.top <- sst.markers %>%
+                       group_by(cluster) %>%
+                       slice_max(n = 5, order_by = avg_log2FC)
+
+DoHeatmap(object = obj.filt.gabaergic.sst, sst.markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red"))
+expr <- AverageExpression(obj.filt.gabaergic.sst, assays = "RNA", return.seurat = TRUE, features = sst.markers.top$gene)
+DoHeatmap(expr, features = sst.markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red"))
+
+```
+
+
+```{r}
+
+# SST resolution = 1
+obj.filt.gabaergic.sst <- subset(obj.filt.gabaergic, subset = RNA_snn_res.1 == c("4", "6", "9", "13", "17"))
+Idents(obj.filt.gabaergic.sst) <- "RNA_snn_res.1"
+sst.markers <- FindAllMarkers(obj.filt.gabaergic.sst, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25, test.use = "roc")
+sst.markers.top <- sst.markers %>%
+                       group_by(cluster) %>%
+                       slice_max(n = 5, order_by = avg_log2FC)
+
+DoHeatmap(object = obj.filt.gabaergic.sst, sst.markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red"))
+expr <- AverageExpression(obj.filt.gabaergic.sst, assays = "RNA", return.seurat = TRUE, features = sst.markers.top$gene)
+DoHeatmap(expr, features = sst.markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red"))
+
+```
+
+
+```{r}
+
+# SST resolution = 1.5
+obj.filt.gabaergic.sst <- subset(obj.filt.gabaergic, subset = RNA_snn_res.1.5 == c("4", "7", "13", "14", "17", "19", "21"))
+Idents(obj.filt.gabaergic.sst) <- "RNA_snn_res.1.5"
+sst.markers <- FindAllMarkers(obj.filt.gabaergic.sst, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25, test.use = "roc")
+sst.markers.top <- sst.markers %>%
+                       group_by(cluster) %>%
+                       slice_max(n = 5, order_by = avg_log2FC)
+
+DoHeatmap(object = obj.filt.gabaergic.sst, sst.markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red"))
+expr <- AverageExpression(obj.filt.gabaergic.sst, assays = "RNA", return.seurat = TRUE, features = sst.markers.top$gene)
+DoHeatmap(expr, features = sst.markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red"))
+
+```
+
+
+```{r}
+
+# SST resolution = 2
+obj.filt.gabaergic.sst <- subset(obj.filt.gabaergic, subset = RNA_snn_res.2 == c("1", "2", "13", "14", "21", "22", "25"))
+Idents(obj.filt.gabaergic.sst) <- "RNA_snn_res.2"
+sst.markers <- FindAllMarkers(obj.filt.gabaergic.sst, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25, test.use = "roc")
+sst.markers.top <- sst.markers %>%
+                       group_by(cluster) %>%
+                       slice_max(n = 5, order_by = avg_log2FC)
+
+DoHeatmap(object = obj.filt.gabaergic.sst, sst.markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red"))
+expr <- AverageExpression(obj.filt.gabaergic.sst, assays = "RNA", return.seurat = TRUE, features = sst.markers.top$gene)
+DoHeatmap(expr, features = sst.markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red"))
+
+```
+
+
+```{r}
+
+# SST resolution = 2.5
+obj.filt.gabaergic.sst <- subset(obj.filt.gabaergic, subset = RNA_snn_res.2.5 == c("1", "10", "11", "14", "15", "22", "24", "28"))
+Idents(obj.filt.gabaergic.sst) <- "RNA_snn_res.2.5"
+sst.markers <- FindAllMarkers(obj.filt.gabaergic.sst, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25, test.use = "roc")
+sst.markers.top <- sst.markers %>%
+                       group_by(cluster) %>%
+                       slice_max(n = 5, order_by = avg_log2FC)
+
+DoHeatmap(object = obj.filt.gabaergic.sst, sst.markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red"))
+expr <- AverageExpression(obj.filt.gabaergic.sst, assays = "RNA", return.seurat = TRUE, features = sst.markers.top$gene)
+DoHeatmap(expr, features = sst.markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red"))
+
+```
+
+
+```{r}
+
+# SST resolution = 3
+obj.filt.gabaergic.sst <- subset(obj.filt.gabaergic, subset = RNA_snn_res.3 == c("4", "8", "9", "12", "13", "24", "26", "28", "32"))
+Idents(obj.filt.gabaergic.sst) <- "RNA_snn_res.3"
+sst.markers <- FindAllMarkers(obj.filt.gabaergic.sst, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25, test.use = "roc")
+sst.markers.top <- sst.markers %>%
+                       group_by(cluster) %>%
+                       slice_max(n = 5, order_by = avg_log2FC)
+
+DoHeatmap(object = obj.filt.gabaergic.sst, sst.markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red"))
+expr <- AverageExpression(obj.filt.gabaergic.sst, assays = "RNA", return.seurat = TRUE, features = sst.markers.top$gene)
+DoHeatmap(expr, features = sst.markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red"))
+
+```
+
+
+```{r}
+
+library(SeuratDisk)
+
+SaveH5Seurat(obj.filt.gabaergic, "E:/Opossum_M1/seurat/opossum_m1_gabaergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+obj.filt.gabaergic.sst <- subset(obj.filt.gabaergic, subset = RNA_snn_res.2.5 == c("1", "10", "11", "14", "15", "22", "24", "28"))
+SaveH5Seurat(obj.filt.gabaergic.sst, "E:/Opossum_M1/seurat/opossum_m1_gabaergic_sst.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+
+
+```{r}
+
+obj.filt.gabaergic.pv <- subset(obj.filt.gabaergic, subset = RNA_snn_res.2.5 == c("2", "4", "6", "7", "8", "9", "13", "16", "17", "18", "19", "25"))
+SaveH5Seurat(obj.filt.gabaergic.pv, "E:/Opossum_M1/seurat/opossum_m1_gabaergic_pv.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+
+
+```{r}
+
+obj.filt.gabaergic.vip <- subset(obj.filt.gabaergic, subset = RNA_snn_res.2.5 == c("3", "20", "21"))
+SaveH5Seurat(obj.filt.gabaergic.vip, "E:/Opossum_M1/seurat/opossum_m1_gabaergic_vip.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

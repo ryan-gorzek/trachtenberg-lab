@@ -1,0 +1,133 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(SeuratDisk)
+
+obj.mouse <- LoadH5Seurat("E:/Mouse_M1/seurat/mouse_m1_gabaergic_sst.h5seurat")
+obj.mouse[["dataset"]] <- "Mouse_M1"
+obj.opossum <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic_sst.h5seurat")
+obj.opossum[["dataset"]] <- "Opossum_M1"
+
+```
+
+
+```{r}
+
+genes.mapping <- read.csv("E:/Opossum_Mouse_Genes.txt")
+genes.mapping.mouse <- as.list(genes.mapping$Mouse.gene.name)
+genes.mapping.opossum <- as.list(genes.mapping$Gene.name)
+ids.mapping.opossum <- as.list(genes.mapping$Gene.stable.ID)
+genes.mouse = rownames(obj.mouse)
+for (gene in genes.mouse) {
+  
+  if (gene %in% genes.mapping.mouse) {
+    
+    idx.mouse <- which(genes.mouse %in% gene)
+    idx.mapping <- which(as.list(genes.mapping$Mouse.gene.name) %in% gene)
+    if (length(idx.mapping) == 1) {
+      
+      gene.opossum <- genes.mapping.opossum[idx.mapping]
+      
+      if (gene.opossum == "") {
+        
+        genes.mouse[idx.mouse] <- ids.mapping.opossum[idx.mapping]
+        
+      } else {
+        
+        genes.mouse[idx.mouse] <- gene.opossum
+        
+      }
+      
+    }
+    
+  }
+  
+}
+
+```
+
+
+```{r}
+
+obj.mouse[["RNA"]]@counts@Dimnames[[1]] <- as.character(genes.mouse)
+obj.mouse[["RNA"]]@data@Dimnames[[1]] <- as.character(genes.mouse)
+rownames(obj.mouse[["RNA"]]@scale.data) <- as.character(genes.mouse)
+
+```
+
+
+```{r}
+
+common.features <- intersect(rownames(obj.mouse), rownames(obj.opossum))
+obj.combined <- merge(obj.mouse[common.features,], y = obj.opossum[common.features,])
+
+```
+
+```{r}
+
+obj.list <- SplitObject(obj.combined, split.by = "dataset")
+
+obj.list <- lapply(X = obj.list, FUN = function(x) {
+    x <- NormalizeData(x)
+    x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = 3000)
+})
+
+features <- SelectIntegrationFeatures(object.list = obj.list, nfeatures = 3000)
+
+```
+
+```{r}
+
+rm(list = c("temp.obj.data", "temp.obj", "objs", "obj.mouse", "obj.opossum", "obj.combined"))
+
+```
+
+
+```{r}
+
+integ.anchors <- FindIntegrationAnchors(object.list = obj.list, anchor.features = features)
+integ.combined <- IntegrateData(anchorset = integ.anchors)
+
+```
+
+
+```{r}
+
+rm(integ.anchors)
+
+```
+
+
+```{r}
+
+DefaultAssay(integ.combined) <- "integrated"
+
+integ.combined <- ScaleData(integ.combined, verbose = FALSE)
+integ.combined <- RunPCA(integ.combined, verbose = FALSE)
+integ.combined <- RunUMAP(integ.combined, dims = 1:30)
+
+```
+
+```{r}
+
+DimPlot(integ.combined, reduction = "umap", group.by = "dataset", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(integ.combined, reduction = "umap", split.by = "dataset", group.by = "subclass_label", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(integ.combined, reduction = "umap", split.by = "dataset", group.by = "RNA_snn_res.2.5", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+```{r}
+
+FeaturePlot(integ.combined, split.by = "dataset", features = c("PLPP4")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(integ.combined, split.by = "dataset", features = c("PLPP4")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
