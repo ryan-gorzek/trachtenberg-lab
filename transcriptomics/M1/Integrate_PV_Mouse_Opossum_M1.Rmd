@@ -16,50 +16,7 @@ obj.mouse[["dataset"]] <- "Mouse_M1"
 obj.opossum <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic_pv.h5seurat")
 obj.opossum[["dataset"]] <- "Opossum_M1"
 
-```
-
-
-```{r}
-
-genes.mapping <- read.csv("E:/Opossum_Mouse_Genes.txt")
-genes.mapping.mouse <- as.list(genes.mapping$Mouse.gene.name)
-genes.mapping.opossum <- as.list(genes.mapping$Gene.name)
-ids.mapping.opossum <- as.list(genes.mapping$Gene.stable.ID)
-genes.mouse = rownames(obj.mouse)
-for (gene in genes.mouse) {
-  
-  if (gene %in% genes.mapping.mouse) {
-    
-    idx.mouse <- which(genes.mouse %in% gene)
-    idx.mapping <- which(as.list(genes.mapping$Mouse.gene.name) %in% gene)
-    if (length(idx.mapping) == 1) {
-      
-      gene.opossum <- genes.mapping.opossum[idx.mapping]
-      
-      if (gene.opossum == "") {
-        
-        genes.mouse[idx.mouse] <- ids.mapping.opossum[idx.mapping]
-        
-      } else {
-        
-        genes.mouse[idx.mouse] <- gene.opossum
-        
-      }
-      
-    }
-    
-  }
-  
-}
-
-```
-
-
-```{r}
-
-obj.mouse[["RNA"]]@counts@Dimnames[[1]] <- as.character(genes.mouse)
-obj.mouse[["RNA"]]@data@Dimnames[[1]] <- as.character(genes.mouse)
-rownames(obj.mouse[["RNA"]]@scale.data) <- as.character(genes.mouse)
+# obj.mouse <- obj.mouse[, sample(colnames(obj.mouse), size = ncol(obj.opossum), replace = FALSE)]
 
 ```
 
@@ -70,6 +27,7 @@ common.features <- intersect(rownames(obj.mouse), rownames(obj.opossum))
 obj.combined <- merge(obj.mouse[common.features,], y = obj.opossum[common.features,])
 
 ```
+
 
 ```{r}
 
@@ -84,12 +42,6 @@ features <- SelectIntegrationFeatures(object.list = obj.list, nfeatures = 1000)
 
 ```
 
-```{r}
-
-rm(list = c("temp.obj.data", "temp.obj", "objs", "obj.mouse", "obj.opossum", "obj.combined"))
-
-```
-
 
 ```{r}
 
@@ -101,25 +53,55 @@ integ.combined <- IntegrateData(anchorset = integ.anchors)
 
 ```{r}
 
-rm(integ.anchors)
-
-```
-
-
-```{r}
-
 DefaultAssay(integ.combined) <- "integrated"
 
 integ.combined <- ScaleData(integ.combined, verbose = FALSE)
 integ.combined <- RunPCA(integ.combined, verbose = FALSE)
 integ.combined <- RunUMAP(integ.combined, dims = 1:30)
+integ.combined <- FindNeighbors(integ.combined, dims = 1:30)
+integ.combined <- FindClusters(integ.combined, resolution = 2, algorithm = 4, method = "igraph")
 
 ```
+
 
 ```{r}
 
-DimPlot(integ.combined, reduction = "umap", group.by = "dataset", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-DimPlot(integ.combined, reduction = "umap", split.by = "dataset", group.by = "subclass_label", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-DimPlot(integ.combined, reduction = "umap", split.by = "dataset", group.by = "RNA_snn_res.2", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(integ.combined, reduction = "umap", raster = FALSE) + xlim(-15, 15) + ylim(-10, 10) + coord_equal()
+DimPlot(integ.combined, reduction = "umap", group.by = "dataset", raster = FALSE) + xlim(-15, 15) + ylim(-10, 10) + coord_equal()
+DimPlot(integ.combined, reduction = "umap", split.by = "dataset", group.by = "cluster_label", raster = FALSE) + xlim(-10, 10) + ylim(-10, 10) + coord_equal()
+DimPlot(integ.combined, reduction = "umap", split.by = "dataset", group.by = "RNA_snn_res.2", raster = FALSE) + xlim(-10, 10) + ylim(-10, 10) + coord_equal()
 
 ```
+
+
+```{r}
+
+# resolution = 2
+markers <- FindAllMarkers(integ.combined, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25, test.use = "roc")
+markers.top <- markers %>%
+                       group_by(cluster) %>%
+                       slice_max(n = 10, order_by = avg_log2FC)
+DimPlot(integ.combined, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-10, 10) + ylim(-10, 10) + coord_equal()
+DoHeatmap(object = integ.combined, markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red")) + theme(text = element_text(size = 6))
+expr <- AverageExpression(integ.combined, assays = "integrated", return.seurat = TRUE, features = markers.top$gene)
+DoHeatmap(expr, features = markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red")) + theme(text = element_text(size = 6))
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

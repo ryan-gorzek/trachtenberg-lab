@@ -1,0 +1,64 @@
+---
+title: "Mouse M1 Object"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+
+matrix <- readRDS("E:/Mouse_M1/Mouse_M1_10xV3_Matrix.RDS")
+meta_tb <- arrow::read_feather("E:/Mouse_M1/Mouse_M1_10xV3_Metadata.feather")
+meta_df <- as.data.frame(meta_tb)
+row.names(meta_df) <- meta_df[, "sample_id"]
+obj.mouse <- CreateSeuratObject(counts = matrix, meta.data = meta_df)
+rm(list = c("matrix", "meta_df", "meta_tb"))
+
+```
+
+
+```{r}
+
+obj.mouse <- AddMetaData(obj.mouse, metadata = unlist(rep(list("Mouse_M1"), ncol(obj.mouse))), col.name = "dataset")
+Idents(object = obj.mouse) <- obj.mouse[["dataset"]]
+obj.mouse[["percent.mt"]] <- PercentageFeatureSet(obj.mouse, pattern = "^mt-")
+VlnPlot(obj.mouse, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+plot1 <- FeatureScatter(obj.mouse, feature1 = "nCount_RNA", feature2 = "percent.mt")
+plot2 <- FeatureScatter(obj.mouse, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+plot1 + plot2
+
+```
+
+
+```{r}
+
+obj.mouse <- NormalizeData(obj.mouse, normalization.method = "LogNormalize", scale.factor = 10000)
+obj.mouse <- FindVariableFeatures(obj.mouse, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.mouse)
+obj.mouse <- ScaleData(obj.mouse, features = all.genes)
+obj.mouse <- RunPCA(obj.mouse, features = VariableFeatures(object = obj.mouse))
+ElbowPlot(obj.mouse, ndims = 50)
+
+```
+
+
+```{r}
+
+obj.mouse <- FindNeighbors(obj.mouse, dims = 1:30)
+obj.mouse <- FindClusters(obj.mouse, resolution = 1, algorithm = 4, method = "igraph")
+obj.mouse <- RunUMAP(obj.mouse, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+SaveH5Seurat(obj.mouse, "E:/Mouse_M1/seurat/mouse_m1_all.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

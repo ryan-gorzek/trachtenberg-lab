@@ -1754,7 +1754,7 @@ display: none;
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuXG5saWJyYXJ5KFNldXJhdClcbmxpYnJhcnkocmV0aWN1bGF0ZSlcbmxpYnJhcnkoc2NydWJsZXRSKVxubGlicmFyeShnZ3Bsb3QyKVxubGlicmFyeShTZXVyYXREaXNrKVxuXG5vYmoubW91c2UgPC0gTG9hZEg1U2V1cmF0KFwiRTovTW91c2VfTTEvc2V1cmF0L21vdXNlX20xX2dhYmFlcmdpY192aXAuaDVzZXVyYXRcIilcbm9iai5tb3VzZVtbXCJkYXRhc2V0XCJdXSA8LSBcIk1vdXNlX00xXCJcbm9iai5vcG9zc3VtIDwtIExvYWRINVNldXJhdChcIkU6L09wb3NzdW1fTTEvc2V1cmF0L29wb3NzdW1fbTFfZ2FiYWVyZ2ljX3ZpcC5oNXNldXJhdFwiKVxub2JqLm9wb3NzdW1bW1wiZGF0YXNldFwiXV0gPC0gXCJPcG9zc3VtX00xXCJcblxuYGBgIn0= -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuXG5saWJyYXJ5KFNldXJhdClcbmxpYnJhcnkocmV0aWN1bGF0ZSlcbmxpYnJhcnkoc2NydWJsZXRSKVxubGlicmFyeShnZ3Bsb3QyKVxubGlicmFyeShTZXVyYXREaXNrKVxuXG5vYmoubW91c2UgPC0gTG9hZEg1U2V1cmF0KFwiRTovTW91c2VfTTEvc2V1cmF0L21vdXNlX20xX2dhYmFlcmdpY192aXAuaDVzZXVyYXRcIilcbmBgYCJ9 -->
 <pre class="r"><code>
 library(Seurat)
 library(reticulate)
@@ -1762,10 +1762,54 @@ library(scrubletR)
 library(ggplot2)
 library(SeuratDisk)
 
-obj.mouse &lt;- LoadH5Seurat(&quot;E:/Mouse_M1/seurat/mouse_m1_gabaergic_vip.h5seurat&quot;)
-obj.mouse[[&quot;dataset&quot;]] &lt;- &quot;Mouse_M1&quot;
-obj.opossum &lt;- LoadH5Seurat(&quot;E:/Opossum_M1/seurat/opossum_m1_gabaergic_vip.h5seurat&quot;)
-obj.opossum[[&quot;dataset&quot;]] &lt;- &quot;Opossum_M1&quot;
+obj.mouse &lt;- LoadH5Seurat(&quot;E:/Mouse_M1/seurat/mouse_m1_gabaergic_vip.h5seurat&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiVmFsaWRhdGluZyBoNVNldXJhdCBmaWxlXG5Jbml0aWFsaXppbmcgUk5BIHdpdGggZGF0YVxuQWRkaW5nIGNvdW50cyBmb3IgUk5BXG5BZGRpbmcgc2NhbGUuZGF0YSBmb3IgUk5BXG5BZGRpbmcgZmVhdHVyZS1sZXZlbCBtZXRhZGF0YSBmb3IgUk5BXG5BZGRpbmcgdmFyaWFibGUgZmVhdHVyZSBpbmZvcm1hdGlvbiBmb3IgUk5BXG5BZGRpbmcgbWlzY2VsbGFuZW91cyBpbmZvcm1hdGlvbiBmb3IgUk5BXG5BZGRpbmcgcmVkdWN0aW9uIHBjYVxuQWRkaW5nIGNlbGwgZW1iZWRkaW5ncyBmb3IgcGNhXG5BZGRpbmcgZmVhdHVyZSBsb2FkaW5ncyBmb3IgcGNhXG5BZGRpbmcgbWlzY2VsbGFuZW91cyBpbmZvcm1hdGlvbiBmb3IgcGNhXG5BZGRpbmcgcmVkdWN0aW9uIHVtYXBcbkFkZGluZyBjZWxsIGVtYmVkZGluZ3MgZm9yIHVtYXBcbkFkZGluZyBtaXNjZWxsYW5lb3VzIGluZm9ybWF0aW9uIGZvciB1bWFwXG5BZGRpbmcgY29tbWFuZCBpbmZvcm1hdGlvblxuQWRkaW5nIGNlbGwtbGV2ZWwgbWV0YWRhdGFcbkFkZGluZyBtaXNjZWxsYW5lb3VzIGluZm9ybWF0aW9uXG5BZGRpbmcgdG9vbC1zcGVjaWZpYyByZXN1bHRzXG4ifQ== -->
+<pre><code>Validating h5Seurat file
+Initializing RNA with data
+Adding counts for RNA
+Adding scale.data for RNA
+Adding feature-level metadata for RNA
+Adding variable feature information for RNA
+Adding miscellaneous information for RNA
+Adding reduction pca
+Adding cell embeddings for pca
+Adding feature loadings for pca
+Adding miscellaneous information for pca
+Adding reduction umap
+Adding cell embeddings for umap
+Adding miscellaneous information for umap
+Adding command information
+Adding cell-level metadata
+Adding miscellaneous information
+Adding tool-specific results</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxub2JqLm1vdXNlW1tcImRhdGFzZXRcIl1dIDwtIFwiTW91c2VfTTFcIlxub2JqLm9wb3NzdW0gPC0gTG9hZEg1U2V1cmF0KFwiRTovT3Bvc3N1bV9NMS9zZXVyYXQvb3Bvc3N1bV9tMV9nYWJhZXJnaWNfdmlwLmg1c2V1cmF0XCIpXG5gYGAifQ== -->
+<pre class="r"><code>obj.mouse[[&quot;dataset&quot;]] &lt;- &quot;Mouse_M1&quot;
+obj.opossum &lt;- LoadH5Seurat(&quot;E:/Opossum_M1/seurat/opossum_m1_gabaergic_vip.h5seurat&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiVmFsaWRhdGluZyBoNVNldXJhdCBmaWxlXG5Jbml0aWFsaXppbmcgUk5BIHdpdGggZGF0YVxuQWRkaW5nIGNvdW50cyBmb3IgUk5BXG5BZGRpbmcgc2NhbGUuZGF0YSBmb3IgUk5BXG5BZGRpbmcgZmVhdHVyZS1sZXZlbCBtZXRhZGF0YSBmb3IgUk5BXG5BZGRpbmcgdmFyaWFibGUgZmVhdHVyZSBpbmZvcm1hdGlvbiBmb3IgUk5BXG5BZGRpbmcgbWlzY2VsbGFuZW91cyBpbmZvcm1hdGlvbiBmb3IgUk5BXG5BZGRpbmcgcmVkdWN0aW9uIHBjYVxuQWRkaW5nIGNlbGwgZW1iZWRkaW5ncyBmb3IgcGNhXG5BZGRpbmcgZmVhdHVyZSBsb2FkaW5ncyBmb3IgcGNhXG5BZGRpbmcgbWlzY2VsbGFuZW91cyBpbmZvcm1hdGlvbiBmb3IgcGNhXG5BZGRpbmcgcmVkdWN0aW9uIHVtYXBcbkFkZGluZyBjZWxsIGVtYmVkZGluZ3MgZm9yIHVtYXBcbkFkZGluZyBtaXNjZWxsYW5lb3VzIGluZm9ybWF0aW9uIGZvciB1bWFwXG5BZGRpbmcgY29tbWFuZCBpbmZvcm1hdGlvblxuQWRkaW5nIGNlbGwtbGV2ZWwgbWV0YWRhdGFcbkFkZGluZyBtaXNjZWxsYW5lb3VzIGluZm9ybWF0aW9uXG5BZGRpbmcgdG9vbC1zcGVjaWZpYyByZXN1bHRzXG4ifQ== -->
+<pre><code>Validating h5Seurat file
+Initializing RNA with data
+Adding counts for RNA
+Adding scale.data for RNA
+Adding feature-level metadata for RNA
+Adding variable feature information for RNA
+Adding miscellaneous information for RNA
+Adding reduction pca
+Adding cell embeddings for pca
+Adding feature loadings for pca
+Adding miscellaneous information for pca
+Adding reduction umap
+Adding cell embeddings for umap
+Adding miscellaneous information for umap
+Adding command information
+Adding cell-level metadata
+Adding miscellaneous information
+Adding tool-specific results</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxub2JqLm9wb3NzdW1bW1wiZGF0YXNldFwiXV0gPC0gXCJPcG9zc3VtX00xXCJcblxuYGBgIn0= -->
+<pre class="r"><code>obj.opossum[[&quot;dataset&quot;]] &lt;- &quot;Opossum_M1&quot;
 </code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->

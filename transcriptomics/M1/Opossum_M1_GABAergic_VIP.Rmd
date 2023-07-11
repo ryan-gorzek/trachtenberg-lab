@@ -1,0 +1,141 @@
+---
+title: "Opossum M1 GABAergic VIP"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+obj.opossum.gabaergic <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic.h5Seurat")
+obj.opossum.gabaergic.vip <- subset(obj.opossum.gabaergic, subset = subclass == "Vip")
+
+```
+
+
+```{r}
+
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Vip")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Sncg")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Lamp5")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by="RNA_snn_res.0.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by="RNA_snn_res.1", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by="RNA_snn_res.1.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by="RNA_snn_res.2", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by="RNA_snn_res.2.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by="RNA_snn_res.3", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+# vip resolution = 0.5
+Idents(obj.opossum.gabaergic.vip) <- "RNA_snn_res.0.5"
+vip.markers <- FindAllMarkers(obj.opossum.gabaergic.vip, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25, test.use = "roc")
+vip.markers.top <- vip.markers %>%
+                       group_by(cluster) %>%
+                       slice_max(n = 10, order_by = avg_log2FC)
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by="RNA_snn_res.0.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DoHeatmap(object = obj.opossum.gabaergic.vip, vip.markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red")) + theme(text = element_text(size = 10))
+expr <- AverageExpression(obj.opossum.gabaergic.vip, assays = "RNA", return.seurat = TRUE, features = vip.markers.top$gene)
+DoHeatmap(expr, features = vip.markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red")) + theme(text = element_text(size = 10))
+ggplot(subset(vip.markers), aes(x = avg_log2FC, fill = cluster)) + stat_ecdf(geom = "step", aes(col = cluster))
+
+```
+
+
+```{r}
+
+# vip resolution = 1
+Idents(obj.opossum.gabaergic.vip) <- "RNA_snn_res.1"
+vip.markers <- FindAllMarkers(obj.opossum.gabaergic.vip, only.pos = TRUE, test.use = "roc")
+vip.markers.top <- vip.markers %>%
+                       group_by(cluster) %>%
+                       slice_max(n = 10, order_by = avg_log2FC)
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by="RNA_snn_res.1", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DoHeatmap(object = obj.opossum.gabaergic.vip, vip.markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red")) + theme(text = element_text(size = 10))
+expr <- AverageExpression(obj.opossum.gabaergic.vip, assays = "RNA", return.seurat = TRUE, features = vip.markers.top$gene)
+DoHeatmap(expr, features = vip.markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red")) + theme(text = element_text(size = 10))
+ggplot(subset(vip.markers), aes(x = avg_log2FC, fill = cluster)) + stat_ecdf(geom = "step", aes(col = cluster))
+
+```
+
+
+```{r}
+
+# vip resolution = 1.5
+Idents(obj.opossum.gabaergic.vip) <- "RNA_snn_res.1.5"
+vip.markers <- FindAllMarkers(obj.opossum.gabaergic.vip, only.pos = TRUE, test.use = "roc")
+vip.markers.top <- vip.markers %>%
+                       group_by(cluster) %>%
+                       slice_max(n = 10, order_by = avg_log2FC)
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by="RNA_snn_res.1.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DoHeatmap(object = obj.opossum.gabaergic.vip, vip.markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red")) + theme(text = element_text(size = 10))
+expr <- AverageExpression(obj.opossum.gabaergic.vip, assays = "RNA", return.seurat = TRUE, features = vip.markers.top$gene)
+DoHeatmap(expr, features = vip.markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red")) + theme(text = element_text(size = 10))
+ggplot(subset(vip.markers), aes(x = avg_log2FC, fill = cluster)) + stat_ecdf(geom = "step", aes(col = cluster))
+
+```
+
+
+```{r}
+
+# vip resolution = 2
+Idents(obj.opossum.gabaergic.vip) <- "RNA_snn_res.2"
+vip.markers <- FindAllMarkers(obj.opossum.gabaergic.vip, only.pos = TRUE, test.use = "roc")
+vip.markers.top <- vip.markers %>%
+                       group_by(cluster) %>%
+                       slice_max(n = 10, order_by = avg_log2FC)
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by="RNA_snn_res.2", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DoHeatmap(object = obj.opossum.gabaergic.vip, vip.markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red")) + theme(text = element_text(size = 9))
+expr <- AverageExpression(obj.opossum.gabaergic.vip, assays = "RNA", return.seurat = TRUE, features = vip.markers.top$gene)
+DoHeatmap(expr, features = vip.markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red")) + theme(text = element_text(size = 9))
+ggplot(subset(vip.markers), aes(x = avg_log2FC, fill = cluster)) + stat_ecdf(geom = "step", aes(col = cluster))
+
+```
+
+
+```{r}
+
+# vip resolution = 2.5
+Idents(obj.opossum.gabaergic.vip) <- "RNA_snn_res.2.5"
+vip.markers <- FindAllMarkers(obj.opossum.gabaergic.vip, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25, test.use = "roc")
+vip.markers.top <- vip.markers %>%
+                       group_by(cluster) %>%
+                       slice_max(n = 10, order_by = avg_log2FC)
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by="RNA_snn_res.2.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DoHeatmap(object = obj.opossum.gabaergic.vip, vip.markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red")) + theme(text = element_text(size = 9))
+expr <- AverageExpression(obj.opossum.gabaergic.vip, assays = "RNA", return.seurat = TRUE, features = vip.markers.top$gene)
+DoHeatmap(expr, features = vip.markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red")) + theme(text = element_text(size = 9))
+ggplot(subset(vip.markers), aes(x = avg_log2FC, fill = cluster)) + stat_ecdf(geom = "step", aes(col = cluster))
+
+```
+
+
+```{r}
+
+# vip resolution = 3
+Idents(obj.opossum.gabaergic.vip) <- "RNA_snn_res.3"
+vip.markers <- FindAllMarkers(obj.opossum.gabaergic.vip, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25, test.use = "roc")
+vip.markers.top <- vip.markers %>%
+                       group_by(cluster) %>%
+                       slice_max(n = 10, order_by = avg_log2FC)
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by="RNA_snn_res.3", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DoHeatmap(object = obj.opossum.gabaergic.vip, vip.markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red")) + theme(text = element_text(size = 8))
+expr <- AverageExpression(obj.opossum.gabaergic.vip, assays = "RNA", return.seurat = TRUE, features = vip.markers.top$gene)
+DoHeatmap(expr, features = vip.markers.top$gene) + scale_fill_gradientn(colors = c("blue", "white", "red")) + theme(text = element_text(size = 8))
+ggplot(subset(vip.markers), aes(x = avg_log2FC, fill = cluster)) + stat_ecdf(geom = "step", aes(col = cluster))
+
+```
+
