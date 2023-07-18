@@ -1,0 +1,183 @@
+---
+title: "Mouse M1 GABAergic"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+obj.mouse.glutamatergic <- LoadH5Seurat("E:/Mouse_M1/seurat/mouse_m1_gabaergic.h5Seurat")
+
+```
+
+
+```{r}
+
+obj.mouse.gabaergic <- FindVariableFeatures(obj.mouse.gabaergic, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.mouse.gabaergic)
+obj.mouse.gabaergic <- ScaleData(obj.mouse.gabaergic, features = all.genes)
+obj.mouse.gabaergic <- RunPCA(obj.mouse.gabaergic, features = VariableFeatures(object = obj.mouse.gabaergic))
+ElbowPlot(obj.mouse.gabaergic, ndims = 50)
+
+```
+
+
+```{r}
+
+obj.mouse.gabaergic <- FindNeighbors(obj.mouse.gabaergic, dims = 1:30)
+obj.mouse.gabaergic <- FindClusters(obj.mouse.gabaergic, resolution = 1, algorithm = 4, method = "igraph")
+obj.mouse.gabaergic <- RunUMAP(obj.mouse.gabaergic, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+DimPlot(obj.mouse.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by = "subclass_label", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-15, 12) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by = "cluster_label", label = TRUE, label.size = 2,raster = FALSE) + NoLegend()  + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Sst")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Pvalb")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Vip")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Lamp5")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Sncg")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Meis2")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.mouse.gabaergic <- FindClusters(obj.mouse.gabaergic, resolution = 0.5, algorithm = 4, method = "igraph")
+obj.mouse.gabaergic <- FindClusters(obj.mouse.gabaergic, resolution = 1.5, algorithm = 4, method = "igraph")
+obj.mouse.gabaergic <- FindClusters(obj.mouse.gabaergic, resolution = 2, algorithm = 4, method = "igraph")
+obj.mouse.gabaergic <- FindClusters(obj.mouse.gabaergic, resolution = 2.5, algorithm = 4, method = "igraph")
+obj.mouse.gabaergic <- FindClusters(obj.mouse.gabaergic, resolution = 3, algorithm = 4, method = "igraph")
+obj.mouse.gabaergic <- FindClusters(obj.mouse.gabaergic, resolution = 3.5, algorithm = 4, method = "igraph")
+obj.mouse.gabaergic <- FindClusters(obj.mouse.gabaergic, resolution = 4, algorithm = 4, method = "igraph")
+obj.mouse.gabaergic <- FindClusters(obj.mouse.gabaergic, resolution = 4.5, algorithm = 4, method = "igraph")
+obj.mouse.gabaergic <- FindClusters(obj.mouse.gabaergic, resolution = 5, algorithm = 4, method = "igraph")
+
+```
+
+
+```{r}
+
+DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by="RNA_snn_res.0.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by="RNA_snn_res.1", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by="RNA_snn_res.1.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by="RNA_snn_res.2", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by="RNA_snn_res.2.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by="RNA_snn_res.3", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by="RNA_snn_res.3.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by="RNA_snn_res.4", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by="RNA_snn_res.4.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by="RNA_snn_res.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.mouse.gabaergic) <- "RNA_snn_res.1.5"
+cells.pv <- WhichCells(obj.mouse.gabaergic, ident = c("2", "3", "4", "5", "8", "20", "21", "24"))
+obj.mouse.gabaergic$subclass <- ifelse(colnames(obj.mouse.gabaergic) %in% cells.pv, "Pvalb", "ambiguous")
+
+cells.sst <- WhichCells(obj.mouse.gabaergic, ident = c("6", "9", "12", "15", "16", "17"))
+obj.mouse.gabaergic$subclass[cells.sst] <- "Sst"
+
+cells.chodl <- WhichCells(obj.mouse.gabaergic, ident = c("23"))
+obj.mouse.gabaergic$subclass[cells.chodl] <- "Sst Chodl"
+
+cells.vip <- WhichCells(obj.mouse.gabaergic, ident = c("7", "10", "14", "19", "22"))
+obj.mouse.gabaergic$subclass[cells.vip] <- "Vip"
+
+cells.lamp5 <- WhichCells(obj.mouse.gabaergic, ident = c("1", "11", "18", "25"))
+obj.mouse.gabaergic$subclass[cells.lamp5] <- "Lamp5"
+
+cells.lamp5 <- WhichCells(obj.mouse.gabaergic, ident = c("13"))
+obj.mouse.gabaergic$subclass[cells.lamp5] <- "Sncg"
+
+cells.lamp5 <- WhichCells(obj.mouse.gabaergic, ident = c("26"))
+obj.mouse.gabaergic$subclass[cells.lamp5] <- "Meis2"
+
+```
+
+
+```{r}
+
+Idents(obj.mouse.gabaergic) <- "subclass_label"
+gabaergic.total <- ncol(subset(obj.mouse.gabaergic, idents = c("Pvalb", "Sst", "Sst Chodl", "Vip", "Lamp5", "Sncg", "Meis2")))
+pv.total <- ncol(subset(obj.mouse.gabaergic, idents = c("Pvalb")))
+sst.total <- ncol(subset(obj.mouse.gabaergic, idents = c("Sst", "Sst Chodl")))
+vip.total <- ncol(subset(obj.mouse.gabaergic, idents = c("Vip")))
+lamp5.total <- ncol(subset(obj.mouse.gabaergic, idents = c("Lamp5")))
+sncg.total <- ncol(subset(obj.mouse.gabaergic, idents = c("Sncg")))
+meis2.total <- ncol(subset(obj.mouse.gabaergic, idents = c("Meis2")))
+
+data <- data.frame(
+  group = c("PV", "SST", "VIP", "LAMP5", "SNCG", "Meis2"),
+  value = c(pv.total, sst.total, vip.total, lamp5.total, sncg.total, meis2.total)
+)
+
+# Compute the position of labels
+data <- data %>% 
+  arrange(desc(group)) %>%
+  mutate(prop = value / sum(data$value) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+# Basic piechart
+ggplot(data, aes(x="", y=prop, fill=group)) +
+  geom_bar(stat="identity", width=1) +
+  coord_polar("y", start=0) +
+  theme_void() + 
+  geom_text(aes(y = ypos, label = sprintf("%.1f%%", prop)), color = "white", size=5) +
+  scale_fill_brewer(palette="Set1")
+ 
+```
+
+
+```{r, fig.width=4, fig.height=4}
+
+Idents(obj.mouse.gabaergic) <- "subclass_label"
+levels(obj.mouse.gabaergic) <- c("Pvalb", "Sst", "Sst Chodl", "Vip", "Lamp5", "Sncg", "Meis2")
+cholinergic.markers = c("Chrm1", "Chrm2", "Chrm3", "Chrm4", "Chrm5", 
+                        "Chrna1", "Chrna2", "Chrna3", "Chrna4", "Chrna5", "Chrna6", "Chrna7", "Chrna10", 
+                        "Chrnb1", "Chrnb2", "Chrnb3", "Chrnb4", 
+                        "Chrnd", "Chrne")
+DoHeatmap(object = obj.mouse.gabaergic, cholinergic.markers, slot = "data") + scale_fill_gradientn(colors = c("white", "red")) + theme(text = element_text(size = 10))
+expr <- AverageExpression(obj.mouse.gabaergic, assays = "RNA", return.seurat = TRUE, features = cholinergic.markers)
+DoHeatmap(expr, features = cholinergic.markers, slot = "data", draw.lines = FALSE, size = 3) + scale_fill_gradientn(colors = magma(100), limits = c(0, 3)) + theme(text = element_text(size = 10))
+
+```
+
+```{r, fig.width=4, fig.height=4}
+
+Idents(obj.mouse.gabaergic) <- "subclass_label"
+levels(obj.mouse.gabaergic) <- c("Pvalb", "Sst", "Sst Chodl", "Vip", "Lamp5", "Sncg", "Meis2")
+adrenergic.markers = c("Adra1a", "Adra1b", "Adra1d", "Adra2a", "Adra2c", "Adrb1", "Adrb2", "Adrb3")
+DoHeatmap(object = obj.mouse.gabaergic, adrenergic.markers, slot = "data") + scale_fill_gradientn(colors = c("white", "red")) + theme(text = element_text(size = 10))
+expr <- AverageExpression(obj.mouse.gabaergic, assays = "RNA", return.seurat = TRUE, features = adrenergic.markers)
+DoHeatmap(expr, features = adrenergic.markers, slot = "data", draw.lines = FALSE, size = 3) + scale_fill_gradientn(colors = magma(100), limits = c(0, 3)) + theme(text = element_text(size = 10))
+
+```
+
+
+```{r}
+
+Idents(obj.mouse.gabaergic) <- "subclass"
+SaveH5Seurat(obj.mouse.gabaergic, "E:/Mouse_M1/seurat/mouse_m1_gabaergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

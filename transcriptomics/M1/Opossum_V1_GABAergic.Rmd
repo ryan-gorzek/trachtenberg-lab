@@ -11,7 +11,7 @@ library(arrow)
 library(ggplot2)
 library(dplyr)
 library(SeuratDisk)
-obj.opossum.gabaergic <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic.h5Seurat")
+obj.opossum.gabaergic <- LoadH5Seurat("E:/Opossum_V1/seurat/opossum_v1_gabaergic.h5Seurat")
 
 ```
 
@@ -39,8 +39,6 @@ obj.opossum.gabaergic <- RunUMAP(obj.opossum.gabaergic, dims = 1:30, method="uma
 ```{r}
 
 DimPlot(obj.opossum.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-15, 12) + ylim(-15, 15) + coord_equal()
-DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 
 ```
 
@@ -90,20 +88,17 @@ DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by="RNA_snn_res.5", lab
 
 ```{r}
 
-Idents(obj.opossum.gabaergic) <- "RNA_snn_res.3"
-cells.pv <- WhichCells(obj.opossum.gabaergic, ident = c("1", "2", "3", "5", "6", "7", "10", "11", "14", "16", "20", "27"))
+Idents(obj.opossum.gabaergic) <- "RNA_snn_res.1"
+cells.pv <- WhichCells(obj.opossum.gabaergic, ident = c("1"))
 obj.opossum.gabaergic$subclass <- ifelse(colnames(obj.opossum.gabaergic) %in% cells.pv, "Pvalb", "ambiguous")
 
-cells.sst <- WhichCells(obj.opossum.gabaergic, ident = c("4", "8", "9", "12", "13", "24", "26", "28"))
+cells.sst <- WhichCells(obj.opossum.gabaergic, ident = c("2", "5"))
 obj.opossum.gabaergic$subclass[cells.sst] <- "Sst"
 
-cells.chodl <- WhichCells(obj.opossum.gabaergic, ident = c("32"))
-obj.opossum.gabaergic$subclass[cells.chodl] <- "Sst Chodl"
-
-cells.vip <- WhichCells(obj.opossum.gabaergic, ident = c("15", "19", "21", "23"))
+cells.vip <- WhichCells(obj.opossum.gabaergic, ident = c("3"))
 obj.opossum.gabaergic$subclass[cells.vip] <- "Vip"
 
-cells.lamp5 <- WhichCells(obj.opossum.gabaergic, ident = c("17", "22", "30"))
+cells.lamp5 <- WhichCells(obj.opossum.gabaergic, ident = c("4"))
 obj.opossum.gabaergic$subclass[cells.lamp5] <- "Lamp5"
 
 ```

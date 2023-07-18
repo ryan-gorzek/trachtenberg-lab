@@ -139,3 +139,11 @@ ggplot(subset(vip.markers), aes(x = avg_log2FC, fill = cluster)) + stat_ecdf(geo
 
 ```
 
+
+```{r}
+
+Idents(obj.opossum.gabaergic.vip) <- "subclass"
+SaveH5Seurat(obj.opossum.gabaergic.vip, "E:/Opossum_M1/seurat/opossum_m1_gabaergic_vip.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

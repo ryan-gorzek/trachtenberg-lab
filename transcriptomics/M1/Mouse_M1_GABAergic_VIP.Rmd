@@ -12,6 +12,7 @@ library(ggplot2)
 library(dplyr)
 library(SeuratDisk)
 obj.mouse.gabaergic <- LoadH5Seurat("E:/Mouse_M1/seurat/mouse_m1_gabaergic.h5Seurat")
+obj.mouse.gabaergic.vip <- subset(obj.mouse.gabaergic, subset = subclass == "Vip")
 
 ```
 
@@ -40,7 +41,6 @@ DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by="RNA_snn_res.3", label
 ```{r}
 
 # vip resolution = 0.5
-obj.mouse.gabaergic.vip <- subset(obj.mouse.gabaergic, subset = RNA_snn_res.0.5 == c("4", "7", "12"))
 Idents(obj.mouse.gabaergic.vip) <- "RNA_snn_res.0.5"
 vip.markers <- FindAllMarkers(obj.mouse.gabaergic.vip, only.pos = TRUE, test.use = "roc")
 vip.markers.top <- vip.markers %>%
@@ -58,7 +58,6 @@ ggplot(subset(vip.markers), aes(x = avg_log2FC, fill = cluster)) + stat_ecdf(geo
 ```{r}
 
 # vip resolution = 1
-obj.mouse.gabaergic.vip <- subset(obj.mouse.gabaergic, subset = RNA_snn_res.1 == c("8", "10", "16", "17", "20"))
 Idents(obj.mouse.gabaergic.vip) <- "RNA_snn_res.1"
 vip.markers <- FindAllMarkers(obj.mouse.gabaergic.vip, only.pos = TRUE, test.use = "roc")
 vip.markers.top <- vip.markers %>%
@@ -76,7 +75,6 @@ ggplot(subset(vip.markers), aes(x = avg_log2FC, fill = cluster)) + stat_ecdf(geo
 ```{r}
 
 # vip resolution = 1.5
-obj.mouse.gabaergic.vip <- subset(obj.mouse.gabaergic, subset = RNA_snn_res.1.5 == c("7", "10", "14", "19", "22"))
 Idents(obj.mouse.gabaergic.vip) <- "RNA_snn_res.1.5"
 vip.markers <- FindAllMarkers(obj.mouse.gabaergic.vip, only.pos = TRUE, test.use = "roc")
 vip.markers.top <- vip.markers %>%
@@ -94,7 +92,6 @@ ggplot(subset(vip.markers), aes(x = avg_log2FC, fill = cluster)) + stat_ecdf(geo
 ```{r}
 
 # vip resolution = 2
-obj.mouse.gabaergic.vip <- subset(obj.mouse.gabaergic, subset = RNA_snn_res.2 == c("5", "11", "18", "20", "23", "24"))
 Idents(obj.mouse.gabaergic.vip) <- "RNA_snn_res.2"
 vip.markers <- FindAllMarkers(obj.mouse.gabaergic.vip, only.pos = TRUE, test.use = "roc")
 vip.markers.top <- vip.markers %>%
@@ -112,7 +109,6 @@ ggplot(subset(vip.markers), aes(x = avg_log2FC, fill = cluster)) + stat_ecdf(geo
 ```{r}
 
 # vip resolution = 2.5
-obj.mouse.gabaergic.vip <- subset(obj.mouse.gabaergic, subset = RNA_snn_res.2.5 == c("6", "11", "17", "22", "26", "28", "29"))
 Idents(obj.mouse.gabaergic.vip) <- "RNA_snn_res.2.5"
 vip.markers <- FindAllMarkers(obj.mouse.gabaergic.vip, only.pos = TRUE, test.use = "roc")
 vip.markers.top <- vip.markers %>%
@@ -130,7 +126,6 @@ ggplot(subset(vip.markers), aes(x = avg_log2FC, fill = cluster)) + stat_ecdf(geo
 ```{r}
 
 # vip resolution = 3
-obj.mouse.gabaergic.vip <- subset(obj.mouse.gabaergic, subset = RNA_snn_res.3 == c("3", "11", "18", "23", "26", "28", "29", "33"))
 Idents(obj.mouse.gabaergic.vip) <- "RNA_snn_res.3"
 vip.markers <- FindAllMarkers(obj.mouse.gabaergic.vip, only.pos = TRUE, test.use = "roc")
 vip.markers.top <- vip.markers %>%
@@ -143,3 +138,12 @@ DoHeatmap(expr, features = vip.markers.top$gene) + scale_fill_gradientn(colors =
 ggplot(subset(vip.markers), aes(x = avg_log2FC, fill = cluster)) + stat_ecdf(geom = "step", aes(col = cluster))
 
 ```
+
+
+```{r}
+
+Idents(obj.mouse.gabaergic.vip) <- "subclass"
+SaveH5Seurat(obj.mouse.gabaergic.vip, "E:/Mouse_M1/seurat/mouse_m1_gabaergic_vip.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

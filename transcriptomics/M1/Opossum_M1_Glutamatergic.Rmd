@@ -11,48 +11,47 @@ library(arrow)
 library(ggplot2)
 library(dplyr)
 library(SeuratDisk)
-obj.opossum.gabaergic <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic.h5Seurat")
+obj.opossum.glutamatergic <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_glutamatergic.h5Seurat")
 
 ```
 
 
 ```{r}
 
-obj.opossum.gabaergic <- FindVariableFeatures(obj.opossum.gabaergic, selection.method = "vst", nfeatures = 3000)
-all.genes <- rownames(obj.opossum.gabaergic)
-obj.opossum.gabaergic <- ScaleData(obj.opossum.gabaergic, features = all.genes)
-obj.opossum.gabaergic <- RunPCA(obj.opossum.gabaergic, features = VariableFeatures(object = obj.opossum.gabaergic))
-ElbowPlot(obj.opossum.gabaergic, ndims = 50)
+obj.opossum.glutamatergic <- FindVariableFeatures(obj.opossum.glutamatergic, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.opossum.glutamatergic)
+obj.opossum.glutamatergic <- ScaleData(obj.opossum.glutamatergic, features = all.genes)
+obj.opossum.glutamatergic <- RunPCA(obj.opossum.glutamatergic, features = VariableFeatures(object = obj.opossum.gabaergic))
+ElbowPlot(obj.opossum.glutamatergic, ndims = 50)
 
 ```
 
 
 ```{r}
 
-obj.opossum.gabaergic <- FindNeighbors(obj.opossum.gabaergic, dims = 1:30)
-obj.opossum.gabaergic <- FindClusters(obj.opossum.gabaergic, resolution = 1, algorithm = 4, method = "igraph")
-obj.opossum.gabaergic <- RunUMAP(obj.opossum.gabaergic, dims = 1:30, method="umap-learn")
+obj.opossum.glutamatergic <- FindNeighbors(obj.opossum.glutamatergic, dims = 1:30)
+obj.opossum.glutamatergic <- FindClusters(obj.opossum.glutamatergic, resolution = 1, algorithm = 4, method = "igraph")
+obj.opossum.glutamatergic <- RunUMAP(obj.opossum.glutamatergic, dims = 1:30, method="umap-learn")
 
 ```
 
 
 ```{r}
 
-DimPlot(obj.opossum.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-15, 12) + ylim(-15, 15) + coord_equal()
-DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.glutamatergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.glutamatergic, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-15, 12) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.glutamatergic, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 
 ```
 
 
 ```{r}
 
-FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Sst")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Pvalb")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Vip")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Lamp5")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Sncg")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Meis2")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.glutamatergic, reduction = "umap", features = c("Cux2")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.glutamatergic, reduction = "umap", features = c("Rorb")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.glutamatergic, reduction = "umap", features = c("Nxph1")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.glutamatergic, reduction = "umap", features = c("Foxp2")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.glutamatergic, reduction = "umap", features = c("Inpp4b")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 
 ```
 
@@ -142,14 +141,12 @@ ggplot(data, aes(x="", y=prop, fill=group)) +
 
 ```{r, fig.width=4, fig.height=4}
 
-Idents(obj.opossum.gabaergic) <- "subclass"
-levels(obj.opossum.gabaergic) <- c("Pvalb", "Sst", "Sst Chodl", "Vip", "Lamp5", "ambiguous")
 cholinergic.markers = c("Chrm1", "Chrm2", "Chrm3", "Chrm4", "Chrm5", 
                         "Chrna1", "Chrna2", "Chrna3", "Chrna4", "Chrna5", "Chrna6", "Chrna7", "Chrna9", "Chrna10", 
                         "Chrnb1", "Chrnb2", "Chrnb3", "Chrnb4", 
                         "Chrnd", "Chrne", "Chrng")
-DoHeatmap(object = obj.opossum.gabaergic, cholinergic.markers, slot = "data") + scale_fill_gradientn(colors = c("white", "red")) + theme(text = element_text(size = 10))
-expr <- AverageExpression(obj.opossum.gabaergic, assays = "RNA", return.seurat = TRUE, features = cholinergic.markers)
+DoHeatmap(object = obj.opossum.glutamatergic, cholinergic.markers, slot = "data") + scale_fill_gradientn(colors = c("white", "red")) + theme(text = element_text(size = 10))
+expr <- AverageExpression(obj.opossum.glutamatergic, assays = "RNA", return.seurat = TRUE, features = cholinergic.markers)
 DoHeatmap(expr, features = cholinergic.markers, slot = "data", draw.lines = FALSE, size = 3) + scale_fill_gradientn(colors = magma(100), limits = c(0, 3)) + theme(text = element_text(size = 10))
 
 ```
