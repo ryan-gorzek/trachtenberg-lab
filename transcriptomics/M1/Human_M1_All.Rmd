@@ -1,0 +1,55 @@
+---
+title: "Mouse M1 All"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+obj.human <- LoadH5Seurat("E:/Human_M1/seurat/human_m1_all.h5Seurat")
+
+```
+
+
+```{r}
+
+Idents(obj.human) <- "RNA_snn_res.1"
+DimPlot(obj.human, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.human, reduction = "umap", group.by = "subclass_label", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+```{r}
+
+Idents(obj.human) <- "level1_label"
+
+cells.glutamatergic <- WhichCells(obj.human, ident = "Glutamatergic")
+obj.human$class <- ifelse(colnames(obj.human) %in% cells.glutamatergic, "glutamatergic", "ambiguous")
+
+cells.gabaergic <- WhichCells(obj.human, ident = "GABAergic")
+obj.human$class[cells.gabaergic] <- "gabaergic"
+
+cells.nonneuronal <- WhichCells(obj.human, ident = "Non-neuronal")
+obj.human$class[cells.nonneuronal] <- "nonneuronal"
+
+```
+
+
+```{r}
+
+# obj.human.glutamatergic <- subset(obj.human, subset = class == "glutamatergic")
+# SaveH5Seurat(obj.human.glutamatergic, "E:/Human_M1/seurat/human_m1_glutamatergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+obj.human.gabaergic <- subset(obj.human, subset = class == "gabaergic")
+# SaveH5Seurat(obj.human.gabaergic, "E:/Human_M1/seurat/human_m1_gabaergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+# obj.human.nonneuronal <- subset(obj.human, subset = class == "nonneuronal")
+# SaveH5Seurat(obj.human.nonneuronal, "E:/Human_M1/seurat/human_m1_nonneuronal.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

@@ -1,0 +1,81 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+obj.opossum.nonneuronal <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_nonneuronal.h5Seurat")
+
+```
+
+
+```{r}
+
+obj.list <- SplitObject(obj.opossum.nonneuronal, split.by = "sample")
+
+obj.list <- lapply(X = obj.list, FUN = function(x) {
+    x <- NormalizeData(x)
+    x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = 3000)
+})
+
+features <- SelectIntegrationFeatures(object.list = obj.list)
+
+```
+
+
+```{r}
+
+obj.anchors <- FindIntegrationAnchors(object.list = obj.list, anchor.features = features)
+obj.combined <- IntegrateData(anchorset = obj.anchors)
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.combined) <- "integrated"
+
+# Run the standard workflow for visualization and clustering
+obj.combined <- ScaleData(obj.combined, verbose = FALSE)
+obj.combined <- RunPCA(obj.combined, npcs = 30, verbose = FALSE)
+obj.combined <- FindNeighbors(obj.combined, dims = 1:30)
+obj.combined <- FindClusters(obj.combined, resolution = 1, algorithm = 4, method = "igraph")
+obj.combined <- RunUMAP(obj.combined, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+DimPlot(obj.combined, reduction = "umap", label = TRUE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", group.by = "sample") + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", group.by = "predicted_doublets") + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+FeaturePlot(obj.combined, reduction = "umap", features = c("Csf1r")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal() # microglia
+FeaturePlot(obj.combined, reduction = "umap", features = c("Mog")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal() # oligodendrocytes
+FeaturePlot(obj.combined, reduction = "umap", features = c("Pdgfra")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal() # OPC
+FeaturePlot(obj.combined, reduction = "umap", features = c("Aqp4")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal() # astrocytes
+FeaturePlot(obj.combined, reduction = "umap", features = c("Col1a1")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal() # VLMC
+FeaturePlot(obj.combined, reduction = "umap", features = c("Tek")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal() # endothelial
+
+```
+
+
+```{r}
+
+SaveH5Seurat(obj.combined, "E:/Opossum_M1/seurat/opossum_m1_nonneuronal_integrated.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

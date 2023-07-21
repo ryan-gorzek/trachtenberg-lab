@@ -1,5 +1,5 @@
 ---
-title: "Integrate GABAergic Mouse Opossum"
+title: "Integrate Glutamatergic Mouse Opossum"
 output: html_notebook
 ---
 
@@ -13,10 +13,10 @@ library(cowplot)
 library(dplyr)
 library(SeuratDisk)
 
-obj.mouse <- LoadH5Seurat("E:/Mouse_M1/seurat/mouse_m1_gabaergic.h5seurat")
+obj.mouse <- LoadH5Seurat("E:/Mouse_M1/seurat/mouse_m1_glutamatergic.h5seurat")
 obj.mouse[["dataset"]] <- "Mouse_M1"
 
-obj.opossum <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic.h5seurat")
+obj.opossum <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_glutamatergic.h5seurat")
 obj.opossum[["dataset"]] <- "Opossum_M1"
 
 obj.mouse <- obj.mouse[, sample(colnames(obj.mouse), size = ncol(obj.opossum), replace = FALSE)]
@@ -83,46 +83,26 @@ obj.combined.sct <- FindClusters(obj.combined.sct, resolution = 1, algorithm = 4
 
 ```{r}
 
-DimPlot(obj.combined.sct, reduction = "umap", group.by = "integrated_snn_res.1", label = TRUE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-DimPlot(obj.combined.sct, reduction = "umap", group.by = "dataset") + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-DimPlot(obj.combined.sct, reduction = "umap", group.by = "cluster_label", label = TRUE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-DimPlot(obj.combined.sct, reduction = "umap", split.by = "dataset", group.by = "RNA_snn_res.1.5", label = TRUE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-DimPlot(obj.combined.sct, reduction = "umap", split.by = "dataset", group.by = "subclass", label = TRUE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+obj.combined.sct <- LoadH5Seurat("E:/Mouse_Opossum_M1/seurat/mouse_opossum_m1_glutamatergic.h5seurat")
 
 ```
 
 
 ```{r}
 
-DefaultAssay(obj.combined.sct) <- "RNA"
-Idents(obj.combined.sct) <- "integrated_snn_res.1"
-markers <- FindConservedMarkers(obj.combined.sct, ident.1 = 21, grouping.var = "dataset")
+DimPlot(obj.combined.sct, reduction = "umap", group.by = "integrated_snn_res.1", label = TRUE, raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined.sct, reduction = "umap", group.by = "dataset", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined.sct, reduction = "umap", group.by = "cluster_label", na.value = "grey50", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined.sct, reduction = "umap", group.by = "subclass_label", split.by = "dataset", na.value = "grey50", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined.sct, reduction = "umap", group.by = "RNA_snn_res.1", na.value = "grey50", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 
 ```
 
 
 ```{r}
 
-FeaturePlot(obj.combined.sct, "Etv1") + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.combined.sct, "Etv1", split.by = "dataset") + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+SaveH5Seurat(obj.combined.sct, "E:/Mouse_Opossum_M1/seurat/mouse_opossum_m1_glutamatergic.h5seurat", overwrite = TRUE, verbose = TRUE)
 
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 

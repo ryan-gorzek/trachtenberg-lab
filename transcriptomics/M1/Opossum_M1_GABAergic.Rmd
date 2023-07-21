@@ -53,6 +53,13 @@ FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Vip")) + xl
 FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Lamp5")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Sncg")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Meis2")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Erbb4")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Nrg1")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrm1")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrm2")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrm3")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrm4")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrm5")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 
 ```
 

@@ -48,8 +48,8 @@ SaveH5Seurat(obj.mouse.glutamatergic, "E:/Mouse_M1/seurat/mouse_m1_glutamatergic
 # obj.mouse.gabaergic <- subset(obj.mouse, subset = class == "gabaergic")
 # SaveH5Seurat(obj.mouse.gabaergic, "E:/Mouse_M1/seurat/mouse_m1_gabaergic.h5seurat", overwrite = TRUE, verbose = TRUE)
 
-obj.mouse.nonneuronal <- subset(obj.mouse, subset = class == "nonneuronal")
-SaveH5Seurat(obj.mouse.nonneuronal, "E:/Mouse_M1/seurat/mouse_m1_nonneuronal.h5seurat", overwrite = TRUE, verbose = TRUE)
+# obj.mouse.nonneuronal <- subset(obj.mouse, subset = class == "nonneuronal")
+# SaveH5Seurat(obj.mouse.nonneuronal, "E:/Mouse_M1/seurat/mouse_m1_nonneuronal.h5seurat", overwrite = TRUE, verbose = TRUE)
 
 ```
 
