@@ -40,42 +40,84 @@ obj.combined <- IntegrateData(anchorset = obj.anchors)
 
 ```{r}
 
-DefaultAssay(obj.combined) <- "integrated"
+DefaultAssay(obj.opossum.nonneuronal) <- "integrated"
 
 # Run the standard workflow for visualization and clustering
-obj.combined <- ScaleData(obj.combined, verbose = FALSE)
-obj.combined <- RunPCA(obj.combined, npcs = 30, verbose = FALSE)
-obj.combined <- FindNeighbors(obj.combined, dims = 1:30)
-obj.combined <- FindClusters(obj.combined, resolution = 1, algorithm = 4, method = "igraph")
-obj.combined <- RunUMAP(obj.combined, dims = 1:30, method="umap-learn")
+obj.opossum.nonneuronal <- ScaleData(obj.opossum.nonneuronal, verbose = FALSE)
+obj.opossum.nonneuronal <- RunPCA(obj.opossum.nonneuronal, npcs = 30, verbose = FALSE)
+obj.opossum.nonneuronal <- FindNeighbors(obj.opossum.nonneuronal, dims = 1:30, graph.name = "integrated_snn")
+obj.opossum.nonneuronal <- FindClusters(obj.opossum.nonneuronal, resolution = 1, algorithm = 4, method = "igraph", graph.name = "integrated_snn")
+obj.opossum.nonneuronal <- RunUMAP(obj.opossum.nonneuronal, dims = 1:30, method="umap-learn")
 
 ```
 
 
 ```{r}
 
-DimPlot(obj.combined, reduction = "umap", label = TRUE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-DimPlot(obj.combined, reduction = "umap", group.by = "sample") + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-DimPlot(obj.combined, reduction = "umap", group.by = "predicted_doublets") + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+obj.opossum.nonneuronal <- FindClusters(obj.opossum.nonneuronal, resolution = 3, algorithm = 4, method = "igraph", graph.name = "integrated_snn")
 
 ```
 
 
 ```{r}
 
-FeaturePlot(obj.combined, reduction = "umap", features = c("Csf1r")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal() # microglia
-FeaturePlot(obj.combined, reduction = "umap", features = c("Mog")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal() # oligodendrocytes
-FeaturePlot(obj.combined, reduction = "umap", features = c("Pdgfra")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal() # OPC
-FeaturePlot(obj.combined, reduction = "umap", features = c("Aqp4")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal() # astrocytes
-FeaturePlot(obj.combined, reduction = "umap", features = c("Col1a1")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal() # VLMC
-FeaturePlot(obj.combined, reduction = "umap", features = c("Tek")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal() # endothelial
+DimPlot(obj.opossum.nonneuronal, reduction = "umap", label = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.nonneuronal, reduction = "umap", group.by = "sample") + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.nonneuronal, reduction = "umap", group.by = "predicted_doublets") + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+subclass_plot <- DimPlot(obj.opossum.nonneuronal, reduction = "umap", group.by = "subclass", label = TRUE, cols = c("#F8766D", "#CD9600", "#7CAE00", "#00BE67", "#00BFC4", "#00A9FF", "#FF61CC")) + NoLegend() + xlim(-15, 15) + ylim(-18, 12) + coord_equal()
+ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Opossum_M1_Nonneuronal_Subclass.svg", plot=subclass_plot, width=4, height=4)
 
 ```
 
 
 ```{r}
 
-SaveH5Seurat(obj.combined, "E:/Opossum_M1/seurat/opossum_m1_nonneuronal_integrated.h5seurat", overwrite = TRUE, verbose = TRUE)
+FeaturePlot(obj.opossum.nonneuronal, reduction = "umap", features = c("Csf1r")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal() # microglia
+FeaturePlot(obj.opossum.nonneuronal, reduction = "umap", features = c("Mog")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal() # oligodendrocytes
+FeaturePlot(obj.opossum.nonneuronal, reduction = "umap", features = c("Pdgfra")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal() # OPC
+FeaturePlot(obj.opossum.nonneuronal, reduction = "umap", features = c("Aqp4")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal() # astrocytes
+FeaturePlot(obj.opossum.nonneuronal, reduction = "umap", features = c("Col1a1")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal() # VLMC
+FeaturePlot(obj.opossum.nonneuronal, reduction = "umap", features = c("Tek")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal() # endothelial
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.nonneuronal) <- "integrated_snn_res.3"
+cells.astro <- WhichCells(obj.opossum.nonneuronal, ident = c("4", "5", "7", "9", "12", "14", "15", "17", "21", "27"))
+obj.opossum.nonneuronal$subclass <- ifelse(colnames(obj.opossum.nonneuronal) %in% cells.astro, "Astro", "ambiguous")
+
+cells.oligo <- WhichCells(obj.opossum.nonneuronal, ident = c("1", "2", "6", "8", "10", "11", "13", "18", "19", "20", "24", "31"))
+obj.opossum.nonneuronal$subclass[cells.oligo] <- "Oligo"
+
+cells.opc <- WhichCells(obj.opossum.nonneuronal, ident = c("3", "25", "30"))
+obj.opossum.nonneuronal$subclass[cells.opc] <- "OPC"
+
+cells.micro <- WhichCells(obj.opossum.nonneuronal, ident = c("16", "29", "32"))
+obj.opossum.nonneuronal$subclass[cells.micro] <- "Micro-PVM"
+
+cells.vlmc <- WhichCells(obj.opossum.nonneuronal, ident = c("22", "23"))
+obj.opossum.nonneuronal$subclass[cells.vlmc] <- "VLMC"
+
+cells.endo <- WhichCells(obj.opossum.nonneuronal, ident = c("26"))
+obj.opossum.nonneuronal$subclass[cells.endo] <- "Endo"
+
+cells.peri <- WhichCells(obj.opossum.nonneuronal, ident = c("28"))
+obj.opossum.nonneuronal$subclass[cells.peri] <- "Peri"
+
+Idents(obj.opossum.nonneuronal) <- "subclass"
+obj.opossum.nonneuronal <- subset(obj.opossum.nonneuronal, subset = subclass != "ambiguous")
+
+```
+
+
+```{r}
+
+obj.opossum.nonneuronal[["op_integrated_snn_res.1"]] <- obj.opossum.nonneuronal[["integrated_snn_res.1"]]
+obj.opossum.nonneuronal[["op_integrated_snn_res.3"]] <- obj.opossum.nonneuronal[["integrated_snn_res.3"]]
+obj.opossum.nonneuronal[["subclass_label"]] <- obj.opossum.nonneuronal[["subclass"]]
+SaveH5Seurat(obj.opossum.nonneuronal, "E:/Opossum_M1/seurat/opossum_m1_nonneuronal.h5seurat", overwrite = TRUE, verbose = TRUE)
 
 ```
 

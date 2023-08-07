@@ -35,7 +35,7 @@ obj.list <- SplitObject(obj.combined, split.by = "dataset")
 
 ```{r}
 
-VlnPlot(obj.combined, features = c("nCount_RNA"), split.by = "dataset")
+# VlnPlot(obj.combined, features = c("nCount_RNA"), split.by = "dataset")
 
 ```
 
@@ -83,25 +83,82 @@ obj.combined.sct <- FindClusters(obj.combined.sct, resolution = 1, algorithm = 4
 
 ```{r}
 
-obj.combined.sct <- LoadH5Seurat("E:/Mouse_Opossum_M1/seurat/mouse_opossum_m1_glutamatergic.h5seurat")
+# obj.combined.sct <- LoadH5Seurat("E:/Mouse_Opossum_M1/seurat/mouse_opossum_m1_glutamatergic.h5seurat")
 
 ```
 
 
 ```{r}
 
-DimPlot(obj.combined.sct, reduction = "umap", group.by = "integrated_snn_res.1", label = TRUE, raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
-DimPlot(obj.combined.sct, reduction = "umap", group.by = "dataset", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
-DimPlot(obj.combined.sct, reduction = "umap", group.by = "cluster_label", na.value = "grey50", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
-DimPlot(obj.combined.sct, reduction = "umap", group.by = "subclass_label", split.by = "dataset", na.value = "grey50", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
-DimPlot(obj.combined.sct, reduction = "umap", group.by = "RNA_snn_res.1", na.value = "grey50", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+dataset_plot <- DimPlot(obj.combined.sct, reduction = "umap", group.by = "dataset", raster = FALSE) + xlim(-16, 14) + ylim(-18, 12) + coord_equal()
+ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Mouse_Opossum_M1_Glutamatergic_Dataset.svg", plot=dataset_plot, width=6, height=4)
+
+subclass_plot <- DimPlot(obj.combined.sct, reduction = "umap", group.by = "subclass", split.by = "dataset", label = TRUE, raster = FALSE) + NoLegend() + xlim(-16, 14) + ylim(-18, 12) + coord_equal()
+ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Mouse_Opossum_M1_Glutamatergic_Subclass.svg", plot=subclass_plot, width=8.5, height=4.5)
 
 ```
 
 
 ```{r}
 
-SaveH5Seurat(obj.combined.sct, "E:/Mouse_Opossum_M1/seurat/mouse_opossum_m1_glutamatergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+DimPlot(obj.opossum, reduction = "umap", group.by = "RNA_snn_res.1.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 12) + ylim(-18, 12) + coord_equal()
+DimPlot(obj.combined.sct, reduction = "umap", group.by = "op_RNA_snn_res.1.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 12) + ylim(-18, 12) + coord_equal()
+
+```
+
+
+```{r}
+
+DimPlot(obj.mouse, reduction = "umap", group.by = "subclass_label", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 12) + ylim(-18, 12) + coord_equal()
+
+```
+
+
+```{r}
+
+cells.opossum <- rownames(obj.combined.sct[[]][obj.combined.sct[["dataset"]] == "Opossum_M1",])
+
+Idents(obj.opossum) <- "RNA_snn_res.1.5"
+cells.l23it <- WhichCells(obj.opossum, ident = c("2", "4", "8", "12", "15", "21"))
+cells.opossum.l23it <- Reduce(intersect,list(cells.opossum, cells.l23it))
+obj.combined.sct$subclass[cells.opossum.l23it] <- "L2/3 IT"
+
+cells.l5it <- WhichCells(obj.opossum, ident = c("6", "9", "10", "11", "13", "14", "16", "20", "22"))
+cells.opossum.l5it <- Reduce(intersect,list(cells.opossum, cells.l5it))
+obj.combined.sct$subclass[cells.opossum.l5it] <- "L5 IT"
+
+# cells.l6it <- WhichCells(obj.opossum, ident = c(""))
+# cells.opossum.l6it <- Reduce(intersect,list(cells.opossum, cells.l6it))
+# obj.combined.sct$subclass[cells.opossum.l6it] <- "L6 IT"
+
+cells.l5et <- WhichCells(obj.opossum, ident = c("7"))
+cells.opossum.l5et <- Reduce(intersect,list(cells.opossum, cells.l5et))
+obj.combined.sct$subclass[cells.opossum.l5et] <- "L5 ET"
+
+cells.l56np <- WhichCells(obj.opossum, ident = c("17", "23"))
+cells.opossum.l56np <- Reduce(intersect,list(cells.opossum, cells.l56np))
+obj.combined.sct$subclass[cells.opossum.l56np] <- "L5/6 NP"
+
+cells.l6b <- WhichCells(obj.opossum, ident = c("19"))
+cells.opossum.l6b <- Reduce(intersect,list(cells.opossum, cells.l6b))
+obj.combined.sct$subclass[cells.opossum.l6b] <- "L6b"
+
+cells.l6ct <- WhichCells(obj.opossum, ident = c("1", "5", "3", "18"))
+cells.opossum.l6ct <- Reduce(intersect,list(cells.opossum, cells.l6ct))
+obj.combined.sct$subclass[cells.opossum.l6ct] <- "L6 CT"
+
+# Idents(obj.combined.sct) <- "subclass"
+# obj.combined.sct <- subset(obj.combined.sct, subset = subclass != "L6 IT Car3")
+
+cells.label <- rownames(obj.combined.sct[[]][obj.combined.sct[["dataset"]] == "Mouse_M1",])
+obj.combined.sct[["subclass"]][cells.label,] <- obj.combined.sct[["subclass_label"]][cells.label,]
+
+```
+
+
+```{r}
+
+# SaveH5Seurat(obj.combined.sct, "E:/Mouse_Opossum_M1/seurat/mouse_opossum_m1_glutamatergic.h5seurat", overwrite = TRUE, verbose = TRUE)
 
 ```
 

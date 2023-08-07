@@ -1,0 +1,348 @@
+---
+title: "Figure 1"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+obj.opossum.glutamatergic <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_glutamatergic.h5Seurat")
+obj.opossum.gabaergic <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic.h5Seurat")
+obj.opossum.nonneuronal <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_nonneuronal.h5Seurat")
+
+```
+
+
+```{r}
+
+obj.opossum <- merge(obj.opossum.glutamatergic, y = c(obj.opossum.gabaergic, obj.opossum.nonneuronal))
+
+```
+
+
+```{r}
+
+obj.opossum <- FindVariableFeatures(obj.opossum, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.opossum)
+obj.opossum <- ScaleData(obj.opossum, features = all.genes)
+obj.opossum <- RunPCA(obj.opossum, features = VariableFeatures(object = obj.opossum))
+ElbowPlot(obj.opossum, ndims = 50)
+
+```
+
+
+```{r}
+
+obj.opossum <- FindNeighbors(obj.opossum, dims = 1:30)
+obj.opossum <- FindClusters(obj.opossum, resolution = 1, algorithm = 4, method = "igraph")
+obj.opossum <- RunUMAP(obj.opossum, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+subclass_plot <- DimPlot(obj.opossum, 
+             reduction = "umap", 
+             group.by = "subclass", 
+             cols = c("#00BF76", "#F8766D", "#8F91FF", "#97A900", "#00BDD1", "#00B7E8", "#FF6C92", "#71B000", "#00AEFA", "#FF64B3", "#DD8D00", "#B3A000", "#F265E7",                                                "#00C0B7", "#00BB4B", "#BE80FF", "#00C098", "#2FB600"),
+             label = TRUE, 
+             label.size = 3, 
+             raster = FALSE) + NoLegend() + xlim(-16, 14) + ylim(-15, 15) + coord_equal()
+
+ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Opossum_All_UMAP.svg", plot=subclass_plot, width=5, height=5)
+ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Opossum_All_UMAP.png", plot=subclass_plot, width=5, height=5)
+
+```
+
+
+```{r}
+
+tb <- table(obj.opossum$sample, obj.opossum$subclass)
+write.csv(tb, "G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Opossum_Subclass_Sample.csv")
+
+```
+
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+obj.mouse <- LoadH5Seurat("E:/Mouse_M1/seurat/mouse_m1_all.h5Seurat")
+
+```
+
+
+```{r}
+
+cells.l6itcar3 <- rownames(obj.mouse[[]][obj.mouse[["subclass_label"]] == "L6 IT Car3",])
+obj.mouse[["subclass_label"]][cells.l6itcar3,] <- "L6 IT"
+
+```
+
+
+```{r}
+
+obj.mouse <- FindVariableFeatures(obj.mouse, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.mouse)
+obj.mouse <- ScaleData(obj.mouse, features = all.genes)
+obj.mouse <- RunPCA(obj.mouse, features = VariableFeatures(object = obj.mouse))
+ElbowPlot(obj.mouse, ndims = 50)
+
+```
+
+
+```{r}
+
+obj.mouse <- FindNeighbors(obj.mouse, dims = 1:30)
+obj.mouse <- FindClusters(obj.mouse, resolution = 1, algorithm = 4, method = "igraph")
+obj.mouse <- RunUMAP(obj.mouse, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+subclass_plot <- DimPlot(obj.mouse, 
+             reduction = "umap", 
+             group.by = "subclass_label", 
+             cols = c("#00BF76", "#F8766D", "#8F91FF", "#97A900", "#00BDD1", "#00B7E8", "#FF6C92", "#EC823C", "#71B000", "#00AEFA", "#FF64B3", "#FE61CF", "#DD8D00", "#B3A000", "#F265E7",                          "#00C0B7", "#3DA1FF", "#DE71F9", "#00BB4B", "#BE80FF", "#00C098", "#2FB600"),
+             label = TRUE, 
+             label.size = 3, 
+             raster = FALSE) + NoLegend() + xlim(-18, 17) + ylim(-18, 17) + coord_equal()
+
+ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Mouse_All_UMAP.svg", plot=subclass_plot, width=5, height=5)
+ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Mouse_All_UMAP.png", plot=subclass_plot, width=5, height=5)
+
+```
+
+
+```{r}
+
+tb <- table(obj.mouse$orig.ident, obj.mouse$subclass_label)
+write.csv(tb, "G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Mouse_Subclass_Sample.csv")
+
+```
+
+
+```{r}
+
+mouse.counts <- read.csv("G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Mouse_Subclass_Sample.csv")
+mouse.counts <- mouse.counts[-1, ]
+rownames(mouse.counts) <- mouse.counts$X
+mouse.counts <- mouse.counts[, -1]
+mouse.counts$Glutamatergic <- rowSums(mouse.counts[, c("L2.3.IT", "L5.ET", "L5.IT", "L5.6.NP", "L6.CT", "L6.IT")])
+mouse.counts$GABAergic <- rowSums(mouse.counts[, c("Pvalb", "Sst", "Sst.Chodl", "Vip", "Sncg", "Lamp5", "Meis2")])
+mouse.counts$Nonneuronal <- rowSums(mouse.counts[, c("Astro", "Endo", "Micro.PVM", "Oligo", "OPC", "Peri", "SMC", "VLMC")])
+mouse.counts$Neuronal <- rowSums(mouse.counts[, c("Glutamatergic", "GABAergic")])
+mouse.counts$species <- "Mouse"
+
+opossum.counts <- read.csv("G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Opossum_Subclass_Sample.csv")
+rownames(opossum.counts) <- opossum.counts$X
+opossum.counts <- opossum.counts[, -1]
+opossum.counts$Glutamatergic <- rowSums(opossum.counts[, c("L2.3.IT", "L5.ET", "L5.IT", "L5.6.NP", "L6.CT")])
+opossum.counts$GABAergic <- rowSums(opossum.counts[, c("Pvalb", "Sst", "Sst.Chodl", "Vip", "Lamp5")])
+opossum.counts$Nonneuronal <- rowSums(opossum.counts[, c("Astro", "Endo", "Micro.PVM", "Oligo", "OPC", "Peri", "VLMC")])
+opossum.counts$Neuronal <- rowSums(opossum.counts[, c("Glutamatergic", "GABAergic")])
+opossum.counts$L6.IT <- 0
+opossum.counts$Sncg <- 0
+opossum.counts$Meis2 <- 0
+opossum.counts$SMC <- 0
+opossum.counts$species <- "Opossum"
+
+both.counts <- rbind(mouse.counts, opossum.counts)
+both.counts$sample <- rownames(both.counts)
+
+```
+
+
+```{r}
+
+both.counts <- both.counts %>%
+  mutate(L2.3.IT = L2.3.IT / Glutamatergic,
+         L5.ET = L5.ET / Glutamatergic,
+         L5.IT = L5.IT / Glutamatergic,
+         L5.6.NP = L5.6.NP / Glutamatergic,
+         L6.CT = L6.CT / Glutamatergic,
+         L6.IT = L6.IT / Glutamatergic,
+         L6b = L6b / Glutamatergic, 
+         Pvalb = Pvalb / GABAergic,
+         Sst = Sst / GABAergic,
+         Sst.Chodl = Sst.Chodl / GABAergic,
+         Vip = Vip / GABAergic,
+         Sncg = Sncg / GABAergic,
+         Lamp5 = Lamp5 / GABAergic,
+         Meis2 = Meis2 / GABAergic, 
+         Glutamatergic = Glutamatergic / Neuronal, 
+         GABAergic = GABAergic / Neuronal
+         )
+
+both.counts <- both.counts %>%
+  pivot_longer(
+    cols = c("L2.3.IT", "L5.ET", "L5.IT", "L5.6.NP", "L6.CT", "L6.IT", "L6b", "Pvalb", "Sst", "Sst.Chodl", "Vip", "Sncg", "Lamp5", "Meis2", "Glutamatergic", "GABAergic", "Nonneuronal", "Neuronal"),
+    names_to = "cell.identity", 
+    values_to = "fraction"
+  )
+
+```
+
+
+```{r, fig.height=3, fig.width=3.5}
+
+class.counts <- both.counts[both.counts$cell.identity %in% c("Glutamatergic", "GABAergic"), ]
+
+neuronal_class <- ggplot(class.counts, aes(class.counts, x = factor(cell.identity, level = c("Glutamatergic", "GABAergic")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + labs(x = NULL, y = "Class Proportion", fill = NULL)
+
+ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Neuronal_Class_Proportion.svg", plot=neuronal_class, width=3.5, height=3)
+ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Neuronal_Class_Proportion.png", plot=neuronal_class, width=3.5, height=3)
+
+```
+
+
+```{r, fig.height=3, fig.width=5}
+
+class.counts <- both.counts[both.counts$cell.identity %in% c("L2.3.IT", "L5.ET", "L5.IT", "L5.6.NP", "L6.CT", "L6.IT", "L6b"), ]
+
+glutamatergic_subclass <- ggplot(class.counts, aes(x = factor(cell.identity, level = c("L2.3.IT", "L5.IT", "L6.IT", "L5.ET", "L6.CT", "L5.6.NP", "L6b")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("L2/3 IT", "L5 IT", "L6 IT", "L5 ET", "L6 CT", "L5/6 NP", "L6b")) +
+    scale_y_continuous(breaks = c(0, 0.2, 0.4, 0.6), expand = c(0, 0), limits = c(0, 0.6)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "Subclass Proportion", fill = NULL)
+
+ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Glutamatergic_Subclass_Proportion.svg", plot=glutamatergic_subclass, width=5, height=3)
+ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Glutamatergic_Subclass_Proportion.png", plot=glutamatergic_subclass, width=5, height=3)
+
+```
+
+
+```{r, fig.height=3, fig.width=5}
+
+class.counts <- both.counts[both.counts$cell.identity %in% c("Pvalb", "Sst", "Sst.Chodl", "Vip", "Sncg", "Lamp5", "Meis2"), ]
+
+gabaergic_subclass <- ggplot(class.counts, aes(x = factor(cell.identity, level = c("Pvalb", "Sst", "Sst.Chodl", "Vip", "Lamp5", "Sncg", "Meis2")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("Pvalb", "Sst", "Sst Chodl", "Vip", "Lamp5", "Sncg", "Meis2")) +
+    scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75), expand = c(0, 0), limits = c(0, 0.751)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "Subclass Proportion", fill = NULL)
+
+ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_GABAergic_Subclass_Proportion.svg", plot=gabaergic_subclass, width=5, height=3)
+ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_GABAergic_Subclass_Proportion.png", plot=gabaergic_subclass, width=5, height=3)
+
+```
+
+
+```{r}
+
+class.counts$cell.identity <- factor(class.counts$cell.identity)
+class.counts$species <- factor(class.counts$species)
+model <- aov(fraction ~ cell.identity + species + cell.identity:species, data = class.counts)
+posthoc <- glht(model, linfct = mcp(species = "Tukey", cell.identity = "Tukey"))
+
+```
+
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(cowplot)
+library(dplyr)
+library(SeuratDisk)
+
+obj.mouse <- LoadH5Seurat("E:/Mouse_M1/seurat/mouse_m1_all.h5seurat")
+obj.mouse[["dataset"]] <- "Mouse_M1"
+
+obj.opossum <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_all.h5seurat")
+obj.opossum[["dataset"]] <- "Opossum_M1"
+
+```
+
+
+```{r}
+
+obj.mouse[["subclass"]] <- NA
+obj.mouse[["subclass"]] <- obj.mouse[["subclass_label"]]
+common.features <- intersect(rownames(obj.mouse), rownames(obj.opossum))
+obj.combined <- merge(obj.mouse[common.features,], y = obj.opossum[common.features,])
+
+```
+
+
+```{r}
+
+Idents(obj.combined) <- "subclass"
+obj.combined <- subset(obj.combined, idents = c("L6 IT", "L6 IT Car3", "Sncg", "Meis2", "SMC"), invert = TRUE)
+
+```
+
+
+```{r, fig.height=10, fig.width=10}
+
+Idents(obj.combined) <- "subclass"
+levels(obj.combined) <- rev(c("L2/3 IT", "L5 IT", "L6 IT", "L6 IT Car3", "L5 ET", "L6 CT", "L5/6 NP", "L6b", 
+                          "Pvalb", "Sst", "Sst Chodl", "Vip", "Lamp5", "Sncg", "Meis2",
+                          "Astro", "Oligo", "OPC", "Micro-PVM", "Endo", "VLMC", "Peri", "SMC"))
+features.subclass <- c("Cux2", "Rorb", "Ntng1", "Syt6", "Nxph1", "Tmem163", 
+                       "Pvalb", "Sst", "Chodl", "Vip", "Lamp5", 
+                       "Glis3", "Mog", "Pdgfra", "Csf1r", "Tek", "Col1a1")
+DotPlot(obj.combined, features = features.subclass, cols = c("blue", "red"), dot.scale = 8, split.by = "dataset") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+```{r}
+
+Idents(obj.combined) <- "subclass"
+markers <- FindConservedMarkers(obj.combined, ident.1 = "Peri", grouping.var = "dataset")
+
+```
+
+
+```{r}
+VlnPlot(obj.combined, features = c("nCount_RNA"), split.by = "dataset")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

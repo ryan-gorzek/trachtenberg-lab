@@ -1,119 +1,102 @@
 ---
-title: "Mouse V1 VIP"
+title: "Mouse V1 P6"
 output: html_notebook
 ---
+
 
 ```{r}
 
 library(Seurat)
 library(reticulate)
-library(arrow)
+library(scrubletR)
 library(ggplot2)
+library(cowplot)
 library(dplyr)
 library(SeuratDisk)
-obj.mouse.gabaergic <- LoadH5Seurat("E:/allGABA.h5seurat")
 
-```
-
-
-```{r}
-
+obj.mouse.gabaergic <- LoadH5Seurat("E:/allGABA.h5Seurat")
 Idents(obj.mouse.gabaergic) <- "Age"
-obj.mouse.gabaergic.P6 <- subset(obj.mouse.gabaergic, idents = c("P6")) # , "P10", "P12", "P14", "P17", "P21"
+obj.mouse.gabaergic <- subset(obj.mouse.gabaergic, idents = c("P6", "P8"))
+Idents(obj.mouse.gabaergic) <- "Doublet"
+obj.mouse.gabaergic <- subset(obj.mouse.gabaergic, idents = c("0"))
 
 ```
 
 
 ```{r}
 
-obj.mouse.gabaergic.P6 <- FindVariableFeatures(obj.mouse.gabaergic.P6, selection.method = "vst", nfeatures = 3000)
-all.genes <- rownames(obj.mouse.gabaergic.P6)
-obj.mouse.gabaergic.P6 <- ScaleData(obj.mouse.gabaergic.P6, features = all.genes)
-obj.mouse.gabaergic.P6 <- RunPCA(obj.mouse.gabaergic.P6, features = VariableFeatures(object = obj.mouse.gabaergic.P6))
-ElbowPlot(obj.mouse.gabaergic.P6, ndims = 50)
+obj.mouse.gabaergic <- FindVariableFeatures(obj.mouse.gabaergic, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.mouse.gabaergic)
+obj.mouse.gabaergic <- ScaleData(obj.mouse.gabaergic, features = all.genes)
+obj.mouse.gabaergic <- RunPCA(obj.mouse.gabaergic, features = VariableFeatures(object = obj.mouse.gabaergic))
+ElbowPlot(obj.mouse.gabaergic, ndims = 50)
 
 ```
 
 
 ```{r}
 
-obj.mouse.gabaergic.P6 <- FindNeighbors(obj.mouse.gabaergic.P6, dims = 1:30)
-obj.mouse.gabaergic.P6 <- FindClusters(obj.mouse.gabaergic.P6, resolution = 1, algorithm = 4, method = "igraph")
-obj.mouse.gabaergic.P6 <- RunUMAP(obj.mouse.gabaergic.P6, dims = 1:30, method="umap-learn")
+obj.mouse.gabaergic <- FindNeighbors(obj.mouse.gabaergic, dims = 1:30)
+obj.mouse.gabaergic <- FindClusters(obj.mouse.gabaergic, resolution = 1, algorithm = 4, method = "igraph")
+obj.mouse.gabaergic <- RunUMAP(obj.mouse.gabaergic, dims = 1:30, method="umap-learn")
 
 ```
 
 
 ```{r}
 
-DimPlot(obj.mouse.gabaergic.P6, reduction = "umap", raster = FALSE) + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
-
-```
-
-
-
-```{r}
-
-FeaturePlot(obj.mouse.gabaergic.P6, reduction = "umap", features = c("Pvalb")) + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
-FeaturePlot(obj.mouse.gabaergic.P6, reduction = "umap", features = c("Sst")) + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
-FeaturePlot(obj.mouse.gabaergic.P6, reduction = "umap", features = c("Vip")) + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
-FeaturePlot(obj.mouse.gabaergic.P6, reduction = "umap", features = c("Lamp5")) + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
-FeaturePlot(obj.mouse.gabaergic.P6, reduction = "umap", features = c("Sncg")) + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
-FeaturePlot(obj.mouse.gabaergic.P6, reduction = "umap", features = c("Frem1")) + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
-FeaturePlot(obj.mouse.gabaergic.P6, reduction = "umap", features = c("Stac")) + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
+DimPlot(obj.mouse.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.mouse.gabaergic, group.by = "Age", reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+# DimPlot(obj.mouse.gabaergic, group.by = "Doublet", reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 
 ```
 
 
 ```{r}
 
-Idents(obj.mouse.gabaergic) <- "Age"
-obj.mouse.gabaergic.P21 <- subset(obj.mouse.gabaergic, idents = c("P21")) # , "P10", "P12", "P14", "P17", "P21"
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Sst")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Pvalb")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Vip")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Lamp5")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Sncg")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Meis2")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 
 ```
 
 
 ```{r}
 
-obj.mouse.gabaergic.P21 <- FindVariableFeatures(obj.mouse.gabaergic.P21, selection.method = "vst", nfeatures = 3000)
-all.genes <- rownames(obj.mouse.gabaergic.P21)
-obj.mouse.gabaergic.P21 <- ScaleData(obj.mouse.gabaergic.P21, features = all.genes)
-obj.mouse.gabaergic.P21 <- RunPCA(obj.mouse.gabaergic.P21, features = VariableFeatures(object = obj.mouse.gabaergic.P21))
-ElbowPlot(obj.mouse.gabaergic.P21, ndims = 50)
+Idents(obj.mouse.gabaergic) <- "RNA_snn_res.1"
+cells.pv <- WhichCells(obj.mouse.gabaergic, ident = c("1", "2", "7", "9", "14"))
+obj.mouse.gabaergic$subclass <- ifelse(colnames(obj.mouse.gabaergic) %in% cells.pv, "Pvalb", "ambiguous")
+
+cells.sst <- WhichCells(obj.mouse.gabaergic, ident = c("3", "4", "10", "12"))
+obj.mouse.gabaergic$subclass[cells.sst] <- "Sst"
+
+cells.chodl <- WhichCells(obj.mouse.gabaergic, ident = c("15"))
+obj.mouse.gabaergic$subclass[cells.chodl] <- "Sst Chodl"
+
+cells.vip <- WhichCells(obj.mouse.gabaergic, ident = c("6", "11"))
+obj.mouse.gabaergic$subclass[cells.vip] <- "Vip"
+
+cells.lamp5 <- WhichCells(obj.mouse.gabaergic, ident = c("8"))
+obj.mouse.gabaergic$subclass[cells.lamp5] <- "Lamp5"
+
+cells.sncg <- WhichCells(obj.mouse.gabaergic, ident = c("13"))
+obj.mouse.gabaergic$subclass[cells.sncg] <- "Sncg"
+
+cells.meis2 <- WhichCells(obj.mouse.gabaergic, ident = c("5"))
+obj.mouse.gabaergic$subclass[cells.meis2] <- "Meis2"
+
+Idents(obj.mouse.gabaergic) <- "subclass"
+obj.mouse.gabaergic <- subset(obj.mouse.gabaergic, subset = subclass != "ambiguous")
 
 ```
 
 
 ```{r}
 
-obj.mouse.gabaergic.P21 <- FindNeighbors(obj.mouse.gabaergic.P21, dims = 1:30)
-obj.mouse.gabaergic.P21 <- FindClusters(obj.mouse.gabaergic.P21, resolution = 1, algorithm = 4, method = "igraph")
-obj.mouse.gabaergic.P21 <- RunUMAP(obj.mouse.gabaergic.P21, dims = 1:30, method="umap-learn")
+SaveH5Seurat(obj.mouse.gabaergic, "E:/mouse_v1_gabaergic.h5seurat", overwrite = TRUE, verbose = TRUE)
 
 ```
-
-
-```{r}
-
-DimPlot(obj.mouse.gabaergic.P21, reduction = "umap", raster = FALSE) + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
-
-```
-
-
-
-```{r}
-
-FeaturePlot(obj.mouse.gabaergic.P21, reduction = "umap", features = c("Pvalb")) + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
-FeaturePlot(obj.mouse.gabaergic.P21, reduction = "umap", features = c("Sst")) + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
-FeaturePlot(obj.mouse.gabaergic.P21, reduction = "umap", features = c("Vip")) + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
-FeaturePlot(obj.mouse.gabaergic.P21, reduction = "umap", features = c("Lamp5")) + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
-FeaturePlot(obj.mouse.gabaergic.P21, reduction = "umap", features = c("Sncg")) + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
-FeaturePlot(obj.mouse.gabaergic.P21, reduction = "umap", features = c("Frem1")) + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
-FeaturePlot(obj.mouse.gabaergic.P21, reduction = "umap", features = c("Stac")) + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
-
-```
-
-
-
-
 

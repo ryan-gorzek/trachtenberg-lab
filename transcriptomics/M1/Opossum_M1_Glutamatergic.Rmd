@@ -31,37 +31,25 @@ ElbowPlot(obj.opossum.glutamatergic, ndims = 50)
 
 obj.opossum.glutamatergic <- FindNeighbors(obj.opossum.glutamatergic, dims = 1:30)
 obj.opossum.glutamatergic <- FindClusters(obj.opossum.glutamatergic, resolution = 1, algorithm = 4, method = "igraph")
-obj.opossum.glutamatergic <- RunUMAP(obj.opossum.glutamatergic, dims = 1:30, method="umap-learn")
+obj.opossum.glutamatergic <- RunUMAP(obj.opossum.glutamatergic, dims = 1:30, method = "umap-learn")
 
 ```
 
 
 ```{r}
 
-DimPlot(obj.opossum.glutamatergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-12, 15) + ylim(-12, 15) + coord_equal()
-DimPlot(obj.opossum.glutamatergic, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-12, 15) + ylim(-12, 15) + coord_equal()
-DimPlot(obj.opossum.glutamatergic, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-12, 15) + ylim(-12, 15) + coord_equal()
+# DimPlot(obj.opossum.glutamatergic, reduction = "umap", group.by = "RNA_snn_res.1.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 12) + ylim(-18, 12) + coord_equal()
+# DimPlot(obj.opossum.glutamatergic, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-18, 15) + ylim(-18, 15) + coord_equal()
+# DimPlot(obj.opossum.glutamatergic, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-18, 15) + ylim(-18, 15) + coord_equal()
+DimPlot(obj.opossum.glutamatergic, reduction = "umap", group.by = "subclass", cols = c("#F8766D", "#C49A00", "#53B400", "#00C094", "#00B6EB", "#FB61D7"), label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 12) + ylim(-18, 12) + coord_equal()
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Opossum_M1_Glutamatergic_Subclass.svg", plot=subclass_plot, width=4, height=4)
 
 ```
 
 
 ```{r}
 
-FeaturePlot(obj.opossum.glutamatergic, reduction = "umap", features = c("Cux2")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.glutamatergic, reduction = "umap", features = c("Rorb")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.glutamatergic, reduction = "umap", features = c("Nxph1")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.glutamatergic, reduction = "umap", features = c("Foxp2")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.glutamatergic, reduction = "umap", features = c("Inpp4b")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.glutamatergic, reduction = "umap", features = c("Chrm1")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.glutamatergic, reduction = "umap", features = c("Chrm2")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.glutamatergic, reduction = "umap", features = c("Chrm3")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.glutamatergic, reduction = "umap", features = c("Chrm4")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.glutamatergic, reduction = "umap", features = c("Chrm5")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.glutamatergic, reduction = "umap", features = c("Chrna1")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.glutamatergic, reduction = "umap", features = c("Chrna2")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.glutamatergic, reduction = "umap", features = c("Chrna3")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.glutamatergic, reduction = "umap", features = c("Chrna4")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.glutamatergic, reduction = "umap", features = c("Chrna5")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.glutamatergic, reduction = "umap", features = c("Ptprm")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 
 ```
 
@@ -91,7 +79,54 @@ DimPlot(obj.opossum.glutamatergic, reduction = "umap", group.by="RNA_snn_res.3",
 
 ```{r}
 
-# SaveH5Seurat(obj.opossum.glutamatergic, "E:/Opossum_M1/seurat/opossum_m1_glutamatergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+Idents(obj.opossum.glutamatergic) <- "RNA_snn_res.1.5"
+cells.l23it <- WhichCells(obj.opossum.glutamatergic, ident = c("2", "4", "8", "12", "15", "21"))
+obj.opossum.glutamatergic$subclass <- ifelse(colnames(obj.opossum.glutamatergic) %in% cells.l23it, "L2/3 IT", "ambiguous")
+
+cells.l5it <- WhichCells(obj.opossum.glutamatergic, ident = c("6", "9", "10", "11", "13", "14", "16", "20", "22"))
+obj.opossum.glutamatergic$subclass[cells.l5it] <- "L5 IT"
+
+# cells.l6it <- WhichCells(obj.opossum.glutamatergic, ident = c("9"))
+# obj.opossum.glutamatergic$subclass[cells.l6it] <- "L6 IT"
+
+cells.l5et <- WhichCells(obj.opossum.glutamatergic, ident = c("7"))
+obj.opossum.glutamatergic$subclass[cells.l5et] <- "L5 ET"
+
+cells.l56np <- WhichCells(obj.opossum.glutamatergic, ident = c("17", "23"))
+obj.opossum.glutamatergic$subclass[cells.l56np] <- "L5/6 NP"
+
+cells.l6b <- WhichCells(obj.opossum.glutamatergic, ident = c("19"))
+obj.opossum.glutamatergic$subclass[cells.l6b] <- "L6b"
+
+cells.l6ct <- WhichCells(obj.opossum.glutamatergic, ident = c("1", "5", "3", "18"))
+obj.opossum.glutamatergic$subclass[cells.l6ct] <- "L6 CT"
+
+Idents(obj.opossum.glutamatergic) <- "subclass"
+obj.opossum.glutamatergic <- subset(obj.opossum.glutamatergic, subset = subclass != "ambiguous")
+
+```
+
+
+```{r, fig.width=4, fig.height=4}
+
+library(viridis)
+
+Idents(obj.opossum.glutamatergic) <- "subclass"
+levels(obj.opossum.glutamatergic) <- c("L2/3 IT", "L5 IT", "L6 IT", "L5 ET", "L5/6 NP", "L6b", "L6 CT")
+cholinergic.markers = c("Chrm1", "Chrm2", "Chrm3", "Chrm4", "Chrm5", 
+                        "Chrna1", "Chrna2", "Chrna3", "Chrna4", "Chrna5", "Chrna6", "Chrna7", "Chrna10", 
+                        "Chrnb1", "Chrnb2", "Chrnb3", "Chrnb4", 
+                        "Chrnd", "Chrne")
+DoHeatmap(object = obj.opossum.glutamatergic, cholinergic.markers, slot = "data") + scale_fill_gradientn(colors = c("white", "red")) + theme(text = element_text(size = 10))
+expr <- AverageExpression(obj.opossum.glutamatergic, assays = "RNA", return.seurat = TRUE, features = cholinergic.markers)
+DoHeatmap(expr, features = cholinergic.markers, slot = "data", draw.lines = FALSE, size = 3) + scale_fill_gradientn(colors = magma(100), limits = c(0, 3)) + theme(text = element_text(size = 10))
+
+```
+
+
+```{r}
+
+SaveH5Seurat(obj.opossum.glutamatergic, "E:/Opossum_M1/seurat/opossum_m1_glutamatergic.h5seurat", overwrite = TRUE, verbose = TRUE)
 
 ```
 

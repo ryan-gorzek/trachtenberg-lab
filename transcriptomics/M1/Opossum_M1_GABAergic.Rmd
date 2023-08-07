@@ -41,6 +41,8 @@ obj.opossum.gabaergic <- RunUMAP(obj.opossum.gabaergic, dims = 1:30, method="uma
 DimPlot(obj.opossum.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-15, 12) + ylim(-15, 15) + coord_equal()
 DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+subclass_plot <- DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "subclass", cols = c("#F8766D", "#53B400", "#00B6EB", "#A58AFF", "#FB61D7"), label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Opossum_M1_GABAergic_Subclass.svg", plot=subclass_plot, width=4, height=4)
 
 ```
 
@@ -55,11 +57,33 @@ FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Sncg")) + x
 FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Meis2")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Erbb4")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Nrg1")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
 FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrm1")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrm2")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrm3")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrm4")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrm5")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrna1")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrna2")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrna3")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrna4")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrna5")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrna6")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrna7")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+# FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrna9")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrna10")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrnb1")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrnb2")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrnb3")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrnb4")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrnd")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrne")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+# FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chrng")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 
 ```
 
@@ -112,6 +136,9 @@ obj.opossum.gabaergic$subclass[cells.vip] <- "Vip"
 
 cells.lamp5 <- WhichCells(obj.opossum.gabaergic, ident = c("17", "22", "30"))
 obj.opossum.gabaergic$subclass[cells.lamp5] <- "Lamp5"
+
+Idents(obj.opossum.gabaergic) <- "subclass"
+obj.opossum.gabaergic <- subset(obj.opossum.gabaergic, subset = subclass != "ambiguous")
 
 ```
 
@@ -177,7 +204,6 @@ DoHeatmap(expr, features = adrenergic.markers, slot = "data", draw.lines = FALSE
 ```{r}
 
 Idents(obj.opossum.gabaergic) <- "subclass"
-obj.opossum.gabaergic <- subset(obj.opossum.gabaergic, subset = subclass != "ambiguous")
 SaveH5Seurat(obj.opossum.gabaergic, "E:/Opossum_M1/seurat/opossum_m1_gabaergic.h5seurat", overwrite = TRUE, verbose = TRUE)
 
 ```

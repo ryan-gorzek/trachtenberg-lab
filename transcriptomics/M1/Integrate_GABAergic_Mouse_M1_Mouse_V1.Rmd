@@ -12,15 +12,14 @@ library(ggplot2)
 library(cowplot)
 library(dplyr)
 library(SeuratDisk)
-library(lisi)
 
 obj.mouse <- LoadH5Seurat("E:/Mouse_M1/seurat/mouse_m1_gabaergic.h5seurat")
 obj.mouse[["dataset"]] <- "Mouse_M1"
-# obj.mouse[["subclass"]] <- paste0(obj.mouse$subclass_label, " Mouse")
+obj.mouse[["subclass"]] <- paste0(obj.mouse$subclass_label, " M1")
 
-obj.opossum <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic.h5seurat")
+obj.opossum <- LoadH5Seurat("E:/mouse_v1_gabaergic.h5seurat")
 obj.opossum[["dataset"]] <- "Opossum_M1"
-# obj.opossum[["subclass"]] <- paste0(obj.opossum$subclass, " Opossum")
+obj.opossum[["subclass"]] <- paste0(obj.opossum$subclass, " V1")
 
 obj.mouse <- obj.mouse[, sample(colnames(obj.mouse), size = ncol(obj.opossum), replace = FALSE)]
 
@@ -59,7 +58,7 @@ DimPlot(obj.list[["Opossum_M1"]], label = TRUE, repel = TRUE) + xlim(-15, 15) + 
 
 ```{r}
 
-features <- SelectIntegrationFeatures(object.list = obj.list, nfeatures = 5000)
+features <- SelectIntegrationFeatures(object.list = obj.list, nfeatures = 3000)
 obj.list <- PrepSCTIntegration(object.list = obj.list, anchor.features = features)
 anchors <- FindIntegrationAnchors(object.list = obj.list, normalization.method = "SCT", anchor.features = features)
 obj.combined.sct <- IntegrateData(anchorset = anchors, normalization.method = "SCT")
@@ -156,9 +155,9 @@ order <- c("Pvalb Mouse", "Pvalb Opossum",
            "Sncg Mouse", 
            "Meis2 Mouse")
 
-# es.order <- res[order, order]
-
-plot_cor_heatmap(cor_mat = res)
+# res.order <- res[order, order]
+res[12, 12] <- -1
+plot_cor_heatmap(cor_mat = res, col = my_colors)
 
 ```
 

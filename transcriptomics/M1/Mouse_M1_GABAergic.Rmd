@@ -39,7 +39,8 @@ obj.mouse.gabaergic <- RunUMAP(obj.mouse.gabaergic, dims = 1:30, method="umap-le
 ```{r}
 
 DimPlot(obj.mouse.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by = "subclass_label", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-15, 12) + ylim(-15, 15) + coord_equal()
+subclass_plot <- DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by = "subclass_label", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Mouse_M1_GABAergic_Subclass.svg", plot=subclass_plot, width=4, height=4)
 DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by = "cluster_label", label = TRUE, label.size = 2,raster = FALSE) + NoLegend()  + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 
 ```
@@ -56,6 +57,33 @@ FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Meis2")) + xl
 FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Chat")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Slc18a3")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Slc5a7")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Chrm1")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Chrm2")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Chrm3")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Chrm4")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Chrm5")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Chrna1")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Chrna2")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Chrna3")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Chrna4")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Chrna5")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Chrna6")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Chrna7")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+# FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Chrna9")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Chrna10")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Chrnb1")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Chrnb2")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Chrnb3")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Chrnb4")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Chrnd")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Chrne")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+# FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Chrng")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 
 ```
 
