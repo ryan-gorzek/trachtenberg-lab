@@ -14,11 +14,7 @@ library(cowplot)
 library(dplyr)
 library(SeuratDisk)
 
-obj.mouse.gabaergic <- LoadH5Seurat("E:/allGABA.h5Seurat")
-Idents(obj.mouse.gabaergic) <- "Age"
-obj.mouse.gabaergic <- subset(obj.mouse.gabaergic, idents = c("P6", "P8"))
-Idents(obj.mouse.gabaergic) <- "Doublet"
-obj.mouse.gabaergic <- subset(obj.mouse.gabaergic, idents = c("0"))
+obj.mouse.gabaergic <- LoadH5Seurat("E:/mouse_v1_gabaergic.h5Seurat")
 
 ```
 

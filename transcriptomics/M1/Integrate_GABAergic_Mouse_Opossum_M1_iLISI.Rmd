@@ -1,0 +1,163 @@
+---
+title: "Integrate GABAergic Mouse Opossum iLISI"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(cowplot)
+library(dplyr)
+library(SeuratDisk)
+library(lisi)
+
+obj.mouse <- LoadH5Seurat("E:/Mouse_M1/seurat/mouse_m1_gabaergic.h5seurat")
+obj.mouse[["dataset"]] <- "Mouse_M1"
+
+obj.opossum <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic.h5seurat")
+obj.opossum[["dataset"]] <- "Opossum_M1"
+
+```
+
+
+```{r}
+
+obj.mouse.list <- SplitObject(obj.mouse, split.by = "subclass")
+obj.opossum.list <- SplitObject(obj.opossum, split.by = "subclass")
+
+for (subcl in c("Pvalb", "Sst", "Sst Chodl", "Vip", "Lamp5")) {
+  
+  if (ncol(obj.mouse.list[[subcl]]) > ncol(obj.opossum.list[[subcl]])) {
+    
+    obj.mouse.list[[subcl]] <- obj.mouse.list[[subcl]][, sample(colnames(obj.mouse.list[[subcl]]), size = ncol(obj.opossum.list[[subcl]]), replace = FALSE)]
+    
+  } else {
+    
+    obj.opossum.list[[subcl]] <- obj.opossum.list[[subcl]][, sample(colnames(obj.opossum.list[[subcl]]), size = ncol(obj.mouse.list[[subcl]]), replace = FALSE)]
+    
+  }
+  
+}
+
+obj.mouse <- merge(obj.mouse.list[["Pvalb"]], c(obj.mouse.list[["Sst"]], obj.mouse.list[["Sst Chodl"]], obj.mouse.list[["Vip"]], obj.mouse.list[["Lamp5"]]))
+obj.opossum <- merge(obj.opossum.list[["Pvalb"]], c(obj.opossum.list[["Sst"]], obj.opossum.list[["Sst Chodl"]], obj.opossum.list[["Vip"]], obj.opossum.list[["Lamp5"]]))
+
+```
+
+
+```{r}
+
+common.features <- intersect(rownames(obj.mouse), rownames(obj.opossum))
+obj.combined <- merge(obj.mouse[common.features,], y = obj.opossum[common.features,])
+obj.list <- SplitObject(obj.combined, split.by = "dataset")
+
+```
+
+
+```{r}
+
+obj.list[["Mouse_M1"]] <- SCTransform(obj.list[["Mouse_M1"]], vst.flavor = "v2", verbose = FALSE) %>%
+               RunPCA(npcs = 30, verbose = FALSE) %>%
+               RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+               FindNeighbors(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+               FindClusters(resolution = 1, algorithm = 4, method = "igraph")
+
+DimPlot(obj.list[["Mouse_M1"]], label = TRUE, repel = TRUE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+obj.list[["Opossum_M1"]] <- SCTransform(obj.list[["Opossum_M1"]], vst.flavor = "v2", verbose = FALSE) %>%
+               RunPCA(npcs = 30, verbose = FALSE) %>%
+               RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+               FindNeighbors(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+               FindClusters(resolution = 1, algorithm = 4, method = "igraph")
+
+DimPlot(obj.list[["Opossum_M1"]], label = TRUE, repel = TRUE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+features <- SelectIntegrationFeatures(object.list = obj.list, nfeatures = 5000)
+obj.list <- PrepSCTIntegration(object.list = obj.list, anchor.features = features)
+anchors <- FindIntegrationAnchors(object.list = obj.list, normalization.method = "SCT", anchor.features = features)
+obj.combined.sct <- IntegrateData(anchorset = anchors, normalization.method = "SCT")
+
+```
+
+
+```{r}
+
+obj.combined.sct <- RunPCA(obj.combined.sct, verbose = FALSE)
+obj.combined.sct <- RunUMAP(obj.combined.sct, reduction = "pca", dims = 1:30, verbose = FALSE)
+obj.combined.sct <- FindNeighbors(obj.combined.sct, reduction = "pca", dims = 1:30)
+obj.combined.sct <- FindClusters(obj.combined.sct, resolution = 1, algorithm = 4, method = "igraph")
+
+```
+
+
+```{r}
+
+levels(obj.combined.sct) <- c("Pvalb", "Sst", "Sst Chodl", "Vip", "Lamp5")
+DimPlot(obj.combined.sct, reduction = "umap", group.by = "dataset") + xlim(-16, 16) + ylim(-16, 16) + coord_equal()
+DimPlot(obj.combined.sct, reduction = "umap", split.by = "dataset", group.by = "subclass", order = rev(c("Pvalb", "Sst", "Sst Chodl", "Vip", "Lamp5")), cols = c("#53B400", "#00B6EB",  "#A58AFF", "#FB61D7", "#F8766D"), label = TRUE) + NoLegend() + xlim(-16, 16) + ylim(-16, 16) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.combined.sct) <- "subclass"
+df <- data.frame(matrix(ncol = 2, nrow = 0))
+colnames(df) <- c("dataset", "subclass")
+
+for (subcl in c("Pvalb", "Sst", "Sst Chodl", "Vip", "Lamp5")) {
+  
+  obj.combined.sct.sub <- subset(obj.combined.sct, idents = subcl)
+  res <- compute_lisi(obj.combined.sct.sub@reductions$umap@cell.embeddings, obj.combined.sct.sub[[]], "dataset")
+  res$subclass <- subcl
+  df <- rbind(df, res)
+
+}
+
+```
+
+
+```{r, fig.height=3, fig.width=4.5}
+
+df$subclass <- factor(df$subclass, levels = c("Pvalb", "Sst", "Sst Chodl", "Vip", "Lamp5"))
+
+ggplot(df, aes(x=dataset, colour=subclass)) +
+  stat_ecdf(size = 1) +
+  scale_x_continuous(name = "iLISI") + 
+  scale_y_continuous(name = "Cumulative Fraction") +
+  scale_color_manual(values = c("#53B400", "#00B6EB",  "#A58AFF", "#FB61D7", "#F8766D"))
+
+```
+
+
+```{r, fig.height=3, fig.width=3.5}
+
+df$subclass <- factor(df$subclass, levels = c("Pvalb", "Sst", "Sst Chodl", "Vip", "Lamp5"))
+
+ggplot(df, aes(x=subclass, y=dataset, colour=subclass)) +
+  geom_boxplot(show.legend = FALSE) +
+  scale_y_continuous(name = "iLISI") + 
+  scale_color_manual(values = c("#53B400", "#00B6EB",  "#A58AFF", "#FB61D7", "#F8766D")) +
+  theme_classic() +
+  theme(axis.text.x = element_text(color = "black"), axis.text.y = element_text(color = "black"))
+
+```
+
+
+```{r, fig.height=6, fig.width=6}
+
+ggplot(df, aes(x=dataset, fill=subclass)) +
+  geom_histogram(aes(y = stat(density*width)), alpha=0.5, position="identity", bins = 25) +
+  scale_x_continuous(breaks = c(1, 1.5, 2)) +
+  facet_wrap(~subclass,nrow=5)
+
+```
+

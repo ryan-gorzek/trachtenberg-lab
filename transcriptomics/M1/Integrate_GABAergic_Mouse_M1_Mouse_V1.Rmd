@@ -18,10 +18,17 @@ obj.mouse[["dataset"]] <- "Mouse_M1"
 obj.mouse[["subclass"]] <- paste0(obj.mouse$subclass_label, " M1")
 
 obj.opossum <- LoadH5Seurat("E:/mouse_v1_gabaergic.h5seurat")
-obj.opossum[["dataset"]] <- "Opossum_M1"
+obj.opossum[["dataset"]] <- "Mouse_V1"
 obj.opossum[["subclass"]] <- paste0(obj.opossum$subclass, " V1")
 
 obj.mouse <- obj.mouse[, sample(colnames(obj.mouse), size = ncol(obj.opossum), replace = FALSE)]
+
+```
+
+
+```{r}
+
+obj.opossum
 
 ```
 

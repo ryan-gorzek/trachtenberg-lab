@@ -141,26 +141,46 @@ mouse.counts <- read.csv("G:/Shared drives/Opossum transcriptomics/figures/Figur
 mouse.counts <- mouse.counts[-1, ]
 rownames(mouse.counts) <- mouse.counts$X
 mouse.counts <- mouse.counts[, -1]
-mouse.counts$Glutamatergic <- rowSums(mouse.counts[, c("L2.3.IT", "L5.ET", "L5.IT", "L5.6.NP", "L6.CT", "L6.IT")])
+mouse.counts$Glutamatergic <- rowSums(mouse.counts[, c("L2.3.IT", "L5.ET", "L5.IT", "L5.6.NP", "L6.CT", "L6.IT", "L6b")])
 mouse.counts$GABAergic <- rowSums(mouse.counts[, c("Pvalb", "Sst", "Sst.Chodl", "Vip", "Sncg", "Lamp5", "Meis2")])
 mouse.counts$Nonneuronal <- rowSums(mouse.counts[, c("Astro", "Endo", "Micro.PVM", "Oligo", "OPC", "Peri", "SMC", "VLMC")])
 mouse.counts$Neuronal <- rowSums(mouse.counts[, c("Glutamatergic", "GABAergic")])
+mouse.counts$L4.IT <- 0
+mouse.counts$Stac <- 0
+mouse.counts$Frem1 <- 0
 mouse.counts$species <- "Mouse"
 
 opossum.counts <- read.csv("G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Opossum_Subclass_Sample.csv")
 rownames(opossum.counts) <- opossum.counts$X
 opossum.counts <- opossum.counts[, -1]
-opossum.counts$Glutamatergic <- rowSums(opossum.counts[, c("L2.3.IT", "L5.ET", "L5.IT", "L5.6.NP", "L6.CT")])
+opossum.counts$Glutamatergic <- rowSums(opossum.counts[, c("L2.3.IT", "L5.ET", "L5.IT", "L5.6.NP", "L6.CT", "L6b")])
 opossum.counts$GABAergic <- rowSums(opossum.counts[, c("Pvalb", "Sst", "Sst.Chodl", "Vip", "Lamp5")])
 opossum.counts$Nonneuronal <- rowSums(opossum.counts[, c("Astro", "Endo", "Micro.PVM", "Oligo", "OPC", "Peri", "VLMC")])
 opossum.counts$Neuronal <- rowSums(opossum.counts[, c("Glutamatergic", "GABAergic")])
+opossum.counts$L4.IT <- 0
 opossum.counts$L6.IT <- 0
 opossum.counts$Sncg <- 0
 opossum.counts$Meis2 <- 0
 opossum.counts$SMC <- 0
+opossum.counts$Stac <- 0
+opossum.counts$Frem1 <- 0
 opossum.counts$species <- "Opossum"
 
+ymouse.counts <- read.csv("G:/Shared drives/Opossum transcriptomics/figures/Figure_1_YoungMouse2_Subclass_Sample.csv")
+rownames(ymouse.counts) <- ymouse.counts$X
+ymouse.counts <- ymouse.counts[, -1]
+ymouse.counts$Glutamatergic <- rowSums(ymouse.counts[, c("L2.3.IT", "L5.ET", "L4.IT", "L5.IT", "L5.6.NP", "L6.CT", "L6.IT", "L6b")])
+ymouse.counts$GABAergic <- rowSums(ymouse.counts[, c("Pvalb", "Sst", "Sst.Chodl", "Vip", "Lamp5", "Stac", "Frem1")])
+ymouse.counts$Nonneuronal <- rowSums(ymouse.counts[, c("Astro", "Endo", "Micro.PVM", "Oligo", "OPC", "Peri", "VLMC")])
+ymouse.counts$Neuronal <- rowSums(ymouse.counts[, c("Glutamatergic", "GABAergic")])
+ymouse.counts$Sncg <- 0
+ymouse.counts$Meis2 <- 0
+ymouse.counts$SMC <- 0
+ymouse.counts$L5.IT <- ymouse.counts$L4.IT + ymouse.counts$L5.IT
+ymouse.counts$species <- "Young Mouse"
+
 both.counts <- rbind(mouse.counts, opossum.counts)
+both.counts <- rbind(both.counts, ymouse.counts)
 both.counts$sample <- rownames(both.counts)
 
 ```
@@ -197,19 +217,19 @@ both.counts <- both.counts %>%
 ```
 
 
-```{r, fig.height=3, fig.width=3.5}
+```{r, fig.height=3, fig.width=4}
 
 class.counts <- both.counts[both.counts$cell.identity %in% c("Glutamatergic", "GABAergic"), ]
 
-neuronal_class <- ggplot(class.counts, aes(class.counts, x = factor(cell.identity, level = c("Glutamatergic", "GABAergic")), y = fraction, fill = species)) +
+ggplot(class.counts, aes(class.counts, x = factor(cell.identity, level = c("Glutamatergic", "GABAergic")), y = fraction, fill = species)) +
     geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
     geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
     scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) +
     guides(fill = guide_legend(override.aes = list(shape = NA))) +
     theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + labs(x = NULL, y = "Class Proportion", fill = NULL)
 
-ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Neuronal_Class_Proportion.svg", plot=neuronal_class, width=3.5, height=3)
-ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Neuronal_Class_Proportion.png", plot=neuronal_class, width=3.5, height=3)
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Neuronal_Class_Proportion.svg", plot=neuronal_class, width=3.5, height=3)
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Neuronal_Class_Proportion.png", plot=neuronal_class, width=3.5, height=3)
 
 ```
 
@@ -218,7 +238,7 @@ ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Neuronal_
 
 class.counts <- both.counts[both.counts$cell.identity %in% c("L2.3.IT", "L5.ET", "L5.IT", "L5.6.NP", "L6.CT", "L6.IT", "L6b"), ]
 
-glutamatergic_subclass <- ggplot(class.counts, aes(x = factor(cell.identity, level = c("L2.3.IT", "L5.IT", "L6.IT", "L5.ET", "L6.CT", "L5.6.NP", "L6b")), y = fraction, fill = species)) +
+ggplot(class.counts, aes(x = factor(cell.identity, level = c("L2.3.IT", "L5.IT", "L6.IT", "L5.ET", "L6.CT", "L5.6.NP", "L6b")), y = fraction, fill = species)) +
     geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
     geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
     scale_x_discrete(labels = c("L2/3 IT", "L5 IT", "L6 IT", "L5 ET", "L6 CT", "L5/6 NP", "L6b")) +
@@ -227,8 +247,8 @@ glutamatergic_subclass <- ggplot(class.counts, aes(x = factor(cell.identity, lev
     theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
     labs(x = NULL, y = "Subclass Proportion", fill = NULL)
 
-ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Glutamatergic_Subclass_Proportion.svg", plot=glutamatergic_subclass, width=5, height=3)
-ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Glutamatergic_Subclass_Proportion.png", plot=glutamatergic_subclass, width=5, height=3)
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Glutamatergic_Subclass_Proportion.svg", plot=glutamatergic_subclass, width=5, height=3)
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Glutamatergic_Subclass_Proportion.png", plot=glutamatergic_subclass, width=5, height=3)
 
 ```
 
@@ -237,7 +257,7 @@ ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Glutamate
 
 class.counts <- both.counts[both.counts$cell.identity %in% c("Pvalb", "Sst", "Sst.Chodl", "Vip", "Sncg", "Lamp5", "Meis2"), ]
 
-gabaergic_subclass <- ggplot(class.counts, aes(x = factor(cell.identity, level = c("Pvalb", "Sst", "Sst.Chodl", "Vip", "Lamp5", "Sncg", "Meis2")), y = fraction, fill = species)) +
+ggplot(class.counts, aes(x = factor(cell.identity, level = c("Pvalb", "Sst", "Sst.Chodl", "Vip", "Lamp5", "Sncg", "Meis2")), y = fraction, fill = species)) +
     geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
     geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
     scale_x_discrete(labels = c("Pvalb", "Sst", "Sst Chodl", "Vip", "Lamp5", "Sncg", "Meis2")) +
@@ -246,8 +266,8 @@ gabaergic_subclass <- ggplot(class.counts, aes(x = factor(cell.identity, level =
     theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
     labs(x = NULL, y = "Subclass Proportion", fill = NULL)
 
-ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_GABAergic_Subclass_Proportion.svg", plot=gabaergic_subclass, width=5, height=3)
-ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_GABAergic_Subclass_Proportion.png", plot=gabaergic_subclass, width=5, height=3)
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_GABAergic_Subclass_Proportion.svg", plot=gabaergic_subclass, width=5, height=3)
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_GABAergic_Subclass_Proportion.png", plot=gabaergic_subclass, width=5, height=3)
 
 ```
 
@@ -311,38 +331,4 @@ features.subclass <- c("Cux2", "Rorb", "Ntng1", "Syt6", "Nxph1", "Tmem163",
 DotPlot(obj.combined, features = features.subclass, cols = c("blue", "red"), dot.scale = 8, split.by = "dataset") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ```
-
-
-```{r}
-
-Idents(obj.combined) <- "subclass"
-markers <- FindConservedMarkers(obj.combined, ident.1 = "Peri", grouping.var = "dataset")
-
-```
-
-
-```{r}
-VlnPlot(obj.combined, features = c("nCount_RNA"), split.by = "dataset")
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

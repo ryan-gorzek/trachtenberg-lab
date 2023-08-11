@@ -1,0 +1,65 @@
+---
+title: "Opossum M1 GABAergic"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+obj.opossum.gabaergic <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic.h5Seurat")
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "RNA_snn_res.2", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+# DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-15, 12) + ylim(-15, 15) + coord_equal()
+# DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+# subclass_plot <- DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "subclass", cols = c("#F8766D", "#53B400", "#00B6EB", "#A58AFF", "#FB61D7"), label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Opossum_M1_GABAergic_Subclass.svg", plot=subclass_plot, width=4, height=4)
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.gabaergic) <- "subclass"
+obj.opossum.gabaergic.sst <- subset(obj.opossum.gabaergic, idents = "Sst")
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.gabaergic.sst, reduction = "umap", group.by = "RNA_snn_res.2", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.gabaergic.sst, reduction = "umap", group.by = "RNA_snn_res.2", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-5, 10) + ylim(-12, 3) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.sst, c("Nr2f2"))  + xlim(-5, 10) + ylim(-12, 3) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.sst, c("Necab1"))  + xlim(-5, 10) + ylim(-12, 3) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.sst, c("Calb2"))  + xlim(-5, 10) + ylim(-12, 3) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.sst, c("Hpse"))  + xlim(-5, 10) + ylim(-12, 3) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.sst, c("Crhr2"))  + xlim(-5, 10) + ylim(-12, 3) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.sst, c("Crh"))  + xlim(-5, 10) + ylim(-12, 3) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.sst, c("Etv1"))  + xlim(-5, 10) + ylim(-12, 3) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.gabaergic) <- "subclass"
+SaveH5Seurat(obj.opossum.gabaergic, "E:/Opossum_M1/seurat/opossum_m1_gabaergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+
