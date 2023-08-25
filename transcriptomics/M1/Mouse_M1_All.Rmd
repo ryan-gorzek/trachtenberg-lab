@@ -18,11 +18,56 @@ obj.mouse <- LoadH5Seurat("E:/Mouse_M1/seurat/mouse_m1_all.h5Seurat")
 
 ```{r}
 
-Idents(obj.mouse) <- "RNA_snn_res.1"
-DimPlot(obj.mouse, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
-DimPlot(obj.mouse, reduction = "umap", group.by = "subclass_label", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+obj.mouse <- FindVariableFeatures(obj.mouse, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.mouse)
+obj.mouse <- ScaleData(obj.mouse, features = all.genes)
+obj.mouse <- RunPCA(obj.mouse, features = VariableFeatures(object = obj.mouse))
+ElbowPlot(obj.mouse, ndims = 50)
 
 ```
+
+
+```{r}
+
+obj.mouse <- FindNeighbors(obj.mouse, dims = 1:30)
+obj.mouse <- FindClusters(obj.mouse, resolution = 1, algorithm = 4, method = "igraph")
+obj.mouse <- RunUMAP(obj.mouse, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+glutamatergic.palette <- colorRampPalette(c("#ffffdd", "#468fba"))(8)[2:8]
+gabaergic.palette <- colorRampPalette(c("#ffffdd", "#ba1851"))(7)[2:7]
+nonneuronal.palette <- colorRampPalette(c("#ffffdd", "#6e6e6e"))(10)[4:10]
+
+```
+
+
+```{r}
+
+obj.mouse$subclass_label[obj.mouse$subclass_label == "L6 IT Car3"] <- "L6 IT"
+obj.mouse$subclass_label[obj.mouse$subclass_label == "Sst Chodl"] <- "Sst"
+obj.mouse$subclass_label[obj.mouse$subclass_label == "SMC"] <- "Peri"
+
+```
+
+
+```{r}
+
+Idents(obj.mouse) <- "subclass_label"
+levels(obj.mouse) <- c("L2/3 IT", "L6 CT", "L5 ET", "L5 IT", "L6b", "L5/6 NP", "L6 IT", 
+                       "Pvalb", "Sncg", "Sst", "Lamp5", "Vip", "Meis2", 
+                       "OPC", "Endo", "Oligo", "Astro", "Micro-PVM", "Peri", "VLMC")
+
+dim_plot <- DimPlot(obj.mouse, reduction = "umap", label = TRUE, raster = FALSE, label.size = 3, cols = c(glutamatergic.palette, gabaergic.palette, nonneuronal.palette)) + NoLegend() + xlim(-17, 17) + ylim(-18, 16) + coord_equal()
+
+ggsave("G:/Shared drives/Opossum transcriptomics/figures/Mouse_UMAP_All.png", dim_plot, width=4, height=4, dpi=500)
+ggsave("G:/Shared drives/Opossum transcriptomics/figures/Mouse_UMAP_All.svg", dim_plot, width=4, height=4, dpi=500)
+
+```
+
 
 ```{r}
 

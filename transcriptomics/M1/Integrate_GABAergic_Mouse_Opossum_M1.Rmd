@@ -15,11 +15,11 @@ library(SeuratDisk)
 library(lisi)
 
 obj.mouse <- LoadH5Seurat("E:/Mouse_M1/seurat/mouse_m1_gabaergic.h5seurat")
-obj.mouse[["dataset"]] <- "Mouse_M1"
+# obj.mouse[["dataset"]] <- "Mouse_M1"
 # obj.mouse[["subclass"]] <- paste0(obj.mouse$subclass_label, " Mouse")
 
 obj.opossum <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic.h5seurat")
-obj.opossum[["dataset"]] <- "Opossum_M1"
+# obj.opossum[["dataset"]] <- "Opossum_M1"
 # obj.opossum[["subclass"]] <- paste0(obj.opossum$subclass, " Opossum")
 
 ```
@@ -42,7 +42,9 @@ obj.list[["Mouse_M1"]] <- SCTransform(obj.list[["Mouse_M1"]], vst.flavor = "v2",
                FindNeighbors(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
                FindClusters(resolution = 1, algorithm = 4, method = "igraph")
 
-DimPlot(obj.list[["Mouse_M1"]], label = TRUE, repel = TRUE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.list[["Mouse_M1"]], label = TRUE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.list[["Mouse_M1"]], label = TRUE, group.by = "subclass") + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.list[["Mouse_M1"]], label = TRUE, group.by = "type") + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 
 obj.list[["Opossum_M1"]] <- SCTransform(obj.list[["Opossum_M1"]], vst.flavor = "v2", verbose = FALSE) %>%
                RunPCA(npcs = 30, verbose = FALSE) %>%
@@ -50,7 +52,9 @@ obj.list[["Opossum_M1"]] <- SCTransform(obj.list[["Opossum_M1"]], vst.flavor = "
                FindNeighbors(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
                FindClusters(resolution = 1, algorithm = 4, method = "igraph")
 
-DimPlot(obj.list[["Opossum_M1"]], label = TRUE, repel = TRUE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.list[["Opossum_M1"]], label = TRUE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.list[["Opossum_M1"]], label = TRUE, group.by = "subclass") + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.list[["Opossum_M1"]], label = TRUE, group.by = "type") + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 
 ```
 
@@ -71,6 +75,15 @@ obj.combined.sct <- RunPCA(obj.combined.sct, verbose = FALSE)
 obj.combined.sct <- RunUMAP(obj.combined.sct, reduction = "pca", dims = 1:30, verbose = FALSE)
 obj.combined.sct <- FindNeighbors(obj.combined.sct, reduction = "pca", dims = 1:30)
 obj.combined.sct <- FindClusters(obj.combined.sct, resolution = 1, algorithm = 4, method = "igraph")
+
+```
+
+
+```{r}
+
+DimPlot(obj.combined.sct, reduction = "umap", group.by = "dataset", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined.sct, reduction = "umap", group.by = "subclass", split.by = "dataset", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined.sct, reduction = "umap", group.by = "type", split.by = "dataset", label = TRUE, raster = FALSE, label.size = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 
 ```
 

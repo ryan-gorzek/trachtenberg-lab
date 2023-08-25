@@ -40,6 +40,7 @@ obj.combined <- IntegrateData(anchorset = obj.anchors)
 
 ```{r}
 
+obj.opossum.nonneuronal <- obj.combined
 DefaultAssay(obj.opossum.nonneuronal) <- "integrated"
 
 # Run the standard workflow for visualization and clustering
@@ -54,18 +55,9 @@ obj.opossum.nonneuronal <- RunUMAP(obj.opossum.nonneuronal, dims = 1:30, method=
 
 ```{r}
 
-obj.opossum.nonneuronal <- FindClusters(obj.opossum.nonneuronal, resolution = 3, algorithm = 4, method = "igraph", graph.name = "integrated_snn")
-
-```
-
-
-```{r}
-
 DimPlot(obj.opossum.nonneuronal, reduction = "umap", label = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 DimPlot(obj.opossum.nonneuronal, reduction = "umap", group.by = "sample") + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 DimPlot(obj.opossum.nonneuronal, reduction = "umap", group.by = "predicted_doublets") + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
-subclass_plot <- DimPlot(obj.opossum.nonneuronal, reduction = "umap", group.by = "subclass", label = TRUE, cols = c("#F8766D", "#CD9600", "#7CAE00", "#00BE67", "#00BFC4", "#00A9FF", "#FF61CC")) + NoLegend() + xlim(-15, 15) + ylim(-18, 12) + coord_equal()
-ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Opossum_M1_Nonneuronal_Subclass.svg", plot=subclass_plot, width=4, height=4)
 
 ```
 
@@ -84,27 +76,27 @@ FeaturePlot(obj.opossum.nonneuronal, reduction = "umap", features = c("Tek")) + 
 
 ```{r}
 
-Idents(obj.opossum.nonneuronal) <- "integrated_snn_res.3"
-cells.astro <- WhichCells(obj.opossum.nonneuronal, ident = c("4", "5", "7", "9", "12", "14", "15", "17", "21", "27"))
+Idents(obj.opossum.nonneuronal) <- "integrated_snn_res.1"
+cells.astro <- WhichCells(obj.opossum.nonneuronal, ident = c("2", "6", "7", "11", "12"))
 obj.opossum.nonneuronal$subclass <- ifelse(colnames(obj.opossum.nonneuronal) %in% cells.astro, "Astro", "ambiguous")
 
-cells.oligo <- WhichCells(obj.opossum.nonneuronal, ident = c("1", "2", "6", "8", "10", "11", "13", "18", "19", "20", "24", "31"))
+cells.oligo <- WhichCells(obj.opossum.nonneuronal, ident = c("1", "4", "5", "10", "13", "16"))
 obj.opossum.nonneuronal$subclass[cells.oligo] <- "Oligo"
 
-cells.opc <- WhichCells(obj.opossum.nonneuronal, ident = c("3", "25", "30"))
+cells.opc <- WhichCells(obj.opossum.nonneuronal, ident = c("8"))
 obj.opossum.nonneuronal$subclass[cells.opc] <- "OPC"
 
-cells.micro <- WhichCells(obj.opossum.nonneuronal, ident = c("16", "29", "32"))
+cells.micro <- WhichCells(obj.opossum.nonneuronal, ident = c("14"))
 obj.opossum.nonneuronal$subclass[cells.micro] <- "Micro-PVM"
 
-cells.vlmc <- WhichCells(obj.opossum.nonneuronal, ident = c("22", "23"))
+cells.vlmc <- WhichCells(obj.opossum.nonneuronal, ident = c("15"))
 obj.opossum.nonneuronal$subclass[cells.vlmc] <- "VLMC"
 
-cells.endo <- WhichCells(obj.opossum.nonneuronal, ident = c("26"))
+cells.endo <- WhichCells(obj.opossum.nonneuronal, ident = c("19"))
 obj.opossum.nonneuronal$subclass[cells.endo] <- "Endo"
 
-cells.peri <- WhichCells(obj.opossum.nonneuronal, ident = c("28"))
-obj.opossum.nonneuronal$subclass[cells.peri] <- "Peri"
+# cells.peri <- WhichCells(obj.opossum.nonneuronal, ident = c(""))
+# obj.opossum.nonneuronal$subclass[cells.peri] <- "Peri"
 
 Idents(obj.opossum.nonneuronal) <- "subclass"
 obj.opossum.nonneuronal <- subset(obj.opossum.nonneuronal, subset = subclass != "ambiguous")
@@ -114,10 +106,14 @@ obj.opossum.nonneuronal <- subset(obj.opossum.nonneuronal, subset = subclass != 
 
 ```{r}
 
-obj.opossum.nonneuronal[["op_integrated_snn_res.1"]] <- obj.opossum.nonneuronal[["integrated_snn_res.1"]]
-obj.opossum.nonneuronal[["op_integrated_snn_res.3"]] <- obj.opossum.nonneuronal[["integrated_snn_res.3"]]
-obj.opossum.nonneuronal[["subclass_label"]] <- obj.opossum.nonneuronal[["subclass"]]
-SaveH5Seurat(obj.opossum.nonneuronal, "E:/Opossum_M1/seurat/opossum_m1_nonneuronal.h5seurat", overwrite = TRUE, verbose = TRUE)
+DimPlot(obj.opossum.nonneuronal, reduction = "umap", group.by = "subclass", label = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+SaveH5Seurat(obj.opossum.nonneuronal, "E:/Opossum_M1/seurat/opossum_m1_nonneuronal_filt.h5seurat", overwrite = TRUE, verbose = TRUE)
 
 ```
 

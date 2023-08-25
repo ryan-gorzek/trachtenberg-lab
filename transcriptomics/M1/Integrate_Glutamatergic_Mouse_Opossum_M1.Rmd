@@ -16,7 +16,7 @@ library(SeuratDisk)
 obj.mouse <- LoadH5Seurat("E:/Mouse_M1/seurat/mouse_m1_glutamatergic.h5seurat")
 obj.mouse[["dataset"]] <- "Mouse_M1"
 
-obj.opossum <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_glutamatergic.h5seurat")
+obj.opossum <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_glutamatergic_filt.h5seurat")
 obj.opossum[["dataset"]] <- "Opossum_M1"
 
 obj.mouse <- obj.mouse[, sample(colnames(obj.mouse), size = ncol(obj.opossum), replace = FALSE)]
@@ -90,11 +90,17 @@ obj.combined.sct <- FindClusters(obj.combined.sct, resolution = 1, algorithm = 4
 
 ```{r}
 
-dataset_plot <- DimPlot(obj.combined.sct, reduction = "umap", group.by = "dataset", raster = FALSE) + xlim(-16, 14) + ylim(-18, 12) + coord_equal()
-ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Mouse_Opossum_M1_Glutamatergic_Dataset.svg", plot=dataset_plot, width=6, height=4)
+dataset_plot <- DimPlot(obj.combined.sct, reduction = "umap", group.by = "dataset", raster = FALSE, shuffle = TRUE) + xlim(-15, 16) + ylim(-18, 13) + coord_equal()
+ggsave("G:/Shared drives/Opossum transcriptomics/figures/Glutamatergic_Mix_Dataset.png", dataset_plot, width=4.5, height=4, dpi=500)
+subclass_plot <- DimPlot(obj.combined.sct, reduction = "umap", group.by = "subclass", split.by = "dataset", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 16) + ylim(-18, 13) + coord_equal()
+ggsave("G:/Shared drives/Opossum transcriptomics/figures/Glutamatergic_Mix_Subclass.png", subclass_plot, width=8, height=4, dpi=500)
 
-subclass_plot <- DimPlot(obj.combined.sct, reduction = "umap", group.by = "subclass", split.by = "dataset", label = TRUE, raster = FALSE) + NoLegend() + xlim(-16, 14) + ylim(-18, 12) + coord_equal()
-ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Mouse_Opossum_M1_Glutamatergic_Subclass.svg", plot=subclass_plot, width=8.5, height=4.5)
+```
+
+
+```{r}
+
+DimPlot(obj.combined.sct, reduction = "umap", split.by = "dataset", group.by = "RNA_snn_res.1", raster = FALSE, label = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 
 ```
 

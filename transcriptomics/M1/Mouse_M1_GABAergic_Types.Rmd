@@ -1,5 +1,5 @@
 ---
-title: "Mouse M1 GABAergic"
+title: "Mouse M1 GABAergic Types"
 output: html_notebook
 ---
 
@@ -374,6 +374,30 @@ obj.mouse.gabaergic$type[obj.mouse.gabaergic$RNA_snn_res.4 == 46] <- "Meis2"
 
 DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by = "subclass", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by = "type", label = TRUE, label.size = 3, raster = FALSE) + NoLegend()  + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+pvalb.palette <- colorRampPalette(c("#ffffdd", "#468fba"))(8)[3:8]
+sst.palette <- colorRampPalette(c("#ffffdd", "#ba1851"))(9)[2:9]
+vip.palette <- colorRampPalette(c("#ffffdd", "#a85d96"))(7)[2:7]
+lamp5.palette <- colorRampPalette(c("#ffffdd", "#a2bc8c"))(5)[2:5]
+sncg.palette <- colorRampPalette(c("#ffffdd", "#f6cb7c"))(6)[c(2, 4, 6)]
+meis2.palette <- "darkgray"
+
+Idents(obj.mouse.gabaergic) <- "type"
+levels(obj.mouse.gabaergic) <- c("Pvalb Il1rapl2", "Pvalb Reln", "Pvalb Vipr2", "Pvalb Th", "Pvalb Htr2c", "Pvalb Sema3e", 
+                                   "Sst Crhr2", "Sst Nr2f2", "Sst Chodl", "Sst Necab1", "Sst Calb2", "Sst Etv1", "Sst Hpse", "Sst Crh", 
+                                   "Vip Npy", "Vip Ptger3", "Vip Mybpc1", "Vip Chat", "Vip Col14a1", "Vip Reln", 
+                                   "Lamp5 Lhx6", "Lamp5 Ndnf", "Lamp5 Cdh4", "Lamp5 Htr1f", 
+                                   "Sncg Slc17a8", "Sncg Cpne5", "Sncg Vip", 
+                                   "Meis2")
+
+dim_plot <- DimPlot(obj.mouse.gabaergic, reduction = "umap", cols = c(pvalb.palette, sst.palette, vip.palette, lamp5.palette, sncg.palette, meis2.palette), label = TRUE, label.size = 2, raster = FALSE) + NoLegend()  + xlim(-13, 15) + ylim(-16, 12) + coord_equal()
+
+ggsave("G:/Shared drives/Opossum transcriptomics/figures/Mouse_UMAP_GABAergic.png", dim_plot, width=4, height=4, dpi=500)
 
 ```
 

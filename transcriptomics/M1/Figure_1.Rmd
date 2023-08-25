@@ -12,9 +12,9 @@ library(arrow)
 library(ggplot2)
 library(dplyr)
 library(SeuratDisk)
-obj.opossum.glutamatergic <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_glutamatergic.h5Seurat")
-obj.opossum.gabaergic <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic.h5Seurat")
-obj.opossum.nonneuronal <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_nonneuronal.h5Seurat")
+obj.opossum.glutamatergic <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_glutamatergic_filt.h5Seurat")
+obj.opossum.gabaergic <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic_filt.h5Seurat")
+obj.opossum.nonneuronal <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_nonneuronal_filt.h5Seurat")
 
 ```
 
@@ -166,21 +166,21 @@ opossum.counts$Stac <- 0
 opossum.counts$Frem1 <- 0
 opossum.counts$species <- "Opossum"
 
-ymouse.counts <- read.csv("G:/Shared drives/Opossum transcriptomics/figures/Figure_1_YoungMouse2_Subclass_Sample.csv")
-rownames(ymouse.counts) <- ymouse.counts$X
-ymouse.counts <- ymouse.counts[, -1]
-ymouse.counts$Glutamatergic <- rowSums(ymouse.counts[, c("L2.3.IT", "L5.ET", "L4.IT", "L5.IT", "L5.6.NP", "L6.CT", "L6.IT", "L6b")])
-ymouse.counts$GABAergic <- rowSums(ymouse.counts[, c("Pvalb", "Sst", "Sst.Chodl", "Vip", "Lamp5", "Stac", "Frem1")])
-ymouse.counts$Nonneuronal <- rowSums(ymouse.counts[, c("Astro", "Endo", "Micro.PVM", "Oligo", "OPC", "Peri", "VLMC")])
-ymouse.counts$Neuronal <- rowSums(ymouse.counts[, c("Glutamatergic", "GABAergic")])
-ymouse.counts$Sncg <- 0
-ymouse.counts$Meis2 <- 0
-ymouse.counts$SMC <- 0
-ymouse.counts$L5.IT <- ymouse.counts$L4.IT + ymouse.counts$L5.IT
-ymouse.counts$species <- "Young Mouse"
+# ymouse.counts <- read.csv("G:/Shared drives/Opossum transcriptomics/figures/Figure_1_YoungMouse2_Subclass_Sample.csv")
+# rownames(ymouse.counts) <- ymouse.counts$X
+# ymouse.counts <- ymouse.counts[, -1]
+# ymouse.counts$Glutamatergic <- rowSums(ymouse.counts[, c("L2.3.IT", "L5.ET", "L4.IT", "L5.IT", "L5.6.NP", "L6.CT", "L6.IT", "L6b")])
+# ymouse.counts$GABAergic <- rowSums(ymouse.counts[, c("Pvalb", "Sst", "Sst.Chodl", "Vip", "Lamp5", "Stac", "Frem1")])
+# ymouse.counts$Nonneuronal <- rowSums(ymouse.counts[, c("Astro", "Endo", "Micro.PVM", "Oligo", "OPC", "Peri", "VLMC")])
+# ymouse.counts$Neuronal <- rowSums(ymouse.counts[, c("Glutamatergic", "GABAergic")])
+# ymouse.counts$Sncg <- 0
+# ymouse.counts$Meis2 <- 0
+# ymouse.counts$SMC <- 0
+# ymouse.counts$L5.IT <- ymouse.counts$L4.IT + ymouse.counts$L5.IT
+# ymouse.counts$species <- "Young Mouse"
 
 both.counts <- rbind(mouse.counts, opossum.counts)
-both.counts <- rbind(both.counts, ymouse.counts)
+# both.counts <- rbind(both.counts, ymouse.counts)
 both.counts$sample <- rownames(both.counts)
 
 ```
@@ -268,6 +268,25 @@ ggplot(class.counts, aes(x = factor(cell.identity, level = c("Pvalb", "Sst", "Ss
 
 # ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_GABAergic_Subclass_Proportion.svg", plot=gabaergic_subclass, width=5, height=3)
 # ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_GABAergic_Subclass_Proportion.png", plot=gabaergic_subclass, width=5, height=3)
+
+```
+
+
+```{r, fig.height=3, fig.width=3}
+
+class.counts <- both.counts[both.counts$cell.identity %in% c("Pvalb", "Sst", "Vip", "Lamp5"), ]
+
+gabaergic_subclass <- ggplot(class.counts, aes(x = factor(cell.identity, level = c("Pvalb", "Sst", "Vip", "Lamp5")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("Pvalb", "Sst", "Vip", "Lamp5")) +
+    scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75), expand = c(0, 0), limits = c(0, 0.751)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text.x = element_text(color = "black", angle = 45, vjust = 1, hjust = 1), axis.text.y = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "Subclass Proportion", fill = NULL)
+
+ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_GABAergic_Subclass_Proportion_Limited.svg", plot=gabaergic_subclass, width=3, height=3)
+ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Figure_1_GABAergic_Subclass_Proportion_Limited.png", plot=gabaergic_subclass, width=3, height=3)
 
 ```
 
