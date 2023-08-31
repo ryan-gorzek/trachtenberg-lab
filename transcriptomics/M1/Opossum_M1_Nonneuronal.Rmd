@@ -11,7 +11,7 @@ library(arrow)
 library(ggplot2)
 library(dplyr)
 library(SeuratDisk)
-obj.opossum.nonneuronal <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_nonneuronal.h5Seurat")
+obj.opossum.nonneuronal <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_nonneuronal_raw.h5Seurat")
 
 ```
 
@@ -113,7 +113,7 @@ DimPlot(obj.opossum.nonneuronal, reduction = "umap", group.by = "subclass", labe
 
 ```{r}
 
-SaveH5Seurat(obj.opossum.nonneuronal, "E:/Opossum_M1/seurat/opossum_m1_nonneuronal_filt.h5seurat", overwrite = TRUE, verbose = TRUE)
+SaveH5Seurat(obj.opossum.nonneuronal, "E:/Opossum_M1/seurat/opossum_m1_nonneuronal.h5seurat", overwrite = TRUE, verbose = TRUE)
 
 ```
 

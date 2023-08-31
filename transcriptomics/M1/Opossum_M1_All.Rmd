@@ -18,9 +18,9 @@ obj.opossum <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_all.h5Seurat")
 
 ```{r}
 
-DimPlot(obj.opossum, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-DimPlot(obj.opossum, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-DimPlot(obj.opossum, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
+DimPlot(obj.opossum, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 
 ```
 
@@ -40,17 +40,14 @@ FeaturePlot(obj.opossum, reduction = "umap", features = c("Col1a1"), raster = FA
 
 ```{r}
 
-cells.glutamatergic <- WhichCells(obj.opossum, ident = c(1, 2, 3, 4, 5, 7, 9, 11, 12, 13, 15, 16, 17, 18, 20, 24, 28, 30))
+cells.glutamatergic <- WhichCells(obj.opossum, ident = c(1))
 obj.opossum$class <- ifelse(colnames(obj.opossum) %in% cells.glutamatergic, "glutamatergic", "ambiguous")
 
-cells.gabaergic <- WhichCells(obj.opossum, ident = c(6, 14, 19, 22, 32, 33))
+cells.gabaergic <- WhichCells(obj.opossum, ident = c(7, 13, 17, 20, 25, 29, 30))
 obj.opossum$class[cells.gabaergic] <- "gabaergic"
 
-cells.nonneuronal <- WhichCells(obj.opossum, ident = c(8, 10, 21, 23, 25, 26, 27, 29))
-obj.opossum$class[cells.nonneuronal] <- "nonneuronal"
-
-# cells.ambiguous <- WhichCells(obj.opossum, ident = c(21))
-# obj.opossum$class[cells.ambiguous] <- "ambiguous"
+# cells.nonneuronal <- WhichCells(obj.opossum, ident = c(8, 10, 21, 23, 25, 26, 27, 29))
+# obj.opossum$class[cells.nonneuronal] <- "nonneuronal"
 
 ```
 
@@ -65,14 +62,14 @@ DimPlot(obj.opossum, reduction = "umap", group.by = "class", raster = FALSE) + x
 
 ```{r}
 
-obj.opossum.glutamatergic <- subset(obj.opossum, subset = class == "glutamatergic")
-SaveH5Seurat(obj.opossum.glutamatergic, "E:/Opossum_M1/seurat/opossum_m1_glutamatergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+# obj.opossum.glutamatergic <- subset(obj.opossum, subset = class == "glutamatergic")
+# SaveH5Seurat(obj.opossum.glutamatergic, "E:/Opossum_M1/seurat/opossum_m1_glutamatergic_raw.h5seurat", overwrite = TRUE, verbose = TRUE)
 
 obj.opossum.gabaergic <- subset(obj.opossum, subset = class == "gabaergic")
-SaveH5Seurat(obj.opossum.gabaergic, "E:/Opossum_M1/seurat/opossum_m1_gabaergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+SaveH5Seurat(obj.opossum.gabaergic, "E:/Opossum_M1/seurat/opossum_m1_gabaergic_raw_ext.h5seurat", overwrite = TRUE, verbose = TRUE)
 
-obj.opossum.nonneuronal <- subset(obj.opossum, subset = class == "nonneuronal")
-SaveH5Seurat(obj.opossum.nonneuronal, "E:/Opossum_M1/seurat/opossum_m1_nonneuronal.h5seurat", overwrite = TRUE, verbose = TRUE)
+# obj.opossum.nonneuronal <- subset(obj.opossum, subset = class == "nonneuronal")
+# SaveH5Seurat(obj.opossum.nonneuronal, "E:/Opossum_M1/seurat/opossum_m1_nonneuronal_raw.h5seurat", overwrite = TRUE, verbose = TRUE)
 
 ```
 

@@ -13,11 +13,11 @@ library(dplyr)
 library(SeuratDisk)
 library(data.table)
 
-data_path <- "E:/Opossum_M1/output/"
+data_path <- "E:/Opossum_M1/output/Extended/"
 
 sample_IDs <- c("NW_TX0055-4", "NW_TX0055-5", "NW_TX0055-6", "NW_TX0064-3", 
                 "NW_TX0064-4", "NW_TX0064-5", "NW_TX0077-7", "NW_TX0077-8", 
-                "NW_TX0090-11", "NW_TX0092-7", "NW_TX0092-8") # "NW_TX0078-1", 
+                "NW_TX0078-1", "NW_TX0090-11", "NW_TX0092-7", "NW_TX0092-8") # 
 
 objs <- c()
 
@@ -37,7 +37,7 @@ for (sample in sample_IDs) {
 
 ```{r}
 
-obj.opossum <- merge(objs[[1]], y = objs[2:11], add.cell.ids = sample_IDs, project = "Opossum_M1")
+obj.opossum <- merge(objs[[1]], y = objs[2:12], add.cell.ids = sample_IDs, project = "Opossum_M1")
 
 ```
 
@@ -89,7 +89,8 @@ obj.opossum <- obj.opossum.temp
 
 ```{r}
 
-VlnPlot(obj.opossum, features = c("nFeature_RNA", "nCount_RNA"), ncol = 2, raster = FALSE)
+VlnPlot(obj.opossum, features = c("nFeature_RNA"), group.by = "sample", raster = FALSE)
+VlnPlot(obj.opossum, features = c("nCount_RNA"), group.by = "sample", raster = FALSE)
 FeatureScatter(obj.opossum, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", raster = FALSE)
 
 ```
@@ -101,7 +102,7 @@ cell_mask <- Reduce(intersect,list(WhichCells(obj.opossum, expression = nFeature
                                    WhichCells(obj.opossum, expression = nFeature_RNA < 6500),
                                    WhichCells(obj.opossum, expression = nCount_RNA < 40000)))
 
-gene_mask <- rownames(obj.opossum)[Matrix::rowSums(obj.opossum) > 8]
+gene_mask <- rownames(obj.opossum)[Matrix::rowSums(obj.opossum[["RNA"]]@counts > 0) > 8]
 
 obj.opossum <- subset(obj.opossum, features = gene_mask, cells = cell_mask)
 
@@ -131,29 +132,37 @@ obj.opossum <- RunUMAP(obj.opossum, dims = 1:30, method="umap-learn")
 
 ```{r}
 
-DimPlot(obj.opossum, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-DimPlot(obj.opossum, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-DimPlot(obj.opossum, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
+DimPlot(obj.opossum, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum, "nFeature_RNA", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum, "nCount_RNA", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 
 ```
 
 
 ```{r}
 
-FeaturePlot(obj.opossum, reduction = "umap", features = c("Snap25"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-FeaturePlot(obj.opossum, reduction = "umap", features = c("Gad2"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-FeaturePlot(obj.opossum, reduction = "umap", features = c("Csf1r"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-FeaturePlot(obj.opossum, reduction = "umap", features = c("Mog"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-FeaturePlot(obj.opossum, reduction = "umap", features = c("Pdgfra"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-FeaturePlot(obj.opossum, reduction = "umap", features = c("Aldh1l1"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-FeaturePlot(obj.opossum, reduction = "umap", features = c("Col1a1"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Snap25"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Gad2"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Csf1r"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Mog"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Pdgfra"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Aldh1l1"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Col1a1"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Pvalb"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Sst"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Vip"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Lamp5"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Sncg"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 
 ```
 
 
 ```{r}
 
-SaveH5Seurat(obj.opossum, "E:/Opossum_M1/seurat/opossum_m1_all.h5seurat", overwrite = TRUE, verbose = TRUE)
+SaveH5Seurat(obj.opossum, "E:/Opossum_M1/seurat/opossum_m1_all_ext.h5seurat", overwrite = TRUE, verbose = TRUE)
 
 ```
 

@@ -11,7 +11,7 @@ library(arrow)
 library(ggplot2)
 library(dplyr)
 library(SeuratDisk)
-obj.opossum.gabaergic <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic_filt.h5Seurat")
+obj.opossum.gabaergic <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic.h5Seurat")
 
 ```
 
@@ -306,7 +306,7 @@ ggsave("G:/Shared drives/Opossum transcriptomics/figures/Opossum_UMAP_GABAergic.
 ```{r}
 
 Idents(obj.opossum.gabaergic) <- "subclass"
-SaveH5Seurat(obj.opossum.gabaergic, "E:/Opossum_M1/seurat/opossum_m1_gabaergic_filt.h5seurat", overwrite = TRUE, verbose = TRUE)
+SaveH5Seurat(obj.opossum.gabaergic, "E:/Opossum_M1/seurat/opossum_m1_gabaergic.h5seurat", overwrite = TRUE, verbose = TRUE)
 
 ```
 

@@ -15,11 +15,11 @@ library(SeuratDisk)
 library(lisi)
 
 obj.mouse <- LoadH5Seurat("E:/Mouse_M1/seurat/mouse_m1_gabaergic.h5seurat")
-# obj.mouse[["dataset"]] <- "Mouse_M1"
+obj.mouse$dataset <- "Mouse_M1"
 # obj.mouse[["subclass"]] <- paste0(obj.mouse$subclass_label, " Mouse")
 
-obj.opossum <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic.h5seurat")
-# obj.opossum[["dataset"]] <- "Opossum_M1"
+obj.opossum <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic_sct.h5seurat")
+obj.opossum$dataset <- "Opossum_M1"
 # obj.opossum[["subclass"]] <- paste0(obj.opossum$subclass, " Opossum")
 
 ```
@@ -53,8 +53,8 @@ obj.list[["Opossum_M1"]] <- SCTransform(obj.list[["Opossum_M1"]], vst.flavor = "
                FindClusters(resolution = 1, algorithm = 4, method = "igraph")
 
 DimPlot(obj.list[["Opossum_M1"]], label = TRUE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-DimPlot(obj.list[["Opossum_M1"]], label = TRUE, group.by = "subclass") + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-DimPlot(obj.list[["Opossum_M1"]], label = TRUE, group.by = "type") + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+# DimPlot(obj.list[["Opossum_M1"]], label = TRUE, group.by = "subclass") + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+# DimPlot(obj.list[["Opossum_M1"]], label = TRUE, group.by = "type") + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 
 ```
 
@@ -64,7 +64,7 @@ DimPlot(obj.list[["Opossum_M1"]], label = TRUE, group.by = "type") + NoLegend() 
 features <- SelectIntegrationFeatures(object.list = obj.list, nfeatures = 5000)
 obj.list <- PrepSCTIntegration(object.list = obj.list, anchor.features = features)
 anchors <- FindIntegrationAnchors(object.list = obj.list, normalization.method = "SCT", anchor.features = features)
-obj.combined.sct <- IntegrateData(anchorset = anchors, normalization.method = "SCT")
+obj.combined.sct <- IntegrateData(anchorset = anchors, normalization.method = "SCT", features.to.integrate = common.features)
 
 ```
 
@@ -81,82 +81,24 @@ obj.combined.sct <- FindClusters(obj.combined.sct, resolution = 1, algorithm = 4
 
 ```{r}
 
-DimPlot(obj.combined.sct, reduction = "umap", group.by = "dataset", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
-DimPlot(obj.combined.sct, reduction = "umap", group.by = "subclass", split.by = "dataset", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
-DimPlot(obj.combined.sct, reduction = "umap", group.by = "type", split.by = "dataset", label = TRUE, raster = FALSE, label.size = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined.sct, reduction = "umap", group.by = "dataset", raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined.sct, reduction = "umap", group.by = "op_integrated_snn_res.1", raster = FALSE, label = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+# DimPlot(obj.combined.sct, reduction = "umap", group.by = "subclass", split.by = "dataset", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+# DimPlot(obj.combined.sct, reduction = "umap", group.by = "type", split.by = "dataset", label = TRUE, raster = FALSE, label.size = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 
 ```
 
 
 ```{r}
 
-Idents(obj.combined.sct) <- "subclass"
-obj.combined.sct.vip <- subset(obj.combined.sct, idents = "Vip")
-obj.combined.sct.vip <- PrepSCTFindMarkers(obj.combined.sct.vip)
-Idents(obj.combined.sct.vip) <- "dataset"
-vip.markers <- FindMarkers(obj.combined.sct.vip, assay = "SCT", ident.1 = "Opossum_M1", ident.2 = "Mouse_M1", verbose = FALSE)
+obj.combined.sct.mrk <- PrepSCTFindMarkers(obj.combined.sct, assay = "SCT", verbose = TRUE)
 
 ```
 
 
 ```{r}
 
-Idents(obj.combined.sct) <- "subclass"
-obj.combined.sct.sst <- subset(obj.combined.sct, idents = "Sst")
-obj.combined.sct.sst <- PrepSCTFindMarkers(obj.combined.sct.sst)
-Idents(obj.combined.sct.sst) <- "dataset"
-sst.markers <- FindMarkers(obj.combined.sct.sst, assay = "SCT", ident.1 = "Opossum_M1", ident.2 = "Mouse_M1", verbose = FALSE)
-
-```
-
-
-```{r}
-
-library(clustifyr)
-expr_mat <- obj.combined.sct[["integrated"]]@data
-ref_mat <- average_clusters(mat = expr_mat, metadata = obj.combined.sct[[]], cluster_col = "subclass", if_log = TRUE)
-
-res <- clustify(
-  input = expr_mat, # matrix of normalized scRNA-seq counts (or SCE/Seurat object)
-  metadata = obj.combined.sct[[]], # meta.data table containing cell clusters
-  cluster_col = "subclass", # name of column in meta.data containing cell clusters
-  ref_mat = ref_mat, # matrix of RNA-seq expression data for each cell type
-  query_genes = rownames(obj.combined.sct) # list of highly varible genes identified with Seurat
-                )
-
-```
-
-
-```{r}
-
-library(clustifyr)
-expr_mat <- t(Embeddings(obj.combined.sct, reduction = "pca"))
-ref_mat <- average_clusters(mat = expr_mat, metadata = obj.combined.sct[[]], cluster_col = "subclass", if_log = TRUE)
-
-res <- clustify(
-  input = expr_mat, # matrix of normalized scRNA-seq counts (or SCE/Seurat object)
-  metadata = obj.combined.sct[[]], # meta.data table containing cell clusters
-  cluster_col = "subclass", # name of column in meta.data containing cell clusters
-  ref_mat = ref_mat, # matrix of RNA-seq expression data for each cell type
-  query_genes = rownames(expr_mat) # list of highly varible genes identified with Seurat
-                )
-
-```
-
-
-```{r, fig.height=4.5, fig.width=5}
-
-order <- c("Pvalb Mouse", "Pvalb Opossum", 
-           "Sst Mouse", "Sst Opossum", 
-           "Sst Chodl Mouse", "Sst Chodl Opossum", 
-           "Vip Mouse", "Vip Opossum", 
-           "Lamp5 Mouse", "Lamp5 Opossum", 
-           "Sncg Mouse", 
-           "Meis2 Mouse")
-
-# es.order <- res[order, order]
-
-plot_cor_heatmap(cor_mat = res)
+FeaturePlot(obj.combined.sct.mrk, reduction = "umap", features = c("Vip"), split.by = "dataset", raster = FALSE, min.cutoff = 0) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 
 ```
 

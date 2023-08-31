@@ -18,7 +18,7 @@ obj.mouse <- LoadH5Seurat("E:/Mouse_M1/seurat/mouse_m1_gabaergic.h5seurat")
 obj.mouse[["dataset"]] <- "Mouse_M1"
 obj.mouse$subclass[obj.mouse$subclass == "Sst Chodl"] <- "Sst"
 
-obj.opossum <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic_filt.h5seurat")
+obj.opossum <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic.h5seurat")
 obj.opossum[["dataset"]] <- "Opossum_M1"
 
 ```

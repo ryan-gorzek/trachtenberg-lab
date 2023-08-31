@@ -18,7 +18,7 @@ obj.mouse <- LoadH5Seurat("E:/Mouse_M1/seurat/mouse_m1_gabaergic.h5seurat")
 # obj.mouse[["dataset"]] <- "Mouse_M1"
 # obj.mouse[["subclass"]] <- paste0(obj.mouse$subclass_label, " Mouse")
 
-obj.opossum <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic_filt.h5seurat")
+obj.opossum <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic_raw.h5seurat")
 obj.opossum[["dataset"]] <- "Opossum_M1"
 # obj.opossum[["subclass"]] <- paste0(obj.opossum$subclass, " Opossum")
 
@@ -64,7 +64,7 @@ DimPlot(obj.list[["Opossum_M1"]], label = TRUE) + NoLegend() + xlim(-15, 15) + y
 features <- SelectIntegrationFeatures(object.list = obj.list, nfeatures = 5000)
 obj.list <- PrepSCTIntegration(object.list = obj.list, anchor.features = features)
 anchors <- FindIntegrationAnchors(object.list = obj.list, normalization.method = "SCT", anchor.features = features)
-obj.combined.sct <- IntegrateData(anchorset = anchors, normalization.method = "SCT")
+obj.combined.sct <- IntegrateData(anchorset = anchors, normalization.method = "SCT", features.to.integrate = common.features)
 
 ```
 
@@ -83,9 +83,30 @@ obj.combined.sct <- FindClusters(obj.combined.sct, resolution = 1, algorithm = 4
 
 DimPlot(obj.combined.sct, reduction = "umap", group.by = "dataset", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 DimPlot(obj.combined.sct, reduction = "umap", group.by = "subclass", split.by = "dataset", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
-DimPlot(obj.combined.sct, reduction = "umap", group.by = "type", split.by = "dataset", label = TRUE, raster = FALSE, label.size = 1) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
-DimPlot(obj.combined.sct, reduction = "umap", group.by = "RNA_snn_res.1", split.by = "dataset", label = TRUE, raster = FALSE, label.size = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+# DimPlot(obj.combined.sct, reduction = "umap", group.by = "type", split.by = "dataset", label = TRUE, raster = FALSE, label.size = 1) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+# DimPlot(obj.combined.sct, reduction = "umap", group.by = "RNA_snn_res.1", split.by = "dataset", label = TRUE, raster = FALSE, label.size = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 DimPlot(obj.combined.sct, reduction = "umap", group.by = "integrated_snn_res.1", split.by = "dataset", label = TRUE, raster = FALSE, label.size = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.combined.sct.mrk <- PrepSCTFindMarkers(obj.combined.sct, assay = "SCT", verbose = TRUE)
+
+```
+
+
+```{r}
+
+FeaturePlot(obj.combined.sct.mrk, reduction = "umap", features = c("Sncg"), split.by = "dataset", raster = FALSE, min.cutoff = 0, max.cutoff = 5) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+FeaturePlot(obj.list[["Opossum_M1"]], reduction = "umap", features = c("Sncg"), raster = FALSE, min.cutoff = 0, max.cutoff = 5) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 
 ```
 
