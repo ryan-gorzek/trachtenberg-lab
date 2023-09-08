@@ -1,0 +1,148 @@
+---
+title: "Tree Shrew M1 GABAergic SCT"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+obj.mouse.gabaergic <- LoadH5Seurat("E:/Mouse_M1/seurat/mouse_m1_gabaergic.h5Seurat")
+obj.treeshrew.gabaergic <- LoadH5Seurat("E:/Tree_Shrew_M1/seurat/treeshrew_m1_gabaergic.h5Seurat")
+
+common.features <- intersect(rownames(obj.mouse.gabaergic), rownames(obj.treeshrew.gabaergic))
+obj.treeshrew.gabaergic <- obj.treeshrew.gabaergic[common.features,]
+
+```
+
+
+```{r}
+
+obj.treeshrew.gabaergic.list <- SplitObject(obj.treeshrew.gabaergic, split.by = "sample")
+
+for (sample in names(obj.treeshrew.gabaergic.list)) {
+  obj.treeshrew.gabaergic.list[[sample]] <- SCTransform(obj.treeshrew.gabaergic.list[[sample]], vst.flavor = "v2", verbose = FALSE) %>%
+    RunPCA(npcs = 30, verbose = FALSE)
+}
+
+```
+
+
+```{r}
+
+features <- SelectIntegrationFeatures(object.list = obj.treeshrew.gabaergic.list, nfeatures = 3000)
+obj.treeshrew.gabaergic.list <- PrepSCTIntegration(object.list = obj.treeshrew.gabaergic.list, anchor.features = features)
+obj.treeshrew.gabaergic.anchors <- FindIntegrationAnchors(object.list = obj.treeshrew.gabaergic.list, normalization.method = "SCT", anchor.features = features)
+obj.treeshrew.gabaergic.sct <- IntegrateData(anchorset = obj.treeshrew.gabaergic.anchors, normalization.method = "SCT", features.to.integrate = rownames(obj.treeshrew.gabaergic))
+
+```
+
+
+```{r}
+
+obj.treeshrew.gabaergic.sct <- RunPCA(obj.treeshrew.gabaergic.sct, verbose = FALSE)
+obj.treeshrew.gabaergic.sct <- RunUMAP(obj.treeshrew.gabaergic.sct, dims = 1:30, method = "umap-learn", reduction = "pca")
+obj.treeshrew.gabaergic.sct <- FindNeighbors(obj.treeshrew.gabaergic.sct, reduction = "pca", dims = 1:30)
+obj.treeshrew.gabaergic.sct <- FindClusters(obj.treeshrew.gabaergic.sct, resolution = 1, algorithm = 4, method = "igraph")
+
+```
+
+
+```{r}
+
+DimPlot(obj.treeshrew.gabaergic.sct, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.treeshrew.gabaergic.sct, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.gabaergic.sct, "nFeature_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.gabaergic.sct, "nCount_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.treeshrew.gabaergic.sct, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+library(tidyverse)
+
+cluster.sample <- table(obj.treeshrew.gabaergic.sct$sample, obj.treeshrew.gabaergic.sct$integrated_snn_res.1) %>%
+  as.data.frame.matrix() %>%
+  rownames_to_column(var = "sample")
+cluster.sample[-1] <- lapply(cluster.sample[-1], function(x) x/sum(x))
+cluster.sample <- cluster.sample %>%
+  pivot_longer(
+    cols = -c("sample"),
+    names_to = "cluster",
+    values_to = "count"
+  )
+cluster.sample$cluster <- factor(cluster.sample$cluster, levels = unique(cluster.sample$cluster))
+  ggplot(cluster.sample, aes(x=cluster, y=count, fill=sample)) +
+    geom_bar(stat="identity") +
+    scale_fill_brewer(palette = "Set3") +
+    theme_minimal()
+
+```
+
+
+```{r}
+
+Idents(obj.treeshrew.gabaergic.sct) <- "integrated_snn_res.1"
+obj.treeshrew.gabaergic.sct <- subset(obj.treeshrew.gabaergic.sct, idents = c("5", "12", "21"), invert = TRUE)
+
+```
+
+
+```{r}
+
+FeaturePlot(obj.treeshrew.gabaergic.sct, reduction = "umap", features = c("Sst"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.gabaergic.sct, reduction = "umap", features = c("Pvalb"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.gabaergic.sct, reduction = "umap", features = c("Vip"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.gabaergic.sct, reduction = "umap", features = c("Lamp5"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+# FeaturePlot(obj.treeshrew.gabaergic.sct, reduction = "umap", features = c("Sncg"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.gabaergic.sct, reduction = "umap", features = c("Meis2"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.gabaergic.sct, reduction = "umap", features = c("Chodl"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.gabaergic.sct, reduction = "umap", features = c("Lhx6"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.treeshrew.gabaergic) <- "RNA_snn_res.1"
+
+cells.pv <- WhichCells(obj.treeshrew.gabaergic, ident = c("2", "4", "5", "6", "10", "11", "14", "16"))
+obj.treeshrew.gabaergic$subclass <- ifelse(colnames(obj.treeshrew.gabaergic) %in% cells.pv, "Pvalb", "ambiguous")
+
+cells.sst <- WhichCells(obj.treeshrew.gabaergic, ident = c("3", "7", "8", "12", "19"))
+obj.treeshrew.gabaergic$subclass[cells.sst] <- "Sst"
+
+cells.vip <- WhichCells(obj.treeshrew.gabaergic, ident = c("1", "18"))
+obj.treeshrew.gabaergic$subclass[cells.vip] <- "Vip"
+
+cells.lamp5 <- WhichCells(obj.treeshrew.gabaergic, ident = c("9", "20"))
+obj.treeshrew.gabaergic$subclass[cells.lamp5] <- "Lamp5"
+
+Idents(obj.treeshrew.gabaergic) <- "subclass"
+obj.treeshrew.gabaergic <- subset(obj.treeshrew.gabaergic, subset = subclass != "ambiguous")
+
+```
+
+
+```{r}
+
+DimPlot(obj.treeshrew.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.treeshrew.gabaergic, reduction = "umap", group.by = "subclass", raster = FALSE) + xlim(-15, 12) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+# Idents(obj.treeshrew.gabaergic) <- "subclass"
+obj.treeshrew.gabaergic.sct$ts_integrated_snn_res.1 <- obj.treeshrew.gabaergic.sct$integrated_snn_res.1
+SaveH5Seurat(obj.treeshrew.gabaergic.sct, "E:/Tree_Shrew_M1/seurat/treeshrew_m1_gabaergic_sct.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

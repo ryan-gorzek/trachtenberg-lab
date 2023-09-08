@@ -69,7 +69,7 @@ DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "RNA_snn_res.3", l
 
 Idents(obj.opossum.gabaergic) <- "subclass"
 obj.opossum.gabaergic.sst <- subset(obj.opossum.gabaergic, idents = "Sst")
-Idents(obj.opossum.gabaergic.sst) <- "RNA_snn_res.1.5"
+Idents(obj.opossum.gabaergic.sst) <- "RNA_snn_res.1"
 all.markers.sst <- FindAllMarkers(obj.opossum.gabaergic.sst, only.pos = TRUE)
 
 ```
@@ -77,8 +77,9 @@ all.markers.sst <- FindAllMarkers(obj.opossum.gabaergic.sst, only.pos = TRUE)
 
 ```{r}
 
-DimPlot(obj.opossum.gabaergic.sst, reduction = "umap", group.by = "RNA_snn_res.1.5", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-4, 12) + ylim(-12, 4) + coord_equal()
-FeaturePlot(obj.opossum.gabaergic.sst, "Chodl")  + xlim(-4, 12) + ylim(-12, 4) + coord_equal()
+DimPlot(obj.opossum.gabaergic.sst, reduction = "umap", group.by = "RNA_snn_res.1", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-4, 12) + ylim(-12, 4) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.sst, c("", "Nwd2"))  + xlim(-4, 12) + ylim(-12, 4) + coord_equal()
+VlnPlot(obj.opossum.gabaergic.sst, "Nwd2", group.by = "RNA_snn_res.1")
 
 ```
 

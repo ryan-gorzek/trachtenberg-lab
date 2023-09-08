@@ -1,0 +1,97 @@
+---
+title: "Tree Shrew M1 GABAergic"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+obj.treeshrew.gabaergic <- LoadH5Seurat("E:/Tree_Shrew_M1/seurat/treeshrew_m1_gabaergic.h5Seurat")
+
+```
+
+
+```{r}
+
+obj.treeshrew.gabaergic <- FindVariableFeatures(obj.treeshrew.gabaergic, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.treeshrew.gabaergic)
+obj.treeshrew.gabaergic <- ScaleData(obj.treeshrew.gabaergic, features = all.genes)
+obj.treeshrew.gabaergic <- RunPCA(obj.treeshrew.gabaergic, features = VariableFeatures(object = obj.treeshrew.gabaergic))
+ElbowPlot(obj.treeshrew.gabaergic, ndims = 50)
+
+```
+
+
+```{r}
+
+obj.treeshrew.gabaergic <- FindNeighbors(obj.treeshrew.gabaergic, dims = 1:30)
+obj.treeshrew.gabaergic <- FindClusters(obj.treeshrew.gabaergic, resolution = 1, algorithm = 4, method = "igraph")
+obj.treeshrew.gabaergic <- RunUMAP(obj.treeshrew.gabaergic, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+DimPlot(obj.treeshrew.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.treeshrew.gabaergic, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.treeshrew.gabaergic, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+FeaturePlot(obj.treeshrew.gabaergic, reduction = "umap", features = c("Sst"), max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.gabaergic, reduction = "umap", features = c("Pvalb"), max.cutoff = 5) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.gabaergic, reduction = "umap", features = c("Vip"), max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.gabaergic, reduction = "umap", features = c("Lamp5"), max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.gabaergic, reduction = "umap", features = c("Sncg"), max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.gabaergic, reduction = "umap", features = c("Meis2"), max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.gabaergic, reduction = "umap", features = c("Chodl"), max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.treeshrew.gabaergic) <- "RNA_snn_res.1"
+
+cells.pv <- WhichCells(obj.treeshrew.gabaergic, ident = c("2", "4", "5", "6", "10", "11", "14", "16"))
+obj.treeshrew.gabaergic$subclass <- ifelse(colnames(obj.treeshrew.gabaergic) %in% cells.pv, "Pvalb", "ambiguous")
+
+cells.sst <- WhichCells(obj.treeshrew.gabaergic, ident = c("3", "7", "8", "12", "19"))
+obj.treeshrew.gabaergic$subclass[cells.sst] <- "Sst"
+
+cells.vip <- WhichCells(obj.treeshrew.gabaergic, ident = c("1", "18"))
+obj.treeshrew.gabaergic$subclass[cells.vip] <- "Vip"
+
+cells.lamp5 <- WhichCells(obj.treeshrew.gabaergic, ident = c("9", "20"))
+obj.treeshrew.gabaergic$subclass[cells.lamp5] <- "Lamp5"
+
+Idents(obj.treeshrew.gabaergic) <- "subclass"
+obj.treeshrew.gabaergic <- subset(obj.treeshrew.gabaergic, subset = subclass != "ambiguous")
+
+```
+
+
+```{r}
+
+DimPlot(obj.treeshrew.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.treeshrew.gabaergic, reduction = "umap", group.by = "subclass", raster = FALSE) + xlim(-15, 12) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.treeshrew.gabaergic) <- "subclass"
+SaveH5Seurat(obj.treeshrew.gabaergic, "E:/Tree_Shrew_M1/seurat/treeshrew_m1_gabaergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+
