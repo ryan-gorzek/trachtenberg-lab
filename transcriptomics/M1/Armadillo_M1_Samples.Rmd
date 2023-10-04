@@ -1,0 +1,173 @@
+---
+title: "Armadillo Pull GABAergic"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+library(data.table)
+
+data_path <- "E:/Armadillo_M1/output/"
+
+sample_IDs <- c("NW_TX0042-3", "NW_TX0043-7", "NW_TX0043-9", "NW_TX0043-10", 
+                "NW_TX0044-7", "NW_TX0044-8", "NW_TX0044-9", "NW_TX0064-2",
+                "NW_TX0072-10", "NW_TX0073-7", "NW_TX0073-8", "NW_TX0073-9")
+
+objs <- c()
+
+for (sample in sample_IDs) {
+  
+  temp.obj.path <- paste(data_path, sample, "/outs/filtered_feature_bc_matrix/", sep = "")
+  temp.obj.data <- Read10X(temp.obj.path)
+  temp.obj <- CreateSeuratObject(counts = temp.obj.data, project = "Armadillo_M1")
+  temp.obj$sample <- sample
+  temp.obj <- scrublet_R(seurat_obj = temp.obj)
+  objs <- append(objs, temp.obj)
+  
+}
+
+```
+
+
+```{r}
+
+objs.gabaergic = c()
+
+```
+
+
+```{r}
+
+obj.armadillo <- objs[[12]] # done : 1, 2, 3, 4, 5, 6, 7, 8, 9, x10, 11, 
+
+```
+
+
+```{r}
+
+cell_mask <- Reduce(intersect,list(WhichCells(obj.armadillo, expression = nFeature_RNA > 700), 
+                                   WhichCells(obj.armadillo, expression = nFeature_RNA < 6500),
+                                   WhichCells(obj.armadillo, expression = nCount_RNA < 40000)))
+
+gene_mask <- rownames(obj.armadillo)[Matrix::rowSums(obj.armadillo[["RNA"]]@counts > 0) > 8]
+
+obj.armadillo <- subset(obj.armadillo, features = gene_mask, cells = cell_mask)
+
+```
+
+
+```{r}
+
+obj.armadillo <- NormalizeData(obj.armadillo, normalization.method = "LogNormalize", scale.factor = 10000)
+obj.armadillo <- FindVariableFeatures(obj.armadillo, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.armadillo)
+obj.armadillo <- ScaleData(obj.armadillo, features = all.genes)
+obj.armadillo <- RunPCA(obj.armadillo, features = VariableFeatures(object = obj.armadillo))
+obj.armadillo <- FindNeighbors(obj.armadillo, dims = 1:30)
+obj.armadillo <- FindClusters(obj.armadillo, resolution = 1, algorithm = 4, method = "igraph")
+obj.armadillo <- RunUMAP(obj.armadillo, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+DimPlot(obj.armadillo, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-25, 25) + ylim(-25, 25) + coord_equal()
+FeaturePlot(obj.armadillo, "nFeature_RNA", raster = FALSE) + xlim(-25, 25) + ylim(-25, 25) + coord_equal()
+FeaturePlot(obj.armadillo, "nCount_RNA", raster = FALSE) + xlim(-25, 25) + ylim(-25, 25) + coord_equal()
+DimPlot(obj.armadillo, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-25, 25) + ylim(-25, 25) + coord_equal()
+
+```
+
+
+```{r}
+
+FeaturePlot(obj.armadillo, reduction = "umap", features = c("SLC17A6"), raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+FeaturePlot(obj.armadillo, reduction = "umap", features = c("GAD1"), raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+FeaturePlot(obj.armadillo, reduction = "umap", features = c("GAD2"), raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+FeaturePlot(obj.armadillo, reduction = "umap", features = c("AQP4"), raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+FeaturePlot(obj.armadillo, reduction = "umap", features = c("MOG"), raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+FeaturePlot(obj.armadillo, reduction = "umap", features = c("PDGFRA"), raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+FeaturePlot(obj.armadillo, reduction = "umap", features = c("CSF1R"), raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+
+FeaturePlot(obj.armadillo, reduction = "umap", features = c("PVALB"), raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+FeaturePlot(obj.armadillo, reduction = "umap", features = c("SST"), raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+FeaturePlot(obj.armadillo, reduction = "umap", features = c("VIP"), raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+FeaturePlot(obj.armadillo, reduction = "umap", features = c("LAMP5"), raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+FeaturePlot(obj.armadillo, reduction = "umap", features = c("SNCG"), raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.armadillo) <- "RNA_snn_res.1"
+obj.armadillo.gabaergic <- subset(obj.armadillo, idents = c("14", "16", "18"))
+objs.gabaergic <- append(objs.gabaergic, obj.armadillo.gabaergic)
+
+```
+
+
+```{r}
+
+obj.armadillo.gabaergic <- merge(objs.gabaergic[[1]], y = objs.gabaergic[2:10], add.cell.ids = sample_IDs[c(1, 2, 3, 4, 5, 6, 7, 8, 9, 11)], project = "Armadillo_M1")
+
+```
+
+
+```{r}
+
+genes.mapping <- read.csv("E:/Armadillo_Mouse_Genes.txt")
+genes.mapping.mouse <- as.list(genes.mapping$Mouse.gene.name)
+genes.mapping.armadillo <- as.list(genes.mapping$Gene.name)
+ids.mapping.armadillo <- as.list(genes.mapping$Gene.stable.ID)
+genes.armadillo = rownames(obj.armadillo.gabaergic)
+for (gene in genes.mapping.mouse) {
+  
+    idx.mouse <- which(genes.mapping.mouse %in% gene)
+
+    if (length(idx.mouse) == 1) {
+      
+      gene.armadillo <- genes.mapping.armadillo[idx.mouse]
+      id.armadillo <- ids.mapping.armadillo[idx.mouse]
+      
+      if (gene.armadillo == "") {
+        
+        idx.armadillo <- which(genes.armadillo %in% id.armadillo)
+        genes.armadillo[idx.armadillo] <- gene
+        
+      } else {
+        
+        idx.armadillo <- which(genes.armadillo %in% gene.armadillo)
+        genes.armadillo[idx.armadillo] <- gene
+        
+      }
+      
+    }
+  
+}
+
+```
+
+
+```{r}
+
+obj.df <- as.data.frame(as.matrix(obj.armadillo.gabaergic[["RNA"]]@counts))
+rownames(obj.df) <- genes.armadillo
+obj.armadillo.gabaergic <- CreateSeuratObject(counts = obj.df, meta.data = obj.armadillo.gabaergic[[]])
+
+```
+
+
+```{r}
+
+SaveH5Seurat(obj.armadillo.gabaergic, "E:/Armadillo_M1/seurat/armadillo_m1_gabaergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```

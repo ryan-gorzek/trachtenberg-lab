@@ -166,7 +166,7 @@ both.counts <- both.counts %>%
 
 ```{r, fig.height=3, fig.width=3.5}
 
-both.counts$species <- factor(both.counts$species, levels = c("Human", "Mouse", "Opossum"))
+both.counts$species <- factor(both.counts$species, levels = c("Opossum", "Mouse", "Human"))
 
 class.counts <- both.counts[both.counts$cell.identity %in% c("Glutamatergic", "GABAergic"), ]
 
@@ -177,10 +177,42 @@ ggplot(class.counts, aes(x = factor(cell.identity, level = c("Glutamatergic", "G
     scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1), expand = c(0, 0), limits = c(0, 1)) +
     guides(fill = guide_legend(override.aes = list(shape = NA))) +
     theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
-    labs(x = NULL, y = "Class Proportion", fill = NULL)
+    labs(x = NULL, y = "Class Proportion", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa", "Human" = "#f1c296"))
 
-# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_Class_Proportion.svg", plot=hmo_class, width=3.5, height=3)
-# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_Class_Proportion.png", plot=hmo_class, width=3.5, height=3)
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_Class_Proportion.svg", plot=hmo_class, width=3.5, height=3, dpi=500)
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_Class_Proportion.png", plot=hmo_class, width=3.5, height=3, dpi=500)
+
+```
+
+
+```{r}
+
+res.aov2 <- aov(fraction ~ species * cell.identity, data = class.counts)
+tukey <- TukeyHSD(res.aov2, which = "species:cell.identity")
+
+```
+
+
+```{r, fig.height=3, fig.width=5}
+
+both.counts$species <- factor(both.counts$species, levels = c("Opossum", "Mouse", "Human"))
+
+class.counts <- both.counts[both.counts$cell.identity %in% c("L2.3.IT", "L5.IT", "L6.IT", "L5.6.NP", "L5.ET", "L6.CT", "L6b"), ]
+
+ggplot(class.counts, aes(x = factor(cell.identity, level = c("L2.3.IT", "L5.IT", "L6.IT", "L5.6.NP", "L5.ET", "L6.CT", "L6b")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("L2.3.IT", "L5.IT", "L6.IT", "L5.6.NP", "L5.ET", "L6.CT", "L6b")) +
+    scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75), expand = c(0, 0), limits = c(0, 0.751)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "Fraction of Glutamatergic Cells", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa", "Human" = "#f1c296"))
+  
+
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_Glutamatergic_Subclass_Proportion.svg", plot=hmo_gabaergic, width=4.5, height=3, dpi=500)
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_Glutamatergic_Subclass_Proportion.png", plot=hmo_gabaergic, width=4.5, height=3, dpi=500)
 
 ```
 
@@ -202,7 +234,7 @@ hmo_gabaergic <- ggplot(class.counts, aes(x = factor(cell.identity, level = c("P
     scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa", "Human" = "#f1c296"))
   
 
-# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_GABAergic_Subclass_Proportion.svg", plot=hmo_gabaergic, width=4.5, height=3, dpi=500)
+ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_GABAergic_Subclass_Proportion.svg", plot=hmo_gabaergic, width=4.5, height=3, dpi=500)
 ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_GABAergic_Subclass_Proportion.png", plot=hmo_gabaergic, width=4.5, height=3, dpi=500)
 
 ```
@@ -279,21 +311,19 @@ ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/CGE_PV_Ratio.png",
 
 ```{r, fig.height=3, fig.width=3.8}
 
-# both.counts <- both.counts[both.counts$cell.identity == c("Pvalb_CGE", "CGE_Pvalb"),]
-# both.counts <- both.counts %>%
-#   mutate(cell.identity = recode(cell.identity, `Pvalb_CGE` = "Pvalb", `CGE_Pvalb` = "CGE"))
+both.counts <- both.counts[both.counts$cell.identity == c("Pvalb_CGE", "CGE_Pvalb"),]
+both.counts <- both.counts %>%
+  mutate(cell.identity = recode(cell.identity, `Pvalb_CGE` = "Pvalb", `CGE_Pvalb` = "CGE"))
 
 cge_pv_fraction <- ggplot(both.counts, aes(x = species, y = fraction, fill = cell.identity)) +
   geom_bar(stat = "summary", fun = "mean", position = "stack", width = 0.75) +
-  # geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
-  # scale_x_continuous(breaks = c(0), expand = c(0, 0), limits = c(-0.2, 0.2)) +
   scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1), expand = c(0, 0), limits = c(0, 1)) +
   guides(fill = guide_legend(override.aes = list(shape = NA))) +
   theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
   labs(x = NULL, y = "Fraction", fill = NULL) +
   scale_fill_manual(values = c("#9db1d2", "#315867"))
 
-# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/CGE_PV_Fraction.svg", plot=cge_pv_fraction, width=3.5, height=3)
+ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_CGE_PV_Fraction.svg", plot=cge_pv_fraction, width=3.5, height=3, dpi=500)
 ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_CGE_PV_Fraction.png", plot=cge_pv_fraction, width=3.8, height=3, dpi=500)
 
 ```

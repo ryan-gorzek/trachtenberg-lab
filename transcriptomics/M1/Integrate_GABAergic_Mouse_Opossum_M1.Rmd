@@ -14,13 +14,13 @@ library(dplyr)
 library(SeuratDisk)
 library(lisi)
 
-obj.mouse <- LoadH5Seurat("E:/Mouse_M1/seurat/mouse_m1_gabaergic.h5seurat")
-obj.mouse$dataset <- "Mouse_M1"
-# obj.mouse[["subclass"]] <- paste0(obj.mouse$subclass_label, " Mouse")
+obj.mouse.full <- LoadH5Seurat("E:/Mouse_M1/seurat/mouse_m1_gabaergic.h5seurat")
+obj.mouse.full$dataset <- "Mouse_M1"
 
 obj.opossum <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic_sct.h5seurat")
 obj.opossum$dataset <- "Opossum_M1"
-# obj.opossum[["subclass"]] <- paste0(obj.opossum$subclass, " Opossum")
+
+obj.mouse <- obj.mouse.full[, sample(colnames(obj.mouse.full), size = ncol(obj.opossum), replace = FALSE)]
 
 ```
 
@@ -82,7 +82,7 @@ obj.combined.sct <- FindClusters(obj.combined.sct, resolution = 1, algorithm = 4
 ```{r}
 
 DimPlot(obj.combined.sct, reduction = "umap", group.by = "dataset", raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
-DimPlot(obj.combined.sct, reduction = "umap", group.by = "op_integrated_snn_res.1", raster = FALSE, label = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined.sct, reduction = "umap", group.by = "SCT_snn_res.1", split.by = "dataset", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 # DimPlot(obj.combined.sct, reduction = "umap", group.by = "subclass", split.by = "dataset", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 # DimPlot(obj.combined.sct, reduction = "umap", group.by = "type", split.by = "dataset", label = TRUE, raster = FALSE, label.size = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 

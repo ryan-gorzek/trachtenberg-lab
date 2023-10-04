@@ -46,8 +46,35 @@ obj.opossum.glutamatergic$type <- NA
 
 ```{r}
 
-DimPlot(obj.opossum.glutamatergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-17, 13) + ylim(-18, 12) + coord_equal()
-DimPlot(obj.opossum.glutamatergic, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-17, 13) + ylim(-18, 12) + coord_equal()
+DimPlot(obj.opossum.glutamatergic, reduction = "umap", group.by = "RNA_snn_res.1", label = TRUE, raster = FALSE) + NoLegend() + xlim(-17, 13) + ylim(-18, 12) + coord_equal()
+DimPlot(obj.opossum.glutamatergic, reduction = "umap", group.by = "sample", raster = FALSE, shuffle = TRUE) + xlim(-17, 13) + ylim(-18, 12) + coord_equal()
+FeaturePlot(obj.opossum.glutamatergic, "nCount_RNA", min.cutoff = 0, max.cutoff = 20000) + xlim(-17, 13) + ylim(-18, 12) + coord_equal()
+FeaturePlot(obj.opossum.glutamatergic, "nFeature_RNA", min.cutoff = 0, max.cutoff = 6500) + xlim(-17, 13) + ylim(-18, 12) + coord_equal()
+VlnPlot(obj.opossum.glutamatergic, group.by = "RNA_snn_res.1", "nCount_RNA") + ylim(0, 40000)
+VlnPlot(obj.opossum.glutamatergic, group.by = "RNA_snn_res.1", "nFeature_RNA") + ylim(0, 6500)
+
+```
+
+
+```{r}
+
+all.markers.3 <- FindMarkers(obj.opossum.glutamatergic, ident.1 = "3")
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.glutamatergic) <- "RNA_snn_res.1"
+obj.opossum.glutamatergic.l23 <- subset(obj.opossum.glutamatergic, idents = c("1", "3", "13"))
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.glutamatergic.l23) <- "RNA_snn_res.0.5"
+all.markers.l23 <- FindAllMarkers(obj.opossum.glutamatergic.l23)
 
 ```
 
@@ -55,13 +82,18 @@ DimPlot(obj.opossum.glutamatergic, reduction = "umap", group.by = "sample", rast
 ```{r}
 
 FeaturePlot(obj.opossum.glutamatergic, "Cux2") + xlim(-17, 13) + ylim(-18, 12) + coord_equal()
+VlnPlot(obj.opossum.glutamatergic, "Cux2", group.by = "RNA_snn_res.1")
 FeaturePlot(obj.opossum.glutamatergic, "Rorb") + xlim(-17, 13) + ylim(-18, 12) + coord_equal()
-FeaturePlot(obj.opossum.glutamatergic, "Rspo1") + xlim(-17, 13) + ylim(-18, 12) + coord_equal()
-FeaturePlot(obj.opossum.glutamatergic, "Deptor") + xlim(-17, 13) + ylim(-18, 12) + coord_equal()
-FeaturePlot(obj.opossum.glutamatergic, "Foxo1") + xlim(-17, 13) + ylim(-18, 12) + coord_equal()
-FeaturePlot(obj.opossum.glutamatergic, "Ptprm") + xlim(-17, 13) + ylim(-18, 12) + coord_equal()
-FeaturePlot(obj.opossum.glutamatergic, "Zfp804b") + xlim(-17, 13) + ylim(-18, 12) + coord_equal()
-FeaturePlot(obj.opossum.glutamatergic, "Cdh9") + xlim(-17, 13) + ylim(-18, 12) + coord_equal()
+VlnPlot(obj.opossum.glutamatergic, "Rorb", group.by = "RNA_snn_res.1")
+FeaturePlot(obj.opossum.glutamatergic, "Foxp2") + xlim(-17, 13) + ylim(-18, 12) + coord_equal()
+VlnPlot(obj.opossum.glutamatergic, "Foxp2", group.by = "RNA_snn_res.1")
+
+# FeaturePlot(obj.opossum.glutamatergic, "Rspo1") + xlim(-17, 13) + ylim(-18, 12) + coord_equal()
+# FeaturePlot(obj.opossum.glutamatergic, "Deptor") + xlim(-17, 13) + ylim(-18, 12) + coord_equal()
+# FeaturePlot(obj.opossum.glutamatergic, "Foxo1") + xlim(-17, 13) + ylim(-18, 12) + coord_equal()
+# FeaturePlot(obj.opossum.glutamatergic, "Ptprm") + xlim(-17, 13) + ylim(-18, 12) + coord_equal()
+# FeaturePlot(obj.opossum.glutamatergic, "Zfp804b") + xlim(-17, 13) + ylim(-18, 12) + coord_equal()
+# FeaturePlot(obj.opossum.glutamatergic, "Cdh9") + xlim(-17, 13) + ylim(-18, 12) + coord_equal()
 
 ```
 
@@ -142,7 +174,7 @@ DimPlot(obj.opossum.glutamatergic, reduction = "umap", group.by = "subclass", la
 
 Idents(obj.opossum.glutamatergic) <- "subclass"
 obj.opossum.glutamatergic.l23it <- subset(obj.opossum.glutamatergic, idents = "L2/3 IT")
-Idents(obj.opossum.glutamatergic.l23it) <- "RNA_snn_res.0.5"
+Idents(obj.opossum.glutamatergic.l23it) <- "RNA_snn_res.1"
 all.markers.l23it <- FindAllMarkers(obj.opossum.glutamatergic.l23it, only.pos = TRUE)
 
 ```
@@ -150,9 +182,14 @@ all.markers.l23it <- FindAllMarkers(obj.opossum.glutamatergic.l23it, only.pos = 
 
 ```{r}
 
-DimPlot(obj.opossum.glutamatergic.l23it, reduction = "umap", group.by = "RNA_snn_res.0.5", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-4, 10) + ylim(0, 14) + coord_equal()
-FeaturePlot(obj.opossum.glutamatergic.l23it, "Snx32")  + xlim(-4, 10) + ylim(0, 14) + coord_equal()
-VlnPlot(obj.opossum.glutamatergic.l23it, "Snx32", group.by = "RNA_snn_res.0.5")
+DimPlot(obj.opossum.glutamatergic.l23it, reduction = "umap", group.by = "RNA_snn_res.1", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-4, 10) + ylim(-4, 10) + coord_equal()
+DimPlot(obj.opossum.glutamatergic.l23it, reduction = "umap", group.by = "sample", label.size = 4, raster = FALSE) + xlim(-4, 10) + ylim(-4, 10) + coord_equal()
+FeaturePlot(obj.opossum.glutamatergic.l23it, "nFeature_RNA", min.cutoff = 0)  + xlim(-4, 10) + ylim(-4, 10) + coord_equal()
+FeaturePlot(obj.opossum.glutamatergic.l23it, "nCount_RNA", min.cutoff = 0)  + xlim(-4, 10) + ylim(-4, 10) + coord_equal()
+FeaturePlot(obj.opossum.glutamatergic.l23it, "Ptpn7")  + xlim(-4, 10) + ylim(-4, 10) + coord_equal()
+VlnPlot(obj.opossum.glutamatergic.l23it, "nFeature_RNA", group.by = "RNA_snn_res.1")
+VlnPlot(obj.opossum.glutamatergic.l23it, "nCount_RNA", group.by = "RNA_snn_res.1") + ylim(c(0, 10000))
+VlnPlot(obj.opossum.glutamatergic.l23it, "Ptpn7", group.by = "RNA_snn_res.1")
 
 ```
 

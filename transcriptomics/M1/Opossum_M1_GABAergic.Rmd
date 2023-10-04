@@ -38,40 +38,85 @@ obj.opossum.gabaergic <- RunUMAP(obj.opossum.gabaergic, dims = 1:30, method="uma
 
 ```{r}
 
-DimPlot(obj.opossum.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-15, 12) + ylim(-15, 15) + coord_equal()
-DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "sample", raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, "nFeature_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, "nCount_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+VlnPlot(obj.opossum.gabaergic, "nCount_RNA")
 
 ```
 
 
 ```{r}
 
-FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Sst")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Pvalb")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Vip")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Lamp5")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Sncg")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Meis2")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chodl")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-
-```
-
-
-```{r}
-
+obj.opossum.gabaergic$subclass <- NA
 Idents(obj.opossum.gabaergic) <- "RNA_snn_res.1"
+obj.opossum.gabaergic <- subset(obj.opossum.gabaergic, idents = c("10", "13", "16", "17"), invert = TRUE)
 
-cells.pv <- WhichCells(obj.opossum.gabaergic, ident = c("2", "4", "5", "6", "10", "11", "14", "16"))
+```
+
+
+```{r}
+
+obj.opossum.gabaergic <- FindVariableFeatures(obj.opossum.gabaergic, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.opossum.gabaergic)
+obj.opossum.gabaergic <- ScaleData(obj.opossum.gabaergic, features = all.genes)
+obj.opossum.gabaergic <- RunPCA(obj.opossum.gabaergic, features = VariableFeatures(object = obj.opossum.gabaergic))
+ElbowPlot(obj.opossum.gabaergic, ndims = 50)
+
+```
+
+
+```{r}
+
+obj.opossum.gabaergic <- FindNeighbors(obj.opossum.gabaergic, dims = 1:30)
+obj.opossum.gabaergic <- FindClusters(obj.opossum.gabaergic, resolution = 1.1, algorithm = 4, method = "igraph")
+obj.opossum.gabaergic <- RunUMAP(obj.opossum.gabaergic, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "RNA_snn_res.1.1", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "sample", raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, "nCount_RNA", min.cutoff = 0, max.cutoff = 20000) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, "nFeature_RNA", min.cutoff = 0, max.cutoff = 6500) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+VlnPlot(obj.opossum.gabaergic, group.by = "RNA_snn_res.1", "nCount_RNA") + ylim(0, 40000)
+VlnPlot(obj.opossum.gabaergic, group.by = "RNA_snn_res.1", "nFeature_RNA") + ylim(0, 6500)
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Sst")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Pvalb")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Vip")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Lamp5")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Sncg")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Meis2")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chodl")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.gabaergic) <- "RNA_snn_res.1.1"
+
+cells.pv <- WhichCells(obj.opossum.gabaergic, ident = c("1", "4", "6", "7", "8", "9", "14"))
 obj.opossum.gabaergic$subclass <- ifelse(colnames(obj.opossum.gabaergic) %in% cells.pv, "Pvalb", "ambiguous")
 
-cells.sst <- WhichCells(obj.opossum.gabaergic, ident = c("3", "7", "8", "12", "19"))
+cells.sst <- WhichCells(obj.opossum.gabaergic, ident = c("2", "5", "11", "12", "15", "17"))
 obj.opossum.gabaergic$subclass[cells.sst] <- "Sst"
 
-cells.vip <- WhichCells(obj.opossum.gabaergic, ident = c("1", "18"))
+cells.vip <- WhichCells(obj.opossum.gabaergic, ident = c("3", "13", "16"))
 obj.opossum.gabaergic$subclass[cells.vip] <- "Vip"
 
-cells.lamp5 <- WhichCells(obj.opossum.gabaergic, ident = c("9", "20"))
+cells.lamp5 <- WhichCells(obj.opossum.gabaergic, ident = c("10", "18"))
 obj.opossum.gabaergic$subclass[cells.lamp5] <- "Lamp5"
 
 Idents(obj.opossum.gabaergic) <- "subclass"
@@ -82,8 +127,8 @@ obj.opossum.gabaergic <- subset(obj.opossum.gabaergic, subset = subclass != "amb
 
 ```{r}
 
-DimPlot(obj.opossum.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "subclass", raster = FALSE) + xlim(-15, 12) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "subclass", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 
 ```
 

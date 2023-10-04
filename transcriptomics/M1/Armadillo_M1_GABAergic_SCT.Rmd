@@ -1,0 +1,155 @@
+---
+title: "Armadillo M1 GABAergic SCT"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+
+obj.armadillo.gabaergic.sct <- LoadH5Seurat("E:/Armadillo_M1/seurat/armadillo_m1_gabaergic_sct.h5Seurat")
+
+```
+
+
+```{r}
+
+obj.armadillo.gabaergic.list <- SplitObject(obj.armadillo.gabaergic, split.by = "sample")
+
+for (sample in names(obj.armadillo.gabaergic.list)) {
+  obj.armadillo.gabaergic.list[[sample]] <- SCTransform(obj.armadillo.gabaergic.list[[sample]], vst.flavor = "v2", verbose = FALSE) %>%
+    RunPCA(npcs = 30, verbose = FALSE)
+}
+
+```
+
+
+```{r}
+
+features <- SelectIntegrationFeatures(object.list = obj.armadillo.gabaergic.list, nfeatures = 3000)
+obj.armadillo.gabaergic.list <- PrepSCTIntegration(object.list = obj.armadillo.gabaergic.list, anchor.features = features)
+obj.armadillo.gabaergic.anchors <- FindIntegrationAnchors(object.list = obj.armadillo.gabaergic.list, normalization.method = "SCT", anchor.features = features)
+obj.armadillo.gabaergic.sct <- IntegrateData(anchorset = obj.armadillo.gabaergic.anchors, normalization.method = "SCT") # , features.to.integrate = all.genes
+
+```
+
+
+```{r}
+
+obj.armadillo.gabaergic.sct <- RunPCA(obj.armadillo.gabaergic.sct, verbose = FALSE)
+obj.armadillo.gabaergic.sct <- RunUMAP(obj.armadillo.gabaergic.sct, dims = 1:30, method = "umap-learn", reduction = "pca")
+obj.armadillo.gabaergic.sct <- FindNeighbors(obj.armadillo.gabaergic.sct, reduction = "pca", dims = 1:30)
+obj.armadillo.gabaergic.sct <- FindClusters(obj.armadillo.gabaergic.sct, resolution = 1, algorithm = 4, method = "igraph")
+
+```
+
+
+```{r}
+
+DimPlot(obj.armadillo.gabaergic.sct, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.armadillo.gabaergic.sct, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sct, "nFeature_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sct, "nCount_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.armadillo.gabaergic.sct, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+library(tidyverse)
+
+cluster.sample <- table(obj.armadillo.gabaergic.sct$sample, obj.armadillo.gabaergic.sct$integrated_snn_res.1) %>%
+  as.data.frame.matrix() %>%
+  rownames_to_column(var = "sample")
+cluster.sample[-1] <- lapply(cluster.sample[-1], function(x) x/sum(x))
+cluster.sample <- cluster.sample %>%
+  pivot_longer(
+    cols = -c("sample"),
+    names_to = "cluster",
+    values_to = "count"
+  )
+cluster.sample$cluster <- factor(cluster.sample$cluster, levels = unique(cluster.sample$cluster))
+  ggplot(cluster.sample, aes(x=cluster, y=count, fill=sample)) +
+    geom_bar(stat="identity") +
+    scale_fill_brewer(palette = "Set3") +
+    theme_minimal()
+
+```
+
+
+```{r}
+
+Idents(obj.armadillo.gabaergic.sct) <- "integrated_snn_res.1"
+obj.armadillo.gabaergic.sct <- subset(obj.armadillo.gabaergic.sct, idents = c("19", "26"), invert = TRUE)
+
+```
+
+
+```{r}
+
+DimPlot(obj.armadillo.gabaergic.sct, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sct, reduction = "umap", features = c("Sst"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sct, reduction = "umap", features = c("Pvalb"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sct, reduction = "umap", features = c("Vip"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sct, reduction = "umap", features = c("Lamp5"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+# FeaturePlot(obj.armadillo.gabaergic.sct, reduction = "umap", features = c("Sncg"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sct, reduction = "umap", features = c("Meis2"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sct, reduction = "umap", features = c("Chodl"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sct, reduction = "umap", features = c("Lhx6"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.armadillo.gabaergic.sct) <- "integrated_snn_res.1"
+
+cells.pv <- WhichCells(obj.armadillo.gabaergic.sct, ident = c("3", "7", "8", "10", "18", "20"))
+obj.armadillo.gabaergic.sct$subclass <- ifelse(colnames(obj.armadillo.gabaergic.sct) %in% cells.pv, "Pvalb", "ambiguous")
+
+cells.sst <- WhichCells(obj.armadillo.gabaergic.sct, ident = c("4", "5", "14", "16", "21", "23"))
+obj.armadillo.gabaergic.sct$subclass[cells.sst] <- "Sst"
+
+cells.vip <- WhichCells(obj.armadillo.gabaergic.sct, ident = c("1", "11", "22"))
+obj.armadillo.gabaergic.sct$subclass[cells.vip] <- "Vip"
+
+cells.lamp5 <- WhichCells(obj.armadillo.gabaergic.sct, ident = c("2", "6", "9", "13", "15", "17"))
+obj.armadillo.gabaergic.sct$subclass[cells.lamp5] <- "Lamp5"
+
+cells.meis2 <- WhichCells(obj.armadillo.gabaergic.sct, ident = c("24"))
+obj.armadillo.gabaergic.sct$subclass[cells.meis2] <- "Meis2"
+
+cells.12 <- WhichCells(obj.armadillo.gabaergic.sct, ident = c("12"))
+obj.armadillo.gabaergic.sct$subclass[cells.12] <- "12"
+
+cells.25 <- WhichCells(obj.armadillo.gabaergic.sct, ident = c("25"))
+obj.armadillo.gabaergic.sct$subclass[cells.25] <- "25"
+
+# Idents(obj.armadillo.gabaergic) <- "subclass"
+# obj.armadillo.gabaergic <- subset(obj.armadillo.gabaergic, subset = subclass != "ambiguous")
+
+```
+
+
+```{r}
+
+DimPlot(obj.armadillo.gabaergic.sct, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.armadillo.gabaergic.sct, reduction = "umap", group.by = "subclass", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+# Idents(obj.armadillo.gabaergic) <- "subclass"
+obj.armadillo.gabaergic.sct$ar_integrated_snn_res.1 <- obj.armadillo.gabaergic.sct$integrated_snn_res.1
+SaveH5Seurat(obj.armadillo.gabaergic.sct, "E:/Armadillo_M1/seurat/armadillo_m1_gabaergic_sct.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

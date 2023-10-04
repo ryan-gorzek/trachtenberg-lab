@@ -151,4 +151,3 @@ obj.opossum.gabaergic.sct$op_integrated_snn_res.1 <- obj.opossum.gabaergic.sct$i
 SaveH5Seurat(obj.opossum.gabaergic.sct, "E:/Opossum_M1/seurat/opossum_m1_gabaergic_sct_ext_rmv.h5seurat", overwrite = TRUE, verbose = TRUE)
 
 ```
-

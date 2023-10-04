@@ -11,6 +11,7 @@ library(arrow)
 library(ggplot2)
 library(dplyr)
 library(SeuratDisk)
+library(clustree)
 obj.mouse.gabaergic <- LoadH5Seurat("E:/Mouse_M1/seurat/mouse_m1_gabaergic.h5Seurat")
 
 ```
@@ -35,6 +36,13 @@ Idents(obj.mouse.gabaergic) <- "subclass"
 obj.mouse.gabaergic.sst <- subset(obj.mouse.gabaergic, idents = "Sst")
 Idents(obj.mouse.gabaergic.sst) <- "RNA_snn_res.2"
 all.markers.sst <- FindAllMarkers(obj.mouse.gabaergic.sst, only.pos = TRUE)
+
+```
+
+
+```{r}
+
+clustree(obj.mouse.gabaergic.sst, prefix = "RNA_snn_res.")
 
 ```
 

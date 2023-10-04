@@ -1,0 +1,312 @@
+---
+title: "Armadillo M1 GABAergic SCT Types"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+obj.armadillo.gabaergic <- LoadH5Seurat("E:/Armadillo_M1/seurat/armadillo_m1_gabaergic_sct.h5Seurat")
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.armadillo.gabaergic) <- "RNA"
+DimPlot(obj.armadillo.gabaergic, label = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.armadillo.gabaergic, group.by = "sample") + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic, "nCount_RNA") + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic, "Efcab6") + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+VlnPlot(obj.armadillo.gabaergic, "nCount_RNA")
+DefaultAssay(obj.armadillo.gabaergic) <- "integrated"
+
+```
+
+
+```{r}
+
+FeaturePlot(obj.armadillo.gabaergic, "Pvalb") + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic, "Sst") + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic, "Vip") + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic, "Lamp5") + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.armadillo.gabaergic <- FindClusters(obj.armadillo.gabaergic, resolution = 0.5, algorithm = 4, method = "igraph")
+obj.armadillo.gabaergic <- FindClusters(obj.armadillo.gabaergic, resolution = 0.7, algorithm = 4, method = "igraph")
+obj.armadillo.gabaergic <- FindClusters(obj.armadillo.gabaergic, resolution = 1, algorithm = 4, method = "igraph")
+obj.armadillo.gabaergic <- FindClusters(obj.armadillo.gabaergic, resolution = 1.5, algorithm = 4, method = "igraph")
+obj.armadillo.gabaergic <- FindClusters(obj.armadillo.gabaergic, resolution = 2, algorithm = 4, method = "igraph")
+obj.armadillo.gabaergic <- FindClusters(obj.armadillo.gabaergic, resolution = 2.5, algorithm = 4, method = "igraph")
+obj.armadillo.gabaergic <- FindClusters(obj.armadillo.gabaergic, resolution = 3, algorithm = 4, method = "igraph")
+obj.armadillo.gabaergic <- FindClusters(obj.armadillo.gabaergic, resolution = 3.5, algorithm = 4, method = "igraph")
+obj.armadillo.gabaergic <- FindClusters(obj.armadillo.gabaergic, resolution = 4, algorithm = 4, method = "igraph")
+obj.armadillo.gabaergic <- FindClusters(obj.armadillo.gabaergic, resolution = 4.5, algorithm = 4, method = "igraph")
+obj.armadillo.gabaergic <- FindClusters(obj.armadillo.gabaergic, resolution = 5, algorithm = 4, method = "igraph")
+
+```
+
+
+```{r}
+
+DimPlot(obj.armadillo.gabaergic, reduction = "umap", group.by = "subclass", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.armadillo.gabaergic, reduction = "umap", group.by = "type", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.armadillo.gabaergic, reduction = "umap", group.by = "SCT_snn_res.0.5", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.armadillo.gabaergic, reduction = "umap", group.by = "SCT_snn_res.0.7", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.armadillo.gabaergic, reduction = "umap", group.by = "SCT_snn_res.1", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.armadillo.gabaergic, reduction = "umap", group.by = "SCT_snn_res.1.5", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.armadillo.gabaergic, reduction = "umap", group.by = "SCT_snn_res.2", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.armadillo.gabaergic, reduction = "umap", group.by = "SCT_snn_res.3", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.armadillo.gabaergic, reduction = "umap", group.by = "SCT_snn_res.4", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.armadillo.gabaergic) <- "subclass"
+obj.armadillo.gabaergic.sst <- subset(obj.armadillo.gabaergic, idents = "Sst")
+Idents(obj.armadillo.gabaergic.sst) <- "RNA_snn_res.1.5"
+all.markers.sst <- FindAllMarkers(obj.armadillo.gabaergic.sst, only.pos = TRUE)
+
+```
+
+
+```{r}
+
+DimPlot(obj.armadillo.gabaergic.sst, reduction = "umap", group.by = "RNA_snn_res.1.5", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-5, 10) + ylim(-10, 5) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sst, "Cdh7")  + xlim(-5, 10) + ylim(-10, 5) + coord_equal()
+
+```
+
+
+```{r}
+
+# 2 -> Col8a1
+# 6 -> Ptpn7
+# 11 -> Vcan
+# 14 -> Plpp4
+# 17 -> Htr2a
+# 18 -> Nr2f2
+
+DimPlot(obj.armadillo.gabaergic.sst, reduction = "umap", group.by = "RNA_snn_res.1.5", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-5, 10) + ylim(-10, 5) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sst, c("Col8a1"))  + xlim(-5, 10) + ylim(-10, 5) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sst, c("Ptpn7"))  + xlim(-5, 10) + ylim(-10, 5) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sst, c("Vcan"))  + xlim(-5, 10) + ylim(-10, 5) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sst, c("Plpp4"))  + xlim(-5, 10) + ylim(-10, 5) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sst, c("Htr2a"))  + xlim(-5, 10) + ylim(-10, 5) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sst, c("Nr2f2"))  + xlim(-5, 10) + ylim(-10, 5) + coord_equal()
+
+```
+
+
+
+```{r}
+
+DimPlot(obj.armadillo.gabaergic.sst, reduction = "umap", group.by = "RNA_snn_res.1.5", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-5, 10) + ylim(-10, 5) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sst, c("Tac1"))  + xlim(-5, 10) + ylim(-10, 5) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sst, c("Calb2"))  + xlim(-5, 10) + ylim(-10, 5) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sst, c("Pdlim5"))  + xlim(-5, 10) + ylim(-10, 5) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sst, c("Necab1"))  + xlim(-5, 10) + ylim(-10, 5) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sst, c("Nr2f2"))  + xlim(-5, 10) + ylim(-10, 5) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sst, c("Chrna2"))  + xlim(-5, 10) + ylim(-10, 5) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sst, c("Sema3c"))  + xlim(-5, 10) + ylim(-10, 5) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sst, c("Hpse"))  + xlim(-5, 10) + ylim(-10, 5) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sst, c("Ndnf"))  + xlim(-5, 10) + ylim(-10, 5) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sst, c("Crh"))  + xlim(-5, 10) + ylim(-10, 5) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sst, c("Rxfp1"))  + xlim(-5, 10) + ylim(-10, 5) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sst, c("Esm1"))  + xlim(-5, 10) + ylim(-10, 5) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.sst, c("Nts"))  + xlim(-5, 10) + ylim(-10, 5) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.armadillo.gabaergic.sst) <- "RNA_snn_res.1.5"
+DotPlot(obj.armadillo.gabaergic.sst, features = c("Col8a1", "Ptpn7", "Vcan", "Plpp4", "Htr2a", "Nr2f2"))
+
+```
+
+
+```{r}
+
+Idents(obj.armadillo.gabaergic) <- "RNA_snn_res.1.5"
+obj.armadillo.gabaergic$subclass[obj.armadillo.gabaergic$RNA_snn_res.1.5 == 2] <- "Sst"
+obj.armadillo.gabaergic$type[obj.armadillo.gabaergic$RNA_snn_res.1.5 == 2] <- "Sst Col8a1"
+obj.armadillo.gabaergic$subclass[obj.armadillo.gabaergic$RNA_snn_res.1.5 == 6] <- "Sst"
+obj.armadillo.gabaergic$type[obj.armadillo.gabaergic$RNA_snn_res.1.5 == 6] <- "Sst Ptpn7"
+obj.armadillo.gabaergic$subclass[obj.armadillo.gabaergic$RNA_snn_res.1.5 == 11] <- "Sst"
+obj.armadillo.gabaergic$type[obj.armadillo.gabaergic$RNA_snn_res.1.5 == 11] <- "Sst Vcan"
+obj.armadillo.gabaergic$subclass[obj.armadillo.gabaergic$RNA_snn_res.1.5 == 14] <- "Sst"
+obj.armadillo.gabaergic$type[obj.armadillo.gabaergic$RNA_snn_res.1.5 == 14] <- "Sst Plpp4"
+obj.armadillo.gabaergic$subclass[obj.armadillo.gabaergic$RNA_snn_res.1.5 == 17] <- "Sst"
+obj.armadillo.gabaergic$type[obj.armadillo.gabaergic$RNA_snn_res.1.5 == 17] <- "Sst Htr2a"
+obj.armadillo.gabaergic$subclass[obj.armadillo.gabaergic$RNA_snn_res.1.5 == 18] <- "Sst"
+obj.armadillo.gabaergic$type[obj.armadillo.gabaergic$RNA_snn_res.1.5 == 18] <- "Sst Nr2f2"
+
+obj.armadillo.gabaergic$subclass[obj.armadillo.gabaergic$RNA_snn_res.1.5 == 20] <- "Sst Chodl"
+obj.armadillo.gabaergic$type[obj.armadillo.gabaergic$RNA_snn_res.1.5 == 20] <- "Sst Chodl"
+
+```
+
+
+```{r}
+
+obj.armadillo.gabaergic.pvalb <- subset(obj.armadillo.gabaergic, idents = c("3", "7", "8", "10", "20"))
+DefaultAssay(obj.armadillo.gabaergic.pvalb) <- "RNA"
+all.markers.pvalb <- FindAllMarkers(obj.armadillo.gabaergic.pvalb, only.pos = TRUE)
+
+```
+
+
+```{r}
+
+DimPlot(obj.armadillo.gabaergic.pvalb, reduction = "umap", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-8, 9) + ylim(-2, 15) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.pvalb, "Grid2ip")  + xlim(-8, 9) + ylim(-2, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+## res 0.7
+# 1 -> Ptpn7
+# 2 -> Shisa9
+# 3 -> Grid2ip
+# 10 -> Calb1
+# 11 -> Cemip
+
+DimPlot(obj.armadillo.gabaergic.pvalb, reduction = "umap", group.by = "SCT_snn_res.0.7", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-8, 9) + ylim(-2, 15) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.pvalb, c("Ptpn7"))  + xlim(-8, 9) + ylim(-2, 15) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.pvalb, c("Shisa9"))  + xlim(-8, 9) + ylim(-2, 15) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.pvalb, c("Grid2ip"))  + xlim(-8, 9) + ylim(-2, 15) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.pvalb, c("Calb1"))  + xlim(-8, 9) + ylim(-2, 15) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.pvalb, c("Cemip"))  + xlim(-8, 9) + ylim(-2, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.armadillo.gabaergic) <- "SCT_snn_res.0.7"
+obj.armadillo.gabaergic$subclass[obj.armadillo.gabaergic$SCT_snn_res.0.7 == 1] <- "Pvalb"
+obj.armadillo.gabaergic$type[obj.armadillo.gabaergic$SCT_snn_res.0.7 == 1] <- "Pvalb Ptpn7"
+obj.armadillo.gabaergic$subclass[obj.armadillo.gabaergic$SCT_snn_res.0.7 == 2] <- "Pvalb"
+obj.armadillo.gabaergic$type[obj.armadillo.gabaergic$SCT_snn_res.0.7 == 2] <- "Pvalb Shisa9"
+obj.armadillo.gabaergic$subclass[obj.armadillo.gabaergic$SCT_snn_res.0.7 == 3] <- "Pvalb"
+obj.armadillo.gabaergic$type[obj.armadillo.gabaergic$SCT_snn_res.0.7 == 3] <- "Pvalb Grid2ip"
+obj.armadillo.gabaergic$subclass[obj.armadillo.gabaergic$SCT_snn_res.0.7 == 10] <- "Pvalb"
+obj.armadillo.gabaergic$type[obj.armadillo.gabaergic$SCT_snn_res.0.7 == 10] <- "Pvalb Calb1"
+obj.armadillo.gabaergic$subclass[obj.armadillo.gabaergic$SCT_snn_res.0.7 == 11] <- "Pvalb"
+obj.armadillo.gabaergic$type[obj.armadillo.gabaergic$SCT_snn_res.0.7 == 11] <- "Pvalb Cemip"
+
+```
+
+
+```{r}
+
+Idents(obj.armadillo.gabaergic) <- "subclass"
+obj.armadillo.gabaergic.vip <- subset(obj.armadillo.gabaergic, idents = "Vip")
+Idents(obj.armadillo.gabaergic.vip) <- "RNA_snn_res.1.5"
+all.markers.vip <- FindAllMarkers(obj.armadillo.gabaergic.vip, only.pos = TRUE)
+
+```
+
+
+```{r}
+
+DimPlot(obj.armadillo.gabaergic.vip, reduction = "umap", group.by = "RNA_snn_res.1.5", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-15, -5) + ylim(-8, 2) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.vip, "Rxfp1")  + xlim(-15, -5) + ylim(-8, 2) + coord_equal()
+
+```
+
+
+```{r}
+
+# 1 -> Mid1
+# 15 -> Rxfp1
+
+DimPlot(obj.armadillo.gabaergic.vip, reduction = "umap", group.by = "RNA_snn_res.1.5", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-15, -5) + ylim(-8, 2) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.vip, c("Mid1"))  + xlim(-15, -5) + ylim(-8, 2) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.vip, c("Rxfp1"))  + xlim(-15, -5) + ylim(-8, 2) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.armadillo.gabaergic) <- "RNA_snn_res.1.5"
+obj.armadillo.gabaergic$subclass[obj.armadillo.gabaergic$RNA_snn_res.1.5 == 1] <- "Vip"
+obj.armadillo.gabaergic$type[obj.armadillo.gabaergic$RNA_snn_res.1.5 == 1] <- "Vip Mid1"
+obj.armadillo.gabaergic$subclass[obj.armadillo.gabaergic$RNA_snn_res.1.5 == 15] <- "Vip"
+obj.armadillo.gabaergic$type[obj.armadillo.gabaergic$RNA_snn_res.1.5 == 15] <- "Vip Rxfp1"
+
+```
+
+
+```{r}
+
+obj.armadillo.gabaergic.lamp5 <- subset(obj.armadillo.gabaergic, idents = c("2", "6", "9", "13", "15", "17"))
+DefaultAssay(obj.armadillo.gabaergic.lamp5) <- "RNA"
+all.markers.lamp5 <- FindAllMarkers(obj.armadillo.gabaergic.lamp5, logfc.threshold = 0.0, only.pos = TRUE)
+
+```
+
+
+```{r}
+
+DimPlot(obj.armadillo.gabaergic.lamp5, reduction = "umap", group.by = "RNA_snn_res.2", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-15, -5) + ylim(0, 10) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.lamp5, "Htr1f")  + xlim(-15, -5) + ylim(0, 10) + coord_equal()
+
+```
+
+
+```{r}
+
+# 4 -> Kit
+# 23 -> Plekhh1
+
+DimPlot(obj.armadillo.gabaergic.lamp5, reduction = "umap", group.by = "RNA_snn_res.2", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-15, -5) + ylim(0, 10) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.lamp5, c("Kit"))  + xlim(-15, -5) + ylim(0, 10) + coord_equal()
+FeaturePlot(obj.armadillo.gabaergic.lamp5, c("Plekhh1"))  + xlim(-15, -5) + ylim(0, 10) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.armadillo.gabaergic) <- "RNA_snn_res.2"
+obj.armadillo.gabaergic$subclass[obj.armadillo.gabaergic$RNA_snn_res.2 == 4] <- "Lamp5"
+obj.armadillo.gabaergic$type[obj.armadillo.gabaergic$RNA_snn_res.2 == 4] <- "Lamp5 Kit"
+obj.armadillo.gabaergic$subclass[obj.armadillo.gabaergic$RNA_snn_res.2 == 23] <- "Lamp5"
+obj.armadillo.gabaergic$type[obj.armadillo.gabaergic$RNA_snn_res.2 == 23] <- "Lamp5 Plekhh1"
+
+```
+
+
+```{r}
+
+DimPlot(obj.armadillo.gabaergic, reduction = "umap", group.by = "subclass", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.armadillo.gabaergic, reduction = "umap", group.by = "type", label = TRUE, label.size = 3, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.armadillo.gabaergic) <- "RNA"
+Idents(obj.armadillo.gabaergic) <- "subclass"
+# SaveH5Seurat(obj.armadillo.gabaergic, "E:/Armadillo_M1/seurat/armadillo_m1_gabaergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+
