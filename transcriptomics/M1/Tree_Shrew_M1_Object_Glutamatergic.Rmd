@@ -1,0 +1,192 @@
+---
+title: "Tree Shrew Pull glutamatergic"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+library(data.table)
+
+data_path <- "E:/Tree_Shrew_M1/output/"
+
+sample_IDs <- c("NW_TX0100-2", "NW_TX0138-5", "NW_TX0138-6", "NW_TX0142-2", 
+                "NW_TX0142-3", "NW_TX0144-4", "NW_TX0168-8", "NW_TX0168-9",
+                "NW_TX0169-1", "NW_TX0169-3", "NW_TX0169-4", "NW_TX0172-8")
+
+objs <- c()
+
+for (sample in sample_IDs) {
+  
+  temp.obj.path <- paste(data_path, sample, "/outs/filtered_feature_bc_matrix/", sep = "")
+  temp.obj.data <- Read10X(temp.obj.path)
+  temp.obj <- CreateSeuratObject(counts = temp.obj.data, project = "Tree_Shrew_M1")
+  temp.obj$sample <- sample
+  temp.obj <- scrublet_R(seurat_obj = temp.obj)
+  objs <- append(objs, temp.obj)
+  
+}
+
+```
+
+
+```{r}
+
+objs.glutamatergic = c()
+
+```
+
+
+```{r}
+
+obj.treeshrew <- objs[[12]] # done : 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
+
+```
+
+
+```{r}
+
+cell_mask <- Reduce(intersect,list(WhichCells(obj.treeshrew, expression = nFeature_RNA > 700), 
+                                   WhichCells(obj.treeshrew, expression = nFeature_RNA < 6500),
+                                   WhichCells(obj.treeshrew, expression = nCount_RNA < 40000)))
+
+gene_mask <- rownames(obj.treeshrew)[Matrix::rowSums(obj.treeshrew[["RNA"]]@counts > 0) > 8]
+
+obj.treeshrew <- subset(obj.treeshrew, features = gene_mask, cells = cell_mask)
+
+```
+
+
+```{r}
+
+obj.treeshrew <- NormalizeData(obj.treeshrew, normalization.method = "LogNormalize", scale.factor = 10000)
+obj.treeshrew <- FindVariableFeatures(obj.treeshrew, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.treeshrew)
+obj.treeshrew <- ScaleData(obj.treeshrew, features = all.genes)
+obj.treeshrew <- RunPCA(obj.treeshrew, features = VariableFeatures(object = obj.treeshrew))
+obj.treeshrew <- FindNeighbors(obj.treeshrew, dims = 1:30)
+obj.treeshrew <- FindClusters(obj.treeshrew, resolution = 1, algorithm = 4, method = "igraph")
+obj.treeshrew <- RunUMAP(obj.treeshrew, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+DimPlot(obj.treeshrew, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+FeaturePlot(obj.treeshrew, "nFeature_RNA", raster = FALSE) + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+FeaturePlot(obj.treeshrew, "nCount_RNA", raster = FALSE) + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+DimPlot(obj.treeshrew, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+
+```
+
+
+```{r}
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("SLC17A6"), raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("SLC17A7"), raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("GAD2"), raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("AQP4"), raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("MOG"), raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("PDGFRA"), raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("CUX2"), raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("RORB"), raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("FOXP2"), raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+# FeaturePlot(obj.treeshrew, reduction = "umap", features = c("BCL6"), raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+# FeaturePlot(obj.treeshrew, reduction = "umap", features = c("SNCG"), raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal()
+```
+```{r}
+VlnPlot(obj.treeshrew, "SLC17A7", group.by = "RNA_snn_res.1")
+VlnPlot(obj.treeshrew, "GAD2", group.by = "RNA_snn_res.1")
+VlnPlot(obj.treeshrew, "AQP4", group.by = "RNA_snn_res.1")
+VlnPlot(obj.treeshrew, "ALDH1L1", group.by = "RNA_snn_res.1")
+VlnPlot(obj.treeshrew, "MOG", group.by = "RNA_snn_res.1")
+VlnPlot(obj.treeshrew, "PDGFRA", group.by = "RNA_snn_res.1")
+
+VlnPlot(obj.treeshrew, "CUX2", group.by = "RNA_snn_res.1")
+VlnPlot(obj.treeshrew, "RORB", group.by = "RNA_snn_res.1")
+VlnPlot(obj.treeshrew, "FOXP2", group.by = "RNA_snn_res.1")
+
+```
+
+
+```{r}
+
+Idents(obj.treeshrew) <- "RNA_snn_res.1"
+obj.treeshrew.glutamatergic <- subset(obj.treeshrew, idents = c("1", "2", "3", "4", "5", "6", "8", "10", "13", "14", "15", "17", "18", "19", "21", "22"))
+objs.glutamatergic <- append(objs.glutamatergic, obj.treeshrew.glutamatergic)
+
+```
+
+go back up
+
+```{r}
+
+obj.treeshrew.glutamatergic <- merge(objs.glutamatergic[[1]], y = objs.glutamatergic[2:12], add.cell.ids = sample_IDs, project = "Tree_Shrew_M1")
+
+```
+
+```{r}
+output_vector <- gsub("[^-]", "", rownames(obj.treeshrew.glutamatergic))
+
+gene_mask <- rownames(obj.treeshrew.glutamatergic)[nchar(output_vector) < 2]
+
+obj.treeshrew.glutamatergic <- subset(obj.treeshrew.glutamatergic, features = gene_mask)
+```
+
+
+```{r}
+
+genes.mapping <- read.csv("E:/_genomes/Tree_Shrew_Mouse_Genes.txt")
+genes.mapping.mouse <- as.list(genes.mapping$Mouse.gene.name)
+genes.mapping.treeshrew <- as.list(genes.mapping$Gene.name)
+ids.mapping.treeshrew <- as.list(genes.mapping$Gene.stable.ID)
+genes.treeshrew = rownames(obj.treeshrew.glutamatergic)
+for (gene in genes.mapping.mouse) {
+  
+    idx.mouse <- which(genes.mapping.mouse %in% gene)
+
+    if (length(idx.mouse) == 1) {
+      
+      gene.treeshrew <- genes.mapping.treeshrew[idx.mouse]
+      id.treeshrew <- ids.mapping.treeshrew[idx.mouse]
+      
+      if (gene.treeshrew == "") {
+        
+        idx.treeshrew <- which(genes.treeshrew %in% id.treeshrew)
+        genes.treeshrew[idx.treeshrew] <- gene
+        
+      } else {
+        
+        idx.treeshrew <- which(genes.treeshrew %in% gene.treeshrew)
+        genes.treeshrew[idx.treeshrew] <- gene
+        
+      }
+      
+    }
+  
+}
+
+```
+
+
+```{r}
+
+obj.df <- as.data.frame(as.matrix(obj.treeshrew.glutamatergic[["RNA"]]@counts))
+rownames(obj.df) <- genes.treeshrew
+obj.treeshrew.glutamatergic <- CreateSeuratObject(counts = obj.df, meta.data = obj.treeshrew.glutamatergic[[]])
+
+```
+
+
+```{r}
+
+SaveH5Seurat(obj.treeshrew.glutamatergic, "E:/Tree_Shrew_M1/seurat/treeshrew_m1_glutamatergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```

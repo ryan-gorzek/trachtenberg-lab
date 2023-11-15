@@ -1,0 +1,162 @@
+---
+title: "Tree Shrew M1 Glutamatergic SCT"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+
+obj.treeshrew.glutamatergic.sct <- LoadH5Seurat("E:/Tree_Shrew_M1/seurat/treeshrew_m1_glutamatergic.h5Seurat")
+
+```
+
+
+```{r}
+
+obj.treeshrew.glutamatergic.list <- SplitObject(obj.treeshrew.glutamatergic.sct, split.by = "sample")
+
+for (sample in names(obj.treeshrew.glutamatergic.list)) {
+  obj.treeshrew.glutamatergic.list[[sample]] <- SCTransform(obj.treeshrew.glutamatergic.list[[sample]], vst.flavor = "v2", verbose = FALSE) %>%
+    RunPCA(npcs = 30, verbose = FALSE)
+}
+
+```
+
+
+```{r}
+
+features <- SelectIntegrationFeatures(object.list = obj.treeshrew.glutamatergic.list, nfeatures = 3000)
+obj.treeshrew.glutamatergic.list <- PrepSCTIntegration(object.list = obj.treeshrew.glutamatergic.list, anchor.features = features)
+obj.treeshrew.glutamatergic.anchors <- FindIntegrationAnchors(object.list = obj.treeshrew.glutamatergic.list, normalization.method = "SCT", anchor.features = features)
+obj.treeshrew.glutamatergic.sct <- IntegrateData(anchorset = obj.treeshrew.glutamatergic.anchors, normalization.method = "SCT")
+
+```
+
+
+```{r}
+
+obj.treeshrew.glutamatergic.sct <- RunPCA(obj.treeshrew.glutamatergic.sct, verbose = FALSE)
+obj.treeshrew.glutamatergic.sct <- RunUMAP(obj.treeshrew.glutamatergic.sct, dims = 1:30, method = "umap-learn", reduction = "pca")
+obj.treeshrew.glutamatergic.sct <- FindNeighbors(obj.treeshrew.glutamatergic.sct, reduction = "pca", dims = 1:30)
+obj.treeshrew.glutamatergic.sct <- FindClusters(obj.treeshrew.glutamatergic.sct, resolution = 1, algorithm = 4, method = "igraph")
+
+```
+
+
+```{r}
+
+DimPlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", group.by = "sample", raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.glutamatergic.sct, "nFeature_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.glutamatergic.sct, "nCount_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+library(tidyverse)
+
+cluster.sample <- table(obj.treeshrew.glutamatergic.sct$sample, obj.treeshrew.glutamatergic.sct$integrated_snn_res.1) %>%
+  as.data.frame.matrix() %>%
+  rownames_to_column(var = "sample")
+cluster.sample[-1] <- lapply(cluster.sample[-1], function(x) x/sum(x))
+cluster.sample <- cluster.sample %>%
+  pivot_longer(
+    cols = -c("sample"),
+    names_to = "cluster",
+    values_to = "count"
+  )
+cluster.sample$cluster <- factor(cluster.sample$cluster, levels = unique(cluster.sample$cluster))
+  ggplot(cluster.sample, aes(x=cluster, y=count, fill=sample)) +
+    geom_bar(stat="identity") +
+    scale_fill_brewer(palette = "Set3") +
+    theme_minimal()
+
+```
+
+obj
+```{r}
+
+DimPlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", group.by = "integrated_snn_res.1", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.treeshrew.glutamatergic.sct) <- "RNA"
+
+DimPlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", group.by = "integrated_snn_res.1", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", group.by = "predicted_doublets", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", features = c("Rasgrf2"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal() #L2/3IT
+
+FeaturePlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", features = c("Rorb"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal() #L2/3IT or L5IT
+FeaturePlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", features = c("Cdk14"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal() #L5IT
+
+FeaturePlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", features = c("Foxp2"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", features = c("Inpp4b"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", features = c("Reln"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+#FeaturePlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", features = c("Nxph1"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", features = c("Tshz2"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", features = c("Ptprm"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", features = c("Rspo1"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", features = c("Deptor"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+#FeaturePlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", features = c("Foxo1"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", features = c("Zfp804b"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", features = c("Cdh9"), min.cutoff = 0, max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+```
+
+
+```{r}
+Idents(obj.treeshrew.glutamatergic.sct) <- "integrated_snn_res.1"
+
+cells.l23it <- WhichCells(obj.opossum.glutamatergic, ident = c("1", "3", "10", "13"))
+obj.opossum.glutamatergic$subclass <- ifelse(colnames(obj.opossum.glutamatergic) %in% cells.l23it, "L2/3 IT", "ambiguous")
+
+cells.l5it <- WhichCells(obj.opossum.glutamatergic, ident = c("5", "6", "11", "12", "16"))
+obj.opossum.glutamatergic$subclass[cells.l5it] <- "L5 IT"
+
+cells.l6it <- WhichCells(obj.opossum.glutamatergic, ident = c("7"))
+obj.opossum.glutamatergic$subclass[cells.l6it] <- "L6 IT"
+
+cells.l5et <- WhichCells(obj.opossum.glutamatergic, ident = c("8"))
+obj.opossum.glutamatergic$subclass[cells.l5et] <- "L5 ET"
+
+cells.l6ct <- WhichCells(obj.opossum.glutamatergic, ident = c("2", "4", "9"))
+obj.opossum.glutamatergic$subclass[cells.l6ct] <- "L6 CT"
+
+cells.l56np <- WhichCells(obj.opossum.glutamatergic, ident = c("14"))
+obj.opossum.glutamatergic$subclass[cells.l56np] <- "L5/6 NP"
+
+cells.l6b <- WhichCells(obj.opossum.glutamatergic, ident = c("15"))
+obj.opossum.glutamatergic$subclass[cells.l6b] <- "L6b"
+
+Idents(obj.opossum.glutamatergic) <- "subclass"
+obj.opossum.glutamatergic <- subset(obj.opossum.glutamatergic, subset = subclass != "ambiguous")
+```
+
+
+```{r}
+
+DimPlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", group.by = "subclass", raster = FALSE) + xlim(-15, 12) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+# Idents(obj.treeshrew.glutamatergic) <- "subclass"
+obj.treeshrew.glutamatergic.sct$ts_integrated_snn_res.1 <- obj.treeshrew.glutamatergic.sct$integrated_snn_res.1
+SaveH5Seurat(obj.treeshrew.glutamatergic.sct, "E:/Tree_Shrew_M1/seurat/treeshrew_m1_glutamatergic_sct.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

@@ -17,7 +17,7 @@ data_path <- "E:/Tree_Shrew_M1/output/"
 
 sample_IDs <- c("NW_TX0100-2", "NW_TX0138-5", "NW_TX0138-6", "NW_TX0142-2", 
                 "NW_TX0142-3", "NW_TX0144-4", "NW_TX0168-8", "NW_TX0168-9") #, 
-                # "NW_TX0169-1", "NW_TX0169-3", "NW_TX0169-4", "NW_TX0172-8") # 
+                "NW_TX0169-1", "NW_TX0169-3", "NW_TX0169-4", "NW_TX0172-8") # 
 
 objs <- c()
 

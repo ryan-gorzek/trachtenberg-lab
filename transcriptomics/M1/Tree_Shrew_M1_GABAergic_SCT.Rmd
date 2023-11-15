@@ -13,9 +13,6 @@ library(dplyr)
 library(SeuratDisk)
 
 obj.treeshrew.gabaergic.sct <- LoadH5Seurat("E:/Tree_Shrew_M1/seurat/treeshrew_m1_gabaergic_sct.h5Seurat")
-# obj.mouse.gabaergic <- LoadH5Seurat("E:/Mouse_M1/seurat/mouse_m1_gabaergic.h5Seurat")
-# common.features <- intersect(rownames(obj.mouse.gabaergic), rownames(obj.treeshrew.gabaergic))
-# obj.treeshrew.gabaergic <- obj.treeshrew.gabaergic[common.features,]
 
 ```
 
