@@ -11,7 +11,8 @@ library(arrow)
 library(ggplot2)
 library(dplyr)
 library(SeuratDisk)
-obj.opossum <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_all.h5Seurat")
+obj.opossum <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_all_raw.h5Seurat")
+# obj.opossum <- LoadH5Seurat("E:/Opossum_V1/seurat/opossum_v1_all.h5Seurat")
 
 ```
 
@@ -34,6 +35,17 @@ FeaturePlot(obj.opossum, reduction = "umap", features = c("Mog"), raster = FALSE
 FeaturePlot(obj.opossum, reduction = "umap", features = c("Pdgfra"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
 FeaturePlot(obj.opossum, reduction = "umap", features = c("Aldh1l1"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
 FeaturePlot(obj.opossum, reduction = "umap", features = c("Col1a1"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
+
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Slc17a6"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Slc17a7"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Gad1"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Lhx6"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Htr3a"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
+
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Pvalb"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Sst"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Vip"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Lamp5"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
 
 ```
 

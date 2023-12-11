@@ -1,0 +1,97 @@
+---
+title: "Human M1 All"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+obj.human <- LoadH5Seurat("E:/Human_M1/seurat/human_m1_all.h5Seurat")
+
+```
+
+
+```{r}
+
+obj.human.list <- SplitObject(obj.human, split.by = "donor_id")
+
+for (sample in names(obj.human.list)) {
+    obj.human.list[[sample]] <- SCTransform(obj.human.list[[sample]], vst.flavor = "v2", verbose = FALSE) %>%
+    RunPCA(npcs = 30, verbose = FALSE)
+}
+
+```
+
+
+```{r}
+
+features <- SelectIntegrationFeatures(object.list = obj.human.list, nfeatures = 2000)
+obj.human.list <- PrepSCTIntegration(object.list = obj.human.list, anchor.features = features)
+obj.human.anchors <- FindIntegrationAnchors(object.list = obj.human.list, normalization.method = "SCT", anchor.features = features)
+obj.human.sct <- IntegrateData(anchorset = obj.human.anchors, normalization.method = "SCT")
+
+```
+
+
+```{r}
+
+obj.human.sct <- RunPCA(obj.human.sct, verbose = FALSE)
+obj.human.sct <- RunUMAP(obj.human.sct, dims = 1:30, method = "umap-learn", reduction = "pca")
+obj.human.sct <- FindNeighbors(obj.human.sct, reduction = "pca", dims = 1:30)
+obj.human.sct <- FindClusters(obj.human.sct, resolution = 1, algorithm = 4, method = "igraph")
+
+```
+
+
+```{r}
+
+DimPlot(obj.human.sct, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.human.sct, reduction = "umap", group.by = "donor_id", shuffle = TRUE, raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.human.sct, reduction = "umap", group.by = "subclass_label", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.human.sct$subclass <- obj.human.sct$subclass_label
+obj.human.sct$subclass[obj.human.sct$subclass == "L6 IT Car3"] <- "L6 IT"
+obj.human.sct$subclass[obj.human.sct$subclass == "Sst Chodl"] <- "Sst"
+
+```
+
+
+```{r}
+
+Idents(obj.human.sct) <- "level1_label"
+
+cells.glutamatergic <- WhichCells(obj.human.sct, ident = "Glutamatergic")
+obj.human.sct$class <- ifelse(colnames(obj.human.sct) %in% cells.glutamatergic, "glutamatergic", "ambiguous")
+
+cells.gabaergic <- WhichCells(obj.human.sct, ident = "GABAergic")
+obj.human.sct$class[cells.gabaergic] <- "gabaergic"
+
+cells.nonneuronal <- WhichCells(obj.human.sct, ident = "Non-neuronal")
+obj.human.sct$class[cells.nonneuronal] <- "nonneuronal"
+
+```
+
+
+```{r}
+
+obj.human.glutamatergic <- subset(obj.human.sct, subset = class == "glutamatergic")
+SaveH5Seurat(obj.human.glutamatergic, "E:/Human_M1/seurat/human_m1_glutamatergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+obj.human.gabaergic <- subset(obj.human.sct, subset = class == "gabaergic")
+SaveH5Seurat(obj.human.gabaergic, "E:/Human_M1/seurat/human_m1_gabaergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+obj.human.nonneuronal <- subset(obj.human.sct, subset = class == "nonneuronal")
+SaveH5Seurat(obj.human.nonneuronal, "E:/Human_M1/seurat/human_m1_nonneuronal.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

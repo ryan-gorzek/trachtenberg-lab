@@ -1,0 +1,128 @@
+---
+title: "Human M1 GABAergic"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+obj.human.gabaergic <- LoadH5Seurat("E:/Human_M1/seurat/human_m1_gabaergic.h5Seurat")
+
+```
+
+```{r}
+
+obj.human.gabaergic <- SplitObject(obj.human.gabaergic, split.by = "donor_id")
+
+for (sample in names(obj.human.gabaergic)) {
+    obj.human.gabaergic[[sample]] <- SCTransform(obj.human.gabaergic[[sample]], vst.flavor = "v2", verbose = FALSE) %>%
+    RunPCA(npcs = 30, verbose = FALSE)
+}
+
+```
+
+
+```{r}
+
+features <- SelectIntegrationFeatures(object.list = obj.human.gabaergic, nfeatures = 2000)
+obj.human.gabaergic <- PrepSCTIntegration(object.list = obj.human.gabaergic, anchor.features = features)
+obj.human.anchors <- FindIntegrationAnchors(object.list = obj.human.gabaergic, normalization.method = "SCT", anchor.features = features)
+obj.human.sct <- IntegrateData(anchorset = obj.human.anchors, normalization.method = "SCT")
+
+```
+
+
+```{r}
+
+obj.human.sct <- RunPCA(obj.human.sct, verbose = FALSE)
+obj.human.sct <- RunUMAP(obj.human.sct, dims = 1:30, method = "umap-learn", reduction = "pca")
+obj.human.sct <- FindNeighbors(obj.human.sct, reduction = "pca", dims = 1:30)
+obj.human.sct <- FindClusters(obj.human.sct, resolution = 1, algorithm = 4, method = "igraph")
+
+```
+
+
+```{r}
+
+obj.human.gabaergic <- FindVariableFeatures(obj.human.gabaergic, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.human.gabaergic)
+obj.human.gabaergic <- ScaleData(obj.human.gabaergic, features = all.genes)
+obj.human.gabaergic <- RunPCA(obj.human.gabaergic, features = VariableFeatures(object = obj.human.gabaergic))
+ElbowPlot(obj.human.gabaergic, ndims = 50)
+
+```
+
+
+```{r}
+
+obj.human.gabaergic <- FindNeighbors(obj.human.gabaergic, dims = 1:30)
+obj.human.gabaergic <- FindClusters(obj.human.gabaergic, resolution = 1, algorithm = 4, method = "igraph")
+obj.human.gabaergic <- RunUMAP(obj.human.gabaergic, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+DimPlot(obj.human.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.human.gabaergic, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.human.gabaergic, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+FeaturePlot(obj.human.gabaergic, reduction = "umap", features = c("Sst"), max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.human.gabaergic, reduction = "umap", features = c("Pvalb"), max.cutoff = 5) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.human.gabaergic, reduction = "umap", features = c("Vip"), max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.human.gabaergic, reduction = "umap", features = c("Lamp5"), max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.human.gabaergic, reduction = "umap", features = c("Sncg"), max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.human.gabaergic, reduction = "umap", features = c("Meis2"), max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.human.gabaergic, reduction = "umap", features = c("Chodl"), max.cutoff = 10) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.human.gabaergic) <- "RNA_snn_res.1"
+
+cells.pv <- WhichCells(obj.human.gabaergic, ident = c("2", "4", "5", "6", "10", "11", "14", "16"))
+obj.human.gabaergic$subclass <- ifelse(colnames(obj.human.gabaergic) %in% cells.pv, "Pvalb", "ambiguous")
+
+cells.sst <- WhichCells(obj.human.gabaergic, ident = c("3", "7", "8", "12", "19"))
+obj.human.gabaergic$subclass[cells.sst] <- "Sst"
+
+cells.vip <- WhichCells(obj.human.gabaergic, ident = c("1", "18"))
+obj.human.gabaergic$subclass[cells.vip] <- "Vip"
+
+cells.lamp5 <- WhichCells(obj.human.gabaergic, ident = c("9", "20"))
+obj.human.gabaergic$subclass[cells.lamp5] <- "Lamp5"
+
+Idents(obj.human.gabaergic) <- "subclass"
+obj.human.gabaergic <- subset(obj.human.gabaergic, subset = subclass != "ambiguous")
+
+```
+
+
+```{r}
+
+DimPlot(obj.human.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.human.gabaergic, reduction = "umap", group.by = "subclass", raster = FALSE) + xlim(-15, 12) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.human.gabaergic) <- "subclass"
+SaveH5Seurat(obj.human.gabaergic, "E:/Human_M1/seurat/human_m1_gabaergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

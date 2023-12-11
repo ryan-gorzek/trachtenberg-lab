@@ -12,7 +12,7 @@ library(ggplot2)
 library(dplyr)
 library(SeuratDisk)
 
-obj.treeshrew.glutamatergic.sct <- LoadH5Seurat("E:/Tree_Shrew_M1/seurat/treeshrew_m1_glutamatergic.h5Seurat")
+obj.treeshrew.glutamatergic.sct <- LoadH5Seurat("E:/Tree_Shrew_M1/seurat/treeshrew_m1_glutamatergic_sct.h5Seurat")
 
 ```
 
@@ -118,36 +118,46 @@ FeaturePlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", features = c("C
 ```{r}
 Idents(obj.treeshrew.glutamatergic.sct) <- "integrated_snn_res.1"
 
-cells.l23it <- WhichCells(obj.opossum.glutamatergic, ident = c("1", "3", "10", "13"))
-obj.opossum.glutamatergic$subclass <- ifelse(colnames(obj.opossum.glutamatergic) %in% cells.l23it, "L2/3 IT", "ambiguous")
+cells.l23it <- WhichCells(obj.treeshrew.glutamatergic.sct, ident = c("2", "7", "8", "10", "11", "12"))
+obj.treeshrew.glutamatergic.sct$subclass <- ifelse(colnames(obj.treeshrew.glutamatergic.sct) %in% cells.l23it, "L2/3 IT", "ambiguous")
 
-cells.l5it <- WhichCells(obj.opossum.glutamatergic, ident = c("5", "6", "11", "12", "16"))
-obj.opossum.glutamatergic$subclass[cells.l5it] <- "L5 IT"
+cells.l5it <- WhichCells(obj.treeshrew.glutamatergic.sct, ident = c("1", "5", "9", "14", "17", "19", "21", "25"))
+obj.treeshrew.glutamatergic.sct$subclass[cells.l5it] <- "L5 IT"
 
-cells.l6it <- WhichCells(obj.opossum.glutamatergic, ident = c("7"))
-obj.opossum.glutamatergic$subclass[cells.l6it] <- "L6 IT"
+cells.l6it <- WhichCells(obj.treeshrew.glutamatergic.sct, ident = c("6"))
+obj.treeshrew.glutamatergic.sct$subclass[cells.l6it] <- "L6 IT"
 
-cells.l5et <- WhichCells(obj.opossum.glutamatergic, ident = c("8"))
-obj.opossum.glutamatergic$subclass[cells.l5et] <- "L5 ET"
+cells.l5et <- WhichCells(obj.treeshrew.glutamatergic.sct, ident = c("18"))
+obj.treeshrew.glutamatergic.sct$subclass[cells.l5et] <- "L5 ET"
 
-cells.l6ct <- WhichCells(obj.opossum.glutamatergic, ident = c("2", "4", "9"))
-obj.opossum.glutamatergic$subclass[cells.l6ct] <- "L6 CT"
+cells.l6ct <- WhichCells(obj.treeshrew.glutamatergic.sct, ident = c("3", "4", "16", "24"))
+obj.treeshrew.glutamatergic.sct$subclass[cells.l6ct] <- "L6 CT"
 
-cells.l56np <- WhichCells(obj.opossum.glutamatergic, ident = c("14"))
-obj.opossum.glutamatergic$subclass[cells.l56np] <- "L5/6 NP"
+cells.l56np <- WhichCells(obj.treeshrew.glutamatergic.sct, ident = c("22"))
+obj.treeshrew.glutamatergic.sct$subclass[cells.l56np] <- "L5/6 NP"
 
-cells.l6b <- WhichCells(obj.opossum.glutamatergic, ident = c("15"))
-obj.opossum.glutamatergic$subclass[cells.l6b] <- "L6b"
+cells.l6b <- WhichCells(obj.treeshrew.glutamatergic.sct, ident = c("13", "23"))
+obj.treeshrew.glutamatergic.sct$subclass[cells.l6b] <- "L6b"
 
-Idents(obj.opossum.glutamatergic) <- "subclass"
-obj.opossum.glutamatergic <- subset(obj.opossum.glutamatergic, subset = subclass != "ambiguous")
+Idents(obj.treeshrew.glutamatergic.sct) <- "subclass"
+obj.treeshrew.glutamatergic.sct <- subset(obj.treeshrew.glutamatergic.sct, subset = subclass != "ambiguous") # 15, 20
+```
+
+
+```{r}
+
+obj.treeshrew.glutamatergic.sct <- RunPCA(obj.treeshrew.glutamatergic.sct, verbose = FALSE)
+obj.treeshrew.glutamatergic.sct <- RunUMAP(obj.treeshrew.glutamatergic.sct, dims = 1:30, method = "umap-learn", reduction = "pca")
+obj.treeshrew.glutamatergic.sct <- FindNeighbors(obj.treeshrew.glutamatergic.sct, reduction = "pca", dims = 1:30)
+obj.treeshrew.glutamatergic.sct <- FindClusters(obj.treeshrew.glutamatergic.sct, resolution = 1, algorithm = 4, method = "igraph")
+
 ```
 
 
 ```{r}
 
 DimPlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-DimPlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", group.by = "subclass", raster = FALSE) + xlim(-15, 12) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.treeshrew.glutamatergic.sct, reduction = "umap", group.by = "subclass", raster = FALSE) + xlim(-15, 12) + ylim(-15, 15) + coord_equal() 
 
 ```
 

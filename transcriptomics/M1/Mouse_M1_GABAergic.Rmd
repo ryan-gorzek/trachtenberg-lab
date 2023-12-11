@@ -58,6 +58,8 @@ FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Chat")) + xli
 FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Slc18a3")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Slc5a7")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Adarb2")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
 ```
 
 

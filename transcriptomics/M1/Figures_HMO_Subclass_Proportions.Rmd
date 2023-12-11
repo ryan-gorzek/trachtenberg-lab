@@ -147,7 +147,8 @@ both.counts <- both.counts %>%
          Lamp5 = Lamp5 / GABAergic,
          Meis2 = Meis2 / GABAergic, 
          MGE = MGE / GABAergic, 
-         CGE = CGE / GABAergic,          
+         CGE = CGE / GABAergic, 
+         EI = Glutamatergic / GABAergic, 
          Glutamatergic = Glutamatergic / Neuronal, 
          GABAergic = GABAergic / Neuronal
          )
@@ -156,10 +157,32 @@ scatter.counts <- both.counts
 
 both.counts <- both.counts %>%
   pivot_longer(
-    cols = c("L2.3.IT", "L5.ET", "L5.IT", "L5.6.NP", "L6.CT", "L6.IT", "L6b", "Pvalb", "Sst", "Vip", "Sncg", "Lamp5", "Meis2", "Glutamatergic", "GABAergic", "Nonneuronal", "Neuronal", "MGE", "CGE", "Pvalb_CGE", "CGE_Pvalb"),
+    cols = c("L2.3.IT", "L5.ET", "L5.IT", "L5.6.NP", "L6.CT", "L6.IT", "L6b", "Pvalb", "Sst", "Vip", "Sncg", "Lamp5", "Meis2", "Glutamatergic", "GABAergic", "Nonneuronal", "Neuronal", "MGE", "CGE", "Pvalb_CGE", "CGE_Pvalb", "EI"),
     names_to = "cell.identity", 
     values_to = "fraction"
   )
+
+```
+
+
+```{r, fig.height=3, fig.width=3.5}
+
+both.counts$species <- factor(both.counts$species, levels = c("Opossum", "Mouse", "Human"))
+
+class.counts <- both.counts[both.counts$cell.identity %in% c("EI"), ]
+
+ggplot(class.counts, aes(x = factor(cell.identity, level = c("EI")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("")) +
+    scale_y_continuous(breaks = c(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10), expand = c(0, 0), limits = c(0, 10)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "E/I Ratio", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa", "Human" = "#f1c296"))
+
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_Class_Proportion.svg", plot=hmo_class, width=3.5, height=3, dpi=500)
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_Class_Proportion.png", plot=hmo_class, width=3.5, height=3, dpi=500)
 
 ```
 

@@ -1,0 +1,144 @@
+---
+title: "Cat M1 GABAergic"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+obj.cat.gabaergic <- LoadH5Seurat("E:/Cat_M1/seurat/cat_m1_gabaergic_raw.h5Seurat")
+
+```
+
+
+```{r}
+
+obj.cat.gabaergic <- FindVariableFeatures(obj.cat.gabaergic, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.cat.gabaergic)
+obj.cat.gabaergic <- ScaleData(obj.cat.gabaergic, features = all.genes)
+obj.cat.gabaergic <- RunPCA(obj.cat.gabaergic, features = VariableFeatures(object = obj.cat.gabaergic))
+ElbowPlot(obj.cat.gabaergic, ndims = 50)
+
+```
+
+
+```{r}
+
+obj.cat.gabaergic <- FindNeighbors(obj.cat.gabaergic, dims = 1:30)
+obj.cat.gabaergic <- FindClusters(obj.cat.gabaergic, resolution = 1, algorithm = 4, method = "igraph")
+obj.cat.gabaergic <- RunUMAP(obj.cat.gabaergic, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+DimPlot(obj.cat.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.cat.gabaergic, reduction = "umap", group.by = "sample", raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.cat.gabaergic, "nFeature_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.cat.gabaergic, "nCount_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.cat.gabaergic, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+VlnPlot(obj.cat.gabaergic, "nCount_RNA")
+
+```
+
+
+```{r}
+
+obj.cat.gabaergic$subclass <- NA
+Idents(obj.cat.gabaergic) <- "RNA_snn_res.1"
+obj.cat.gabaergic <- subset(obj.cat.gabaergic, idents = c("7", "19"), invert = TRUE)
+
+```
+
+
+```{r}
+
+obj.cat.gabaergic <- FindVariableFeatures(obj.cat.gabaergic, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.cat.gabaergic)
+obj.cat.gabaergic <- ScaleData(obj.cat.gabaergic, features = all.genes)
+obj.cat.gabaergic <- RunPCA(obj.cat.gabaergic, features = VariableFeatures(object = obj.cat.gabaergic))
+ElbowPlot(obj.cat.gabaergic, ndims = 50)
+
+```
+
+
+```{r}
+
+obj.cat.gabaergic <- FindNeighbors(obj.cat.gabaergic, dims = 1:30)
+obj.cat.gabaergic <- FindClusters(obj.cat.gabaergic, resolution = 1.1, algorithm = 4, method = "igraph")
+obj.cat.gabaergic <- RunUMAP(obj.cat.gabaergic, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+DimPlot(obj.cat.gabaergic, reduction = "umap", group.by = "RNA_snn_res.1.1", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.cat.gabaergic, reduction = "umap", group.by = "sample", raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.cat.gabaergic, "nCount_RNA", min.cutoff = 0, max.cutoff = 20000) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.cat.gabaergic, "nFeature_RNA", min.cutoff = 0, max.cutoff = 6500) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+VlnPlot(obj.cat.gabaergic, group.by = "RNA_snn_res.1", "nCount_RNA") + ylim(0, 40000)
+VlnPlot(obj.cat.gabaergic, group.by = "RNA_snn_res.1", "nFeature_RNA") + ylim(0, 6500)
+
+```
+
+
+```{r}
+
+DimPlot(obj.cat.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.cat.gabaergic, reduction = "umap", features = c("SST")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.cat.gabaergic, reduction = "umap", features = c("PVALB")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.cat.gabaergic, reduction = "umap", features = c("VIP")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.cat.gabaergic, reduction = "umap", features = c("LAMP5")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.cat.gabaergic, reduction = "umap", features = c("SNCG")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.cat.gabaergic, reduction = "umap", features = c("MEIS2")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.cat.gabaergic, reduction = "umap", features = c("CHODL")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+FeaturePlot(obj.cat.gabaergic, reduction = "umap", features = c("ADARB2")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.cat.gabaergic) <- "RNA_snn_res.1.1"
+
+cells.pv <- WhichCells(obj.cat.gabaergic, ident = c("1", "3", "7", "10", "15", "16", "21")) 
+obj.cat.gabaergic$subclass <- ifelse(colnames(obj.cat.gabaergic) %in% cells.pv, "Pvalb", "ambiguous")
+
+cells.sst <- WhichCells(obj.cat.gabaergic, ident = c("2", "4", "13", "17", "18"))
+obj.cat.gabaergic$subclass[cells.sst] <- "Sst"
+
+cells.vip <- WhichCells(obj.cat.gabaergic, ident = c("8", "9", "14", "19", "20"))
+obj.cat.gabaergic$subclass[cells.vip] <- "Vip"
+
+cells.lamp5 <- WhichCells(obj.cat.gabaergic, ident = c("5", "6", "22"))
+obj.cat.gabaergic$subclass[cells.lamp5] <- "Lamp5"
+
+Idents(obj.cat.gabaergic) <- "subclass"
+#obj.cat.gabaergic <- subset(obj.cat.gabaergic, subset = subclass != "ambiguous")
+
+```
+
+
+```{r}
+
+DimPlot(obj.cat.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.cat.gabaergic, reduction = "umap", group.by = "subclass", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.cat.gabaergic) <- "subclass"
+SaveH5Seurat(obj.cat.gabaergic, "E:/Cat_M1/seurat/cat_m1_gabaergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

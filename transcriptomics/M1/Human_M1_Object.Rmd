@@ -1,0 +1,64 @@
+---
+title: "Human M1 Object"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+
+matrix <- readRDS("E:/Human_M1/Human_M1_10xV3_Matrix.RDS")
+meta_tb <- arrow::read_feather("E:/Human_M1/Human_M1_10xV3_Metadata.feather")
+meta_df <- as.data.frame(meta_tb)
+row.names(meta_df) <- meta_df[, "sample_id"]
+obj.human <- CreateSeuratObject(counts = matrix, meta.data = meta_df)
+rm(list = c("matrix", "meta_df", "meta_tb"))
+
+```
+
+
+```{r}
+
+obj.human <- AddMetaData(obj.human, metadata = unlist(rep(list("Human_M1"), ncol(obj.human))), col.name = "dataset")
+Idents(object = obj.human) <- obj.human[["dataset"]]
+obj.human[["percent.mt"]] <- PercentageFeatureSet(obj.human, pattern = "^mt-")
+VlnPlot(obj.human, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+plot1 <- FeatureScatter(obj.human, feature1 = "nCount_RNA", feature2 = "percent.mt")
+plot2 <- FeatureScatter(obj.human, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+plot1 + plot2
+
+```
+
+
+```{r}
+
+obj.human <- NormalizeData(obj.human, normalization.method = "LogNormalize", scale.factor = 10000)
+obj.human <- FindVariableFeatures(obj.human, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.human)
+obj.human <- ScaleData(obj.human, features = all.genes)
+obj.human <- RunPCA(obj.human, features = VariableFeatures(object = obj.human))
+ElbowPlot(obj.human, ndims = 50)
+
+```
+
+
+```{r}
+
+obj.human <- FindNeighbors(obj.human, dims = 1:30)
+obj.human <- FindClusters(obj.human, resolution = 1, algorithm = 4, method = "igraph")
+obj.human <- RunUMAP(obj.human, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+SaveH5Seurat(obj.human, "E:/Human_M1/seurat/human_m1_all.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

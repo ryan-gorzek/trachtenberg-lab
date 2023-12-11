@@ -1,0 +1,76 @@
+---
+title: "Cat M1 All"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+obj.cat <- LoadH5Seurat("E:/Cat_M1/seurat/cat_m1_all.h5Seurat")
+
+```
+
+
+```{r}
+
+DimPlot(obj.cat, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.cat, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.cat, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+FeaturePlot(obj.cat, reduction = "umap", features = c("SNAP25"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.cat, reduction = "umap", features = c("SLC17A7"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.cat, reduction = "umap", features = c("GAD2"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.cat, reduction = "umap", features = c("CSF1R"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.cat, reduction = "umap", features = c("MOG"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.cat, reduction = "umap", features = c("PDGFRA"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+#FeaturePlot(obj.cat, reduction = "umap", features = c("ALDH1L1"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.cat, reduction = "umap", features = c("COL1A1"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+cells.glutamatergic <- WhichCells(obj.cat, ident = c(1))
+obj.cat$class <- ifelse(colnames(obj.cat) %in% cells.glutamatergic, "glutamatergic", "ambiguous")
+
+cells.gabaergic <- WhichCells(obj.cat, ident = c(7, 12, 14, 16, 19, 23, 24, 25))
+obj.cat$class[cells.gabaergic] <- "gabaergic"
+
+# cells.nonneuronal <- WhichCells(obj.cat, ident = c(8, 10, 21, 23, 25, 26, 27, 29))
+# obj.cat$class[cells.nonneuronal] <- "nonneuronal"
+
+```
+
+
+```{r}
+
+DimPlot(obj.cat, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-19, 19) + ylim(-19, 19) + coord_equal()
+DimPlot(obj.cat, reduction = "umap", group.by = "class", raster = FALSE) + xlim(-19, 19) + ylim(-19, 19) + coord_equal()
+
+```
+
+
+```{r}
+
+# obj.cat.glutamatergic <- subset(obj.cat, subset = class == "glutamatergic")
+# SaveH5Seurat(obj.cat.glutamatergic, "E:/cat_M1/seurat/cat_m1_glutamatergic_raw.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+obj.cat.gabaergic <- subset(obj.cat, subset = class == "gabaergic")
+SaveH5Seurat(obj.cat.gabaergic, "E:/cat_M1/seurat/cat_m1_gabaergic_raw.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+# obj.cat.nonneuronal <- subset(obj.cat, subset = class == "nonneuronal")
+# SaveH5Seurat(obj.cat.nonneuronal, "E:/cat_M1/seurat/cat_m1_nonneuronal_raw.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

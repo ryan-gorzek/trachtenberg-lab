@@ -11,7 +11,7 @@ library(arrow)
 library(ggplot2)
 library(dplyr)
 library(SeuratDisk)
-obj.opossum.gabaergic <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic_raw.h5Seurat")
+obj.opossum.gabaergic <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic.h5Seurat")
 
 ```
 
@@ -99,6 +99,8 @@ FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Lamp5")) + 
 FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Sncg")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Meis2")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chodl")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Adarb2")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 
 ```
 
