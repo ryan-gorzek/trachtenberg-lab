@@ -1,0 +1,81 @@
+---
+title: "Human M1 Glutamatergic"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+obj.human.glutamatergic <- LoadH5Seurat("E:/Human_M1/seurat/human_m1_glutamatergic.h5Seurat")
+
+```
+
+```{r}
+
+obj.human.glutamatergic <- SplitObject(obj.human.glutamatergic, split.by = "donor_id")
+
+for (sample in names(obj.human.glutamatergic)) {
+    obj.human.glutamatergic[[sample]] <- SCTransform(obj.human.glutamatergic[[sample]], vst.flavor = "v2", verbose = FALSE) %>%
+    RunPCA(npcs = 30, verbose = FALSE)
+}
+
+```
+
+
+```{r}
+
+features <- SelectIntegrationFeatures(object.list = obj.human.glutamatergic, nfeatures = 2000)
+obj.human.glutamatergic <- PrepSCTIntegration(object.list = obj.human.glutamatergic, anchor.features = features)
+obj.human.anchors <- FindIntegrationAnchors(object.list = obj.human.glutamatergic, normalization.method = "SCT", anchor.features = features)
+obj.human.sct <- IntegrateData(anchorset = obj.human.anchors, normalization.method = "SCT")
+
+```
+
+
+```{r}
+
+obj.human.sct <- RunPCA(obj.human.sct, verbose = FALSE)
+obj.human.sct <- RunUMAP(obj.human.sct, dims = 1:30, method = "umap-learn", reduction = "pca")
+obj.human.sct <- FindNeighbors(obj.human.sct, reduction = "pca", dims = 1:30)
+obj.human.sct <- FindClusters(obj.human.sct, resolution = 1, algorithm = 4, method = "igraph")
+
+```
+
+
+```{r}
+
+DimPlot(obj.human.sct, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.human.sct, reduction = "umap", group.by = "donor_id", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+#DimPlot(obj.human.sct, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.human.sct, reduction = "umap", group.by = "subclass_label", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+Idents(obj.human.sct) = "subclass_label"
+cells.sst <- WhichCells(obj.human.sct, idents = c("Sst Chodl"))
+obj.human.sct$subclass_label[cells.sst] <- "Sst"
+```
+
+
+```{r}
+
+DimPlot(obj.human.sct, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.human.sct, reduction = "umap", group.by = "subclass_label", raster = FALSE) + xlim(-15, 12) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.human.sct) <- "subclass_label"
+SaveH5Seurat(obj.human.sct, "E:/Human_M1/seurat/human_m1_glutamatergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+
