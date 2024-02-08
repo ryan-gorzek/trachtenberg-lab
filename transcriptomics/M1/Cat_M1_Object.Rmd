@@ -15,7 +15,7 @@ library(data.table)
 
 data_path <- "E:/Cat_M1/output/"
 
-sample_IDs <- c("NW_TX0132-3", "NW_TX0133-5", "NW_TX0135-7", "NW_TX0133-6", "NW_TX0133-7", "NW_TX0135-6",
+sample_IDs <- c("NW_TX0132-3", "NW_TX0133-5", "NW_TX0133-6", "NW_TX0133-7", "NW_TX0135-6", "NW_TX0135-7", 
                 "NW_TX0137-1", "NW_TX0137-2", "NW_TX0141-12", "NW_TX0142-1", "NW_TX0145-9", "NW_TX0146-3") 
 
 objs <- c()
