@@ -1,0 +1,145 @@
+---
+title: "Mouse M1 Object"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+
+matrix <- readRDS("E:/Mouse_M1/Mouse_M1_10xV3_Matrix.RDS")
+meta_tb <- arrow::read_feather("E:/Mouse_M1/Mouse_M1_10xV3_Metadata.feather")
+meta_df <- as.data.frame(meta_tb)
+row.names(meta_df) <- meta_df[, "sample_id"]
+obj.mouse <- CreateSeuratObject(counts = matrix, meta.data = meta_df)
+rm(list = c("matrix", "meta_df", "meta_tb"))
+
+```
+
+
+```{r}
+
+obj.mouse <- AddMetaData(obj.mouse, metadata = unlist(rep(list("Mouse_M1"), ncol(obj.mouse))), col.name = "dataset")
+Idents(object = obj.mouse) <- obj.mouse[["dataset"]]
+obj.mouse[["percent.mt"]] <- PercentageFeatureSet(obj.mouse, pattern = "^mt-")
+VlnPlot(obj.mouse, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+plot1 <- FeatureScatter(obj.mouse, feature1 = "nCount_RNA", feature2 = "percent.mt")
+plot2 <- FeatureScatter(obj.mouse, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+plot1 + plot2
+
+```
+
+
+```{r}
+
+obj.mouse <- NormalizeData(obj.mouse, normalization.method = "LogNormalize", scale.factor = 10000)
+obj.mouse <- FindVariableFeatures(obj.mouse, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.mouse)
+obj.mouse <- ScaleData(obj.mouse, features = all.genes)
+obj.mouse <- RunPCA(obj.mouse, features = VariableFeatures(object = obj.mouse))
+ElbowPlot(obj.mouse, ndims = 50)
+
+```
+
+
+```{r}
+
+obj.mouse <- FindNeighbors(obj.mouse, dims = 1:30)
+obj.mouse <- FindClusters(obj.mouse, resolution = 1, algorithm = 4, method = "igraph")
+obj.mouse <- RunUMAP(obj.mouse, dims = 1:30, method="umap-learn")
+
+```
+```{r}
+
+DimPlot(obj.mouse, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.mouse, reduction = "umap", group.by = "donor_id", raster = FALSE) + xlim(-17, 13) + ylim(-18, 12) + coord_equal()
+
+```
+
+```{r}
+Idents(obj.mouse) <- "level1_label"
+
+cells.glutamatergic <- WhichCells(obj.mouse, ident = "Glutamatergic")
+obj.mouse$class <- ifelse(colnames(obj.mouse) %in% cells.glutamatergic, "glutamatergic", "ambiguous")
+
+cells.gabaergic <- WhichCells(obj.mouse, ident = "GABAergic")
+obj.mouse$class[cells.gabaergic] <- "gabaergic"
+
+cells.nonneuronal <- WhichCells(obj.mouse, ident = "Non-neuronal")
+obj.mouse$class[cells.nonneuronal] <- "nonneuronal"
+```
+
+
+```{r}
+
+DimPlot(obj.mouse, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-19, 19) + ylim(-19, 19) + coord_equal()
+DimPlot(obj.mouse, reduction = "umap", group.by = "class", raster = FALSE) + xlim(-19, 19) + ylim(-19, 19) + coord_equal()
+
+```
+```{r}
+
+obj.mouse.glutamatergic <- subset(obj.mouse, subset = class == "glutamatergic")
+obj.mouse.gabaergic <- subset(obj.mouse, subset = class == "gabaergic")
+obj.mouse.nonneuronal <- subset(obj.mouse, subset = class == "nonneuronal")
+
+```
+
+
+```{r}
+
+obj.mouse.glutamatergic <- NormalizeData(obj.mouse.glutamatergic, normalization.method = "LogNormalize", scale.factor = 10000)
+obj.mouse.glutamatergic <- FindVariableFeatures(obj.mouse.glutamatergic, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.mouse.glutamatergic)
+obj.mouse.glutamatergic <- ScaleData(obj.mouse.glutamatergic, features = all.genes)
+obj.mouse.glutamatergic <- RunPCA(obj.mouse, features = VariableFeatures(object = obj.mouse.glutamatergic))
+
+obj.mouse.glutamatergic <- FindNeighbors(obj.mouse.glutamatergic, dims = 1:30)
+obj.mouse.glutamatergic <- FindClusters(obj.mouse.glutamatergic, resolution = 1, algorithm = 4, method = "igraph")
+obj.mouse.glutamatergic <- RunUMAP(obj.mouse.glutamatergic, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+obj.mouse.gabaergic <- NormalizeData(obj.mouse.gabaergic, normalization.method = "LogNormalize", scale.factor = 10000)
+obj.mouse.gabaergic <- FindVariableFeatures(obj.mouse.gabaergic, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.mouse.gabaergic)
+obj.mouse.gabaergic <- ScaleData(obj.mouse.gabaergic, features = all.genes)
+obj.mouse.gabaergic <- RunPCA(obj.mouse.gabaergic, features = VariableFeatures(object = obj.mouse.gabaergic))
+
+obj.mouse.gabaergic <- FindNeighbors(obj.mouse.gabaergic, dims = 1:30)
+obj.mouse.gabaergic <- FindClusters(obj.mouse.gabaergic, resolution = 1.1, algorithm = 4, method = "igraph")
+obj.mouse.gabaergic <- RunUMAP(obj.mouse.gabaergic, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+obj.mouse.nonneuronal <- NormalizeData(obj.mouse.nonneuronal, normalization.method = "LogNormalize", scale.factor = 10000)
+obj.mouse.nonneuronal <- FindVariableFeatures(obj.mouse.nonneuronal, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.mouse.nonneuronal)
+obj.mouse.nonneuronal <- ScaleData(obj.mouse.nonneuronal, features = all.genes)
+obj.mouse.nonneuronal <- RunPCA(obj.mouse.nonneuronal, features = VariableFeatures(object = obj.mouse.nonneuronal))
+
+obj.mouse.nonneuronal <- FindNeighbors(obj.mouse.nonneuronal, dims = 1:30)
+obj.mouse.nonneuronal <- FindClusters(obj.mouse.nonneuronal, resolution = 1, algorithm = 4, method = "igraph")
+obj.mouse.nonneuronal <- RunUMAP(obj.mouse.nonneuronal, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+SaveH5Seurat(obj.mouse.glutamatergic, "E:/Mouse_M1/seurat/mouse_m1_glutamatergic_raw.h5seurat", overwrite = TRUE, verbose = TRUE)
+SaveH5Seurat(obj.mouse.gabaergic, "E:/Mouse_M1/seurat/mouse_m1_gabaergic_raw.h5seurat", overwrite = TRUE, verbose = TRUE)
+SaveH5Seurat(obj.mouse.nonneuronal, "E:/Mouse_M1/seurat/mouse_m1_nonneuronal_raw.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

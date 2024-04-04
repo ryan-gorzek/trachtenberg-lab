@@ -1,0 +1,180 @@
+---
+title: "Tree Shrew M1 Object"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+library(data.table)
+
+data_path <- "E:/Tree_Shrew_M1/output/"
+
+sample_IDs <- c("NW_TX0100-2", "NW_TX0138-5", "NW_TX0138-6", "NW_TX0142-2", 
+                "NW_TX0142-3", "NW_TX0144-4", "NW_TX0168-8", "NW_TX0168-9", 
+                "NW_TX0169-1", "NW_TX0169-3", "NW_TX0169-4", "NW_TX0172-8")  
+
+objs <- c()
+
+for (sample in sample_IDs) {
+  
+  temp.obj.path <- paste(data_path, sample, "/outs/filtered_feature_bc_matrix/", sep = "")
+  temp.obj.data <- Read10X(temp.obj.path)
+  temp.obj <- CreateSeuratObject(counts = temp.obj.data, project = "Tree_Shrew_M1")
+  temp.obj$sample <- sample
+  temp.obj <- scrublet_R(seurat_obj = temp.obj)
+  objs <- append(objs, temp.obj)
+  
+}
+
+```
+
+
+```{r}
+
+obj.treeshrew <- merge(objs[[1]], y = objs[2:12], add.cell.ids = sample_IDs, project = "Tree_Shrew_M1")
+
+```
+
+
+```{r}
+
+genes.mapping <- read.csv("E:/_genomes/Tree_Shrew_Mouse_Genes.txt")
+genes.mapping.mouse <- as.list(genes.mapping$Mouse.gene.name)
+genes.mapping.treeshrew <- as.list(genes.mapping$Gene.name)
+ids.mapping.treeshrew <- as.list(genes.mapping$Gene.stable.ID)
+genes.treeshrew = rownames(obj.treeshrew)
+for (gene in genes.mapping.mouse) {
+  
+    idx.mouse <- which(genes.mapping.mouse %in% gene)
+
+    if (length(idx.mouse) == 1) {
+      
+      gene.treeshrew <- genes.mapping.treeshrew[idx.mouse]
+      id.treeshrew <- ids.mapping.treeshrew[idx.mouse]
+      
+      if (gene.treeshrew == "") {
+        
+        idx.treeshrew <- which(genes.treeshrew %in% id.treeshrew)
+        genes.treeshrew[idx.treeshrew] <- gene
+        
+      } else {
+        
+        idx.treeshrew <- which(genes.treeshrew %in% gene.treeshrew)
+        genes.treeshrew[idx.treeshrew] <- gene
+        
+      }
+      
+    }
+  
+}
+
+```
+
+
+```{r}
+
+rm(list = c("temp.obj.data", "temp.obj", "objs"))
+obj.df <- as.data.frame(as.matrix(obj.treeshrew[["RNA"]]@counts))
+rownames(obj.df) <- genes.treeshrew
+obj.treeshrew <- CreateSeuratObject(counts = obj.df, meta.data = obj.treeshrew[[]])
+
+```
+
+
+```{r}
+
+VlnPlot(obj.treeshrew, features = c("nFeature_RNA"), group.by = "sample", raster = FALSE)
+VlnPlot(obj.treeshrew, features = c("nCount_RNA"), group.by = "sample", raster = FALSE)
+FeatureScatter(obj.treeshrew, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", raster = FALSE)
+
+```
+
+
+```{r}
+
+cell_mask <- Reduce(intersect,list(WhichCells(obj.treeshrew, expression = nFeature_RNA > 700), 
+                                   WhichCells(obj.treeshrew, expression = nFeature_RNA < 6500),
+                                   WhichCells(obj.treeshrew, expression = nCount_RNA < 40000)))
+
+gene_mask <- rownames(obj.treeshrew)[Matrix::rowSums(obj.treeshrew[["RNA"]]@counts > 0) > 8]
+
+obj.treeshrew <- subset(obj.treeshrew, features = gene_mask, cells = cell_mask)
+
+```
+
+
+```{r}
+
+obj.treeshrew <- NormalizeData(obj.treeshrew, normalization.method = "LogNormalize", scale.factor = 10000)
+obj.treeshrew <- FindVariableFeatures(obj.treeshrew, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.treeshrew)
+obj.treeshrew <- ScaleData(obj.treeshrew, features = all.genes)
+obj.treeshrew <- RunPCA(obj.treeshrew, features = VariableFeatures(object = obj.treeshrew))
+ElbowPlot(obj.treeshrew, ndims = 50)
+
+```
+
+
+```{r}
+
+obj.treeshrew <- FindNeighbors(obj.treeshrew, dims = 1:30)
+obj.treeshrew <- FindClusters(obj.treeshrew, resolution = 1, algorithm = 4, method = "igraph")
+obj.treeshrew <- RunUMAP(obj.treeshrew, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+DimPlot(obj.treeshrew, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.treeshrew, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.treeshrew, "nFeature_RNA", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.treeshrew, "nCount_RNA", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.treeshrew, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("Gad2"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("PVALB"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("Sst"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("Vip"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("Lamp5"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("SNCG"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("Snap25"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("Gad2"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("Csf1r"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("Mog"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("Pdgfra"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("Aldh1l1"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("Col1a1"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("Pvalb"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("Sst"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("Vip"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("Lamp5"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.treeshrew, reduction = "umap", features = c("Sncg"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+# SaveH5Seurat(obj.treeshrew, "E:/Tree_Shrew_M1/seurat/treeshrew_m1_all_ext.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

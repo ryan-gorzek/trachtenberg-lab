@@ -15,7 +15,7 @@ function r = sbxtrinoise_psth(fname, info)
 %%
 log = sbxreadtrinoiselog(fnamelog); % read log
 
-load([fname, '_suite.signals'],'-mat', 'spks', 'sig');    % load signals
+load([fname, '_suite.signals'],'-mat', 'spks');    % load signals
 if ~ismatrix(spks)
     spks = squeeze(spks(1,:,:));     % keep green channel
     % sig =  squeeze(sig(1,:,:));
@@ -33,11 +33,7 @@ for i = 1:nstim
     X(i,:,:) = log{i}{2};
 end
 
-sync_frame = cellfun(@(x) x{3}, log, 'UniformOutput', true)';
 frame = info.evt.photodiode_off.frame;
-if numel(frame) > size(sync_frame, 1)
-    frame = frame(2:end);
-end
 
 ntau = 20;
 
@@ -48,8 +44,8 @@ stim_on  = zeros(nrow,ncol);
 stim_off = zeros(nrow,ncol);
 
 for i = 1:nstim
-        stim_on = stim_on   + double(squeeze(X(i,:,:)) >  0);
-        stim_off = stim_off + double(squeeze(X(i,:,:)) <  0);
+    stim_on = stim_on   + double(squeeze(X(i,:,:)) >  0);
+    stim_off = stim_off + double(squeeze(X(i,:,:)) <  0);
 end
 
 parfor n=1:ncell

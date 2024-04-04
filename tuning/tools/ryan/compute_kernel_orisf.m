@@ -50,6 +50,8 @@ kernel_out_filt = nan([size(params.pp1, [1, 2]), ncells]);
 stats = struct("SNR", cell(ncells, 1), ...
                "tmax", cell(ncells, 1), ...
                "F1F0", cell(ncells, 1));
+
+SNR = nan(ncells, 1);
 for i = 1:ncells
     %%%% compute kernels
     zraw = squeeze(r(:, :, :, i));
@@ -57,8 +59,8 @@ for i = 1:ncells
     qfilt = reshape(zfilt, params.np1 * params.np2, []);
     kfilt = std(qfilt);
     [~, tr] = max(kfilt(7:11));
-    kernel_out_raw(:, :, i) = squeeze(zraw(:, :, tr+6));
-    kernel_out_filt(:, :, i) = squeeze(zfilt(:, :, tr+6));
+    kernel_out_raw(:, :, i) = squeeze(zraw(:, :, tr + 6));
+    kernel_out_filt(:, :, i) = squeeze(zfilt(:, :, tr + 6));
     %%%% compute stats
     [kmax, tmax] = max(kfilt);
     if kmax < 0.005
@@ -68,6 +70,7 @@ for i = 1:ncells
         noise_std = std(kfilt);
     else
         snr = mean(kfilt(8:10)) / mean(kfilt([1 2 3 16:20]));
+        SNR(i) = snr;
         response = mean(kfilt(8:10));
         noise = mean(kfilt([1 2 3 16:20]));
         noise_std = std(kfilt([1 2 3 16:20]));
@@ -87,5 +90,7 @@ for i = 1:ncells
 %     stat(i).kmax = kmax;
 
 end
+
+% assignin("base", "stats", stats); assignin("base", "rfilt", rfilt); pause;
 
 end

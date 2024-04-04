@@ -33,7 +33,6 @@ rownames(opossum.counts) <- opossum.counts$X
 opossum.counts <- opossum.counts[, -1]
 opossum.counts$species <- "Opossum"
 opossum.counts$L4.IT <- 0
-opossum.counts$L6.IT <- 0
 opossum.counts$Sncg <- 0
 opossum.counts$SMC <- 0
 opossum.counts$Stac <- 0
@@ -44,7 +43,7 @@ opossum.counts$L6.IT.Car3 <- 0
 opossum.counts$Pax6 <- 0
 opossum.counts$Sst.Chodl <- 0
 opossum.counts$Peri <- 0
-opossum.counts$Glutamatergic <- rowSums(opossum.counts[, c("L2.3.IT", "L5.ET", "L5.IT", "L5.6.NP", "L6.CT", "L6b")])
+opossum.counts$Glutamatergic <- rowSums(opossum.counts[, c("L2.3.IT", "L5.ET", "L5.IT", "L5.6.NP", "L6.CT", "L6.IT", "L6b")])
 opossum.counts$GABAergic <- rowSums(opossum.counts[, c("Pvalb", "Sst", "Vip", "Lamp5")])
 opossum.counts$MGE <- rowSums(opossum.counts[, c("Pvalb", "Sst")])
 opossum.counts$CGE <- rowSums(opossum.counts[, c("Vip", "Lamp5", "Sncg")])
@@ -60,7 +59,8 @@ both.counts$sample <- rownames(both.counts)
 ```{r}
 
 both.counts <- both.counts %>%
-  mutate(L2.3.IT = L2.3.IT / Glutamatergic,
+  mutate(VIP.PV = Vip / Pvalb, 
+         L2.3.IT = L2.3.IT / Glutamatergic,
          L5.ET = L5.ET / Glutamatergic,
          L5.IT = L5.IT / Glutamatergic,
          L5.6.NP = L5.6.NP / Glutamatergic,
@@ -85,7 +85,7 @@ scatter.counts <- both.counts
 
 both.counts <- both.counts %>%
   pivot_longer(
-    cols = c("L2.3.IT", "L5.ET", "L5.IT", "L5.6.NP", "L6.CT", "L6.IT", "L6b", "Pvalb", "Sst", "Vip", "Sncg", "Lamp5", "Meis2", "Glutamatergic", "GABAergic", "Nonneuronal", "Neuronal", "MGE", "CGE", "Pvalb_CGE", "CGE_Pvalb"),
+    cols = c("L2.3.IT", "L5.ET", "L5.IT", "L5.6.NP", "L6.CT", "L6.IT", "L6b", "Pvalb", "Sst", "Vip", "Sncg", "Lamp5", "Meis2", "Glutamatergic", "GABAergic", "Nonneuronal", "Neuronal", "MGE", "CGE", "Pvalb_CGE", "CGE_Pvalb", "VIP.PV"),
     names_to = "cell.identity", 
     values_to = "fraction"
   )
@@ -93,7 +93,7 @@ both.counts <- both.counts %>%
 ```
 
 
-```{r, fig.height=3, fig.width=3.5}
+```{r, fig.height=3.3, fig.width=2.75}
 
 both.counts$species <- factor(both.counts$species, levels = c("Opossum", "Mouse"))
 
@@ -105,12 +105,12 @@ mo_class <- ggplot(class.counts, aes(x = factor(cell.identity, level = c("Glutam
     scale_x_discrete(labels = c("Glutamatergic", "GABAergic")) +
     scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1), expand = c(0, 0), limits = c(0, 1)) +
     guides(fill = guide_legend(override.aes = list(shape = NA))) +
-    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10), axis.text.x = element_text(angle = 45, hjust = 1)) + 
     labs(x = NULL, y = "Fraction of Neuronal Cells", fill = NULL) + 
     scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa"))
 
-ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/MO_Class_Proportion.svg", plot=mo_class, width=3.5, height=3, dpi=500)
-ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/MO_Class_Proportion.png", plot=mo_class, width=3.5, height=3, dpi=500)
+ggsave(file="G:/Shared drives/Grants/2024 Gorzek NRSA/_FIGURES/Figure 3/Class_Proportion.svg", plot=mo_class, width=2.75, height=3.25, dpi=500)
+ggsave(file="G:/Shared drives/Grants/2024 Gorzek NRSA/_FIGURES/Figure 3/Class_Proportion.png", plot=mo_class, width=2.75, height=3.25, dpi=500)
 
 ```
 
@@ -121,29 +121,37 @@ both.counts$species <- factor(both.counts$species, levels = c("Opossum", "Mouse"
 
 class.counts <- both.counts[both.counts$cell.identity %in% c("L2.3.IT", "L5.IT", "L6.IT", "L5.6.NP", "L5.ET", "L6.CT", "L6b"), ]
 
-mo_glutamatergic <- ggplot(class.counts, aes(x = factor(cell.identity, level = c("L2.3.IT", "L5.IT", "L6.IT", "L5.6.NP", "L5.ET", "L6.CT", "L6b")), y = fraction, fill = species)) +
-    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
-    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
-    scale_x_discrete(labels = c("L2/3 IT", "L5 IT", "L6 IT", "L5/6 NP", "L5 ET", "L6 CT", "L6b")) +
-    scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75), expand = c(0, 0), limits = c(0, 0.751)) +
-    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+mo_glutamatergic <- ggplot(class.counts, aes(x = factor(cell.identity, level = c("L2.3.IT", "L5.IT", "L6.IT", "L5.6.NP", "L5.ET", "L6.CT", "L6b")), y = fraction, fill = species)) + 
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) + 
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) + 
+    scale_x_discrete(labels = c("L2/3 IT", "L4/5 IT", "L6 IT", "L5/6 NP", "L5 ET", "L6 CT", "L6b")) + 
+    scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75), expand = c(0, 0), limits = c(0, 0.751)) + 
+    guides(fill = guide_legend(override.aes = list(shape = NA))) + 
     theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10), axis.text.x = element_text(angle = 45, hjust = 1)) + 
     labs(x = NULL, y = "Fraction of Glutamatergic Cells", fill = NULL) + 
     scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa"))
 
-ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/MO_Glutamatergic_Subclass_Proportion.svg", plot=mo_glutamatergic, width=4, height=3)
-ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/MO_Glutamatergic_Subclass_Proportion.png", plot=mo_glutamatergic, width=4.5, height=3)
+ggsave(file="G:/Shared drives/Grants/2024 Gorzek NRSA/_FIGURES/Figure 3/Glutamatergic_Subclass.svg", plot=mo_glutamatergic, width=4.5, height=3)
+ggsave(file="G:/Shared drives/Grants/2024 Gorzek NRSA/_FIGURES/Figure 3/Glutamatergic_Subclass.png", plot=mo_glutamatergic, width=4.5, height=3)
 
 ```
 
 
-```{r, fig.height=3, fig.width=4}
+```{r}
+
+res.aov2 <- aov(fraction ~ species * cell.identity, data = class.counts)
+tukey <- TukeyHSD(res.aov2, which = "species:cell.identity")
+
+```
+
+
+```{r, fig.height=3, fig.width=3.8}
 
 both.counts$species <- factor(both.counts$species, levels = c("Opossum", "Mouse"))
 
 class.counts <- both.counts[both.counts$cell.identity %in% c("Pvalb", "Sst", "Vip", "Sncg", "Lamp5"), ]
 
-ggplot(class.counts, aes(x = factor(cell.identity, level = c("Pvalb", "Sst", "Vip", "Lamp5", "Sncg")), y = fraction, fill = species)) +
+mo_gabaergic <- ggplot(class.counts, aes(x = factor(cell.identity, level = c("Pvalb", "Sst", "Vip", "Lamp5", "Sncg")), y = fraction, fill = species)) +
     geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
     geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
     scale_x_discrete(labels = c("Pvalb", "Sst", "Vip", "Lamp5", "Sncg")) +
@@ -153,8 +161,8 @@ ggplot(class.counts, aes(x = factor(cell.identity, level = c("Pvalb", "Sst", "Vi
     labs(x = NULL, y = "Fraction of GABAergic Cells", fill = NULL) + 
     scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa"))
 
-# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/MO_GABAergic_Subclass_Proportion.svg", plot=mo_gabaergic, width=4, height=3, dpi=500)
-# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/MO_GABAergic_Subclass_Proportion.png", plot=mo_gabaergic, width=4, height=3, dpi=500)
+# ggsave(file="G:/Shared drives/Grants/2024 Gorzek NRSA/_FIGURES/Figure 3/GABAergic_Subclass.svg", plot=mo_gabaergic, width=3.8, height=3, dpi=500)
+# ggsave(file="G:/Shared drives/Grants/2024 Gorzek NRSA/_FIGURES/Figure 3/GABAergic_Subclass.png", plot=mo_gabaergic, width=3.8, height=3, dpi=500)
 
 ```
 
@@ -163,6 +171,28 @@ ggplot(class.counts, aes(x = factor(cell.identity, level = c("Pvalb", "Sst", "Vi
 
 res.aov2 <- aov(fraction ~ species * cell.identity, data = class.counts)
 tukey <- TukeyHSD(res.aov2, which = "species:cell.identity")
+
+```
+
+
+```{r, fig.height=3, fig.width=2.35}
+
+both.counts$species <- factor(both.counts$species, levels = c("Opossum", "Mouse"))
+
+class.counts <- both.counts[both.counts$cell.identity %in% c("VIP.PV"), ]
+
+vip_pv_ratio <- ggplot(class.counts, aes(x = factor(cell.identity, level = c("VIP.PV")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("")) +
+    scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75), expand = c(0, 0), limits = c(0, 0.751)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "VIP/PV Ratio", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa"))
+
+ggsave(file="G:/Shared drives/Grants/2024 Gorzek NRSA/_FIGURES/Figure 3/VIP_PV_Ratio.svg", plot=vip_pv_ratio, width=2.35, height=3, dpi=500)
+ggsave(file="G:/Shared drives/Grants/2024 Gorzek NRSA/_FIGURES/Figure 3/VIP_PV_Ratio.png", plot=vip_pv_ratio, width=2.35, height=3, dpi=500)
 
 ```
 

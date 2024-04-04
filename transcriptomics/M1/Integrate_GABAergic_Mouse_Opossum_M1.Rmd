@@ -14,7 +14,7 @@ library(dplyr)
 library(SeuratDisk)
 library(lisi)
 
-obj.mouse.full <- LoadH5Seurat("E:/Mouse_M1/seurat/mouse_m1_gabaergic.h5seurat")
+obj.mouse <- LoadH5Seurat("E:/Mouse_M1/seurat/mouse_m1_gabaergic.h5seurat")
 obj.mouse.full$dataset <- "Mouse_M1"
 
 obj.opossum <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic_sct.h5seurat")

@@ -31,4 +31,4 @@ if ~exist([fout '.mat'],'file')
     save([fout '.mat'],'info');
 end
 
-
+fclose('all');

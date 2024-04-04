@@ -1,4 +1,4 @@
-function [spikes, dFF] = expstruct(stim_type, traces, spikes, ops, stat, frameon, frameoff, params, stim_center, pix_per_deg, eye, quad) % 
+function [spikes, dFF] = expstruct(stim_type, traces, spikes, ops, stat, frameon, frameoff, params, stim_center, pix_per_deg, eye, imgs, eye_center, eye_radius, quad)
 
 %%%% add metadata
 expst = [];
@@ -57,6 +57,19 @@ switch stim_type
             % calculate SNR thresholds
             data.(activity).calc.snr_on_thr = SNR_thr(vertcat(data.(activity).stats.snr_on), vertcat(data.(activity).stats.tmax_on));
             data.(activity).calc.snr_off_thr = SNR_thr(vertcat(data.(activity).stats.snr_off), vertcat(data.(activity).stats.tmax_off));
+            % add eye data
+            data.(activity).eye.img = imgs(:, :, end);
+            eye_data = 2 .* vertcat(eye.Radius); % use diameter
+            data.(activity).eye.data = medfilt1(eye_data(1:expst.nframes), 15, "truncate"); % median filter to remove blinking artifacts
+            data.(activity).eye.pos = vertcat(eye.Centroid);
+            data.(activity).eye.pos = data.(activity).eye.pos(1:data.(activity).nframes, :);
+            eye_pos_mode = mode(data.(activity).eye.pos, 1);
+            data.(activity).eye.center = eye_pos_mode;
+            eye_pos_logical = (data.(activity).eye.pos(:, 1) > eye_pos_mode(1) - eye_radius) & ...
+                              (data.(activity).eye.pos(:, 1) < eye_pos_mode(1) + eye_radius) & ...
+                              (data.(activity).eye.pos(:, 2) > eye_pos_mode(2) - eye_radius) & ...
+                              (data.(activity).eye.pos(:, 2) < eye_pos_mode(2) + eye_radius);
+            data.(activity).eye.logical = eye_pos_logical;
         end
         spikes = data.spikes; dFF = data.dFF;
         return
@@ -294,11 +307,11 @@ expst.stims = struct("param", num2cell(param, 2), ...
 
 %%%% assign stimuli as having significant (5 pixels) eye divergence
 eye_pos = vertcat(eye.Centroid);
-eye_pos_mean = mean(eye_pos, 1, "omitnan");
-eye_pos_logical = (eye_pos(:, 1) > eye_pos_mean(1) - 5) & ...
-                  (eye_pos(:, 1) < eye_pos_mean(1) + 5) & ...
-                  (eye_pos(:, 2) > eye_pos_mean(2) - 5) & ...
-                  (eye_pos(:, 2) < eye_pos_mean(2) + 5);
+eye_pos = eye_pos(1:expst.nframes, :);
+eye_pos_logical = (eye_pos(:, 1) > eye_center(1) - eye_radius) & ...
+                  (eye_pos(:, 1) < eye_center(1) + eye_radius) & ...
+                  (eye_pos(:, 2) > eye_center(2) - eye_radius) & ...
+                  (eye_pos(:, 2) < eye_center(2) + eye_radius);
 % assign stimuli as running or not running
 stimeye = cell(expst.nstims, 1);
 for st = 1:expst.nstims
@@ -340,8 +353,8 @@ for data_form = 1:2
     end
     if stim_type == "battery2", kernel_out = flip(kernel_out, 1); end
     kerns = permute(num2cell(kernel_out, 1:expst.ndims), flip(1:expst.ndims+1));
-    peaks = squeeze(num2cell(max(kernel_out, [], 1:expst.ndims)));
-    valleys = squeeze(num2cell(min(kernel_out, [], 1:expst.ndims)));
+    peaks = squeeze(num2cell(max(kernel_out, [], 1:expst.ndims, "omitnan")));
+    valleys = squeeze(num2cell(min(kernel_out, [], 1:expst.ndims, "omitnan")));
     % find tuning curves at max for each dimension
     curves = cell(numel(kerns), expst.ndims);
     peakidxs = cell(numel(kerns), 1);
@@ -407,12 +420,14 @@ expst.stats = struct("skewness", num2cell(skewness(data), 1)');
 % pupil diameter
 eye_data = 2 .* vertcat(eye.Radius); % use diameter
 expst.eye.data = medfilt1(eye_data(1:expst.nframes), 15, "truncate"); % median filter to remove blinking artifacts
+expst.eye.pos = eye_pos;
+expst.eye.logical = logical(eye_pos_logical);
 eye_corr = num2cell(corr(horzcat(expst.cells.data), expst.eye.data));
 [expst.stats.eye_corr] = eye_corr{:};
 % running (absolute first derivative of quadrature)
 quad_data = double(quad');
 expst.quad.data = movmean(quad_data, 15);
-expst.quad.logical = expst.quad.data > 1 * std(expst.quad.data);
+expst.quad.logical = expst.quad.data > 0.5 * std(expst.quad.data);
 % assign stimuli as running or not running
 stimrun = cell(expst.nstims, 1);
 for st = 1:expst.nstims
@@ -436,6 +451,7 @@ switch stim_type
     case "randorisf"
         % assign stats computed in compute_kernel_orisf
         [expst.stats.SNR] = stats.SNR;
+        % pause;
         [expst.stats.tmax] = stats.tmax;
         [expst.stats.F1F0] = stats.F1F0;
         % compute the population SNR threshold
@@ -460,12 +476,9 @@ switch stim_type
         stationary = cell(expst.ncells, 1); running = cell(expst.ncells, 1);
         PSTHs = {expst.psths.mat};
         for c = 1:numel(PSTHs)
-        % get stimuli where eye is looking in the right spot, and preferred contrast/direction
-            stim_idx = expst.stimdata.stimidx;
-            sub_idx = vertcat(expst.stims.eye); % & ...
-%                       (stim_idx(:, 1) == expst.kernels(c).peakidx(1)) & ...
-%                       (stim_idx(:, 2) == expst.kernels(c).peakidx(2));
-            [s, r] = size_est_quad(PSTHs{c}, expst.stimdata, vertcat(expst.stims.run), expst.viz.window, [0, 4], [8, 24], sub_idx);
+        % get stimuli where eye is looking in the right spot
+            sub_idx = vertcat(expst.stims.eye);
+            [s, r] = size_est_quad(PSTHs{c}, expst.stimdata, vertcat(expst.stims.run), expst.viz.window, [0, 4], [10, 25], sub_idx);
             stationary{c} = s; running{c} = r;
         end
         [expst.stats.size_stationary] = stationary{:};
@@ -473,8 +486,11 @@ switch stim_type
     case "battery4"
         % define kernel statistics
         kern_max = @(k) num2cell(reshape(max(k, [], 1:4, "omitnan"), [], expst.ncells)', 2);
+        kern_max_all = @(k) num2cell(repmat(reshape(max(k, [], 1:5, "omitnan"), [], expst.ncells)', [1, size(k, 5)]), 2);
         kern_mean = @(k) num2cell(reshape(mean(k, 1:4, "omitnan"), [], expst.ncells)', 2);
-        kern_std = @(k) num2cell(reshape(std(k, 1:4, "omitnan"), [], expst.ncells)', 2);
+        kern_mean_all = @(k) num2cell(repmat(reshape(mean(k, 1:5, "omitnan"), [], expst.ncells)', [1, size(k, 5)]), 2);
+        kern_std = @(k) num2cell(reshape(std(k, 0, 1:4, "omitnan"), [], expst.ncells)', 2);
+        kern_std_all = @(k) num2cell(repmat(reshape(std(k, 0, 1:5, "omitnan"), [], expst.ncells)', [1, size(k, 5)]), 2);
         mod_idx = @(c1, c2) num2cell((cell2mat(c1) - cell2mat(c2)) ./ (cell2mat(c1) + cell2mat(c2)), 2);
         iti = @(c, s, i) num2cell(((cell2mat(c) - cell2mat(s)) ./ 2 .* ((cell2mat(s) - cell2mat(i)) + (cell2mat(c) - cell2mat(i)))) + 0.5, 2);
         % center response
@@ -486,6 +502,7 @@ switch stim_type
         % iso response
         kernel_iso = compute_kernel(data, frameon, frameoff, params, window, expst.stimdata.context.iso & vertcat(expst.stims.eye), 0:4);
         iso_max = kern_max(kernel_iso); iso_mean = kern_mean(kernel_iso); iso_std = kern_std(kernel_iso);
+        iso_all_max = kern_max_all(kernel_iso); iso_all_mean = kern_mean_all(kernel_iso); iso_all_std = kern_std_all(kernel_iso); % average across size too
         % cross response
         kernel_cross = compute_kernel(data, frameon, frameoff, params, window, expst.stimdata.context.cross & vertcat(expst.stims.eye), 0:4);
         cross_max = kern_max(kernel_cross); cross_mean = kern_mean(kernel_cross); cross_std = kern_std(kernel_cross);
@@ -493,8 +510,8 @@ switch stim_type
         kernel_blank = compute_kernel(data, frameon, frameoff, params, window, expst.stimdata.context.blank & vertcat(expst.stims.eye), 0:4);
         blank_max = kern_max(kernel_blank); blank_mean = kern_mean(kernel_blank); blank_std = kern_std(kernel_blank);
         % modulation index (cross / iso)
-        cri_mod_max = mod_idx(cross_max, iso_max);
-        cri_mod_mean = mod_idx(cross_mean, iso_mean);
+        cri_mod_max = mod_idx(cross_max, iso_all_max);
+        cri_mod_mean = mod_idx(cross_mean, iso_all_mean);
         % modulation index (center / surround)
         cs_mod_max = mod_idx(cross_max, surround_max);
         cs_mod_mean = mod_idx(cross_mean, surround_mean);
@@ -502,7 +519,10 @@ switch stim_type
         ci_mod_max = mod_idx(center_max, iso_max);
         ci_mod_mean = mod_idx(center_mean, iso_mean);
         % ITI
-        ITI = iti(center_max, surround_max, iso_max);
+        ITI = iti(center_max, surround_max, iso_all_max);
+        % center/surround size tuning curve correlation
+        cs_size_corr = cellfun(@(x, y) corrcoef(x, y), center_mean, surround_mean, "UniformOutput", false);
+        cs_size_corr = cellfun(@(x) x(2, 1), cs_size_corr, "UniformOutput", false);
         %%%% assign to stats field
         [expst.stats.center_max] = center_max{:};
         [expst.stats.center_mean] = center_mean{:};
@@ -511,8 +531,11 @@ switch stim_type
         [expst.stats.surround_mean] = surround_mean{:};
         [expst.stats.surround_std] = surround_std{:};
         [expst.stats.iso_max] = iso_max{:};
+        [expst.stats.iso_all_max] = iso_all_max{:};
         [expst.stats.iso_mean] = iso_mean{:};
+        [expst.stats.iso_all_mean] = iso_all_mean{:};
         [expst.stats.iso_std] = iso_std{:};
+        [expst.stats.iso_all_std] = iso_all_std{:};
         [expst.stats.cross_max] = cross_max{:};
         [expst.stats.cross_mean] = cross_mean{:};
         [expst.stats.cross_std] = cross_std{:};
@@ -526,6 +549,7 @@ switch stim_type
         [expst.stats.ci_mod_max] = ci_mod_max{:};
         [expst.stats.ci_mod_mean] = ci_mod_mean{:};
         [expst.stats.ITI] = ITI{:};
+        [expst.stats.cs_size_corr] = cs_size_corr{:};
 end
 
 %%%% generate tables for all stimuli (estimated tuning, running, pupil, calcium dynamics)
@@ -559,7 +583,7 @@ end
 switch stim_type
     case "randorisf"
         stats = ["SNR", "tmax", "F1F0", "CV"];
-        binedges = {0:0.2:6, 1:20, 0:0.2:2, 0:0.1:1};
+        binedges = {0:0.5:6, 1:20, 0:0.2:2, 0:0.1:1};
         ticks = {0:6, 1:4:20, 0:0.5:2, 0:0.25:1};
         for s = 1:numel(stats)
             expst.table.(stats(s) + "_" + expst.stimabbrv + "_" + expst.dtype) = vertcat(expst.stats.(stats(s)));
@@ -607,12 +631,16 @@ switch stim_type
     case "battery4"
         % center response, surround response, iso response, cross response,
         % modulation index (at preferred and all stimuli)
-        stats = ["cri_mod_max", "cri_mod_mean", "cs_mod_max", "cs_mod_mean", "ci_mod_max", "ci_mod_mean", "ITI"];
-        binedges = {0:0.1:1, -1:0.2:1, 0:0.1:1, -1:0.2:1, 0:0.1:1, -1:0.2:1, 0:0.1:1};
-        ticks = {0:0.25:1, -1:0.5:1, 0:0.25:1, -1:0.5:1, 0:0.25:1, -1:0.5:1, 0:0.5:1};
+        stats = ["cri_mod_max", "cri_mod_mean", "cs_mod_max", "cs_mod_mean", "ci_mod_max", "ci_mod_mean", "ITI", "cs_size_corr"];
+        binedges = {0:0.1:1, -1:0.2:1, 0:0.1:1, -1:0.2:1, 0:0.1:1, -1:0.2:1, 0:0.1:1, -1:0.2:1};
+        ticks = {0:0.25:1, -1:0.5:1, 0:0.25:1, -1:0.5:1, 0:0.25:1, -1:0.5:1, 0:0.5:1, -1:0.5:1};
         for s = 1:numel(stats)
             st = vertcat(expst.stats.(stats(s)));
-            expst.table.(stats(s) + "_" + expst.stimabbrv + "_" + expst.dtype) = st(:, 3); %%%% grab 20 degrees for table
+            if size(st, 2) > 1
+                expst.table.(stats(s) + "_" + expst.stimabbrv + "_" + expst.dtype) = st(:, 3); %%%% grab 20 degrees for table
+            else
+                expst.table.(stats(s) + "_" + expst.stimabbrv + "_" + expst.dtype) = st;
+            end
             expst.table.Properties.CustomProperties.FeatureScale{end} = 'linear';
             expst.table.Properties.CustomProperties.BinEdges{end} = binedges{s};
             expst.table.Properties.CustomProperties.Ticks{end} = ticks{s};
@@ -662,9 +690,11 @@ end
         SNR_mean = mean(SNR(~tmax_idx), "omitnan");
         SNR_std = std(SNR(~tmax_idx), "omitnan");
         thr = SNR_mean + 3 * SNR_std;
+        if isnan(thr), thr = 1.5; end
     end
 
     function est = dir_est(curve, dimvals)
+        curve(isnan(curve)) = 0;
         est = rad2deg(angle(sum(curve .* exp(1i * dimvals * pi/180))));
         if est < 0
             est = est + 360;
@@ -721,7 +751,7 @@ end
             if run(stm) == 0 % not running
                 stationary(stimidx(stm, 3)) = stationary(stimidx(stm, 3)) + trial_data;
                 stationary_count(stimidx(stm, 3)) = stationary_count(stimidx(stm, 3)) + 1;
-            elseif run(stm) == 2 % running the whole time
+            elseif run(stm) > 1 % running the whole time
                 running(stimidx(stm, 3)) = running(stimidx(stm, 3)) + trial_data;
                 running_count(stimidx(stm, 3)) = running_count(stimidx(stm, 3)) + 1;
             end

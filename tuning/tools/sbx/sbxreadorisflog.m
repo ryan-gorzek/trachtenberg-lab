@@ -34,12 +34,8 @@ else
     scanbox_frame = sbx.info.evt.sync.frame;
 end
 
-assignin("base", "log", log);
-assignin("base", "sbx", sbx);
-assignin("base", "scanbox_frame", scanbox_frame);
-
 if numel(scanbox_frame) > size(log{1}, 1)
-    scanbox_frame = scanbox_frame(2:end);
+    scanbox_frame = scanbox_frame(1:end-1);
 end
 
 % % detect missing TTLs and fill in...
@@ -60,10 +56,11 @@ end
 k = 1;
 for j = 1:length(log)
     if ~isempty(log{j})
-        ov_frame = log{j}.frame;
-        fit = polyfit(ov_frame,scanbox_frame(k:k+length(ov_frame)-1),1);           % from ov to sbx
-        k = k+length(ov_frame);
-        t = table(floor(polyval(fit,ov_frame)),'VariableName',{'sbxframe'});
+%         ov_frame = log{j}.frame;
+%         fit = polyfit(ov_frame,scanbox_frame(k:k+length(ov_frame)-1),1);           % from ov to sbx
+%         k = k+length(ov_frame);
+%         t = table(floor(polyval(fit,ov_frame)),'VariableName',{'sbxframe'});
+        t = table(scanbox_frame,'VariableName',{'sbxframe'});
         log{j} = [log{j} t];
     end
 end

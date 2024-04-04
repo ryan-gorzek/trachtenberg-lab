@@ -18,13 +18,30 @@ for i = 1:nstim                                        % for each stim index
     vmean(i, 1:numel(wdw), :) = v;
 end
 
-M = max(params.idx);
-npsth = cell(M, ncells);                               % and the average (across repeats) response to each
-for k = 1:M
-    j = params.idx == k;                               % find all the times we presented stim k
-    npsth(k, :) = num2cell(vmean(j, :, :), [1, 2]);    % average the response
-end
+% M = max(params.idx);
+% npsth = cell(M, ncells);                               % and the average (across repeats) response to each
+% for k = 1:M
+%     j = params.idx == k;                               % find all the times we presented stim k
+%     npsth(k, :) = num2cell(vmean(j, :, :), [1, 2]);    % average the response
+% end
+% npsth = reshape(npsth, [size(params.pp1) ncells]);     % reshape so it has the right matrix form
 
-npsth = reshape(npsth, [size(params.pp1) ncells]);     % reshape so it has the right matrix form
+idxs = unique(params.idx);
+M = numel(idxs);
+npsth = cell([size(params.pp1) ncells]);             % and the average (across repeats) response to each
+for k = 1:M
+    j = params.idx == idxs(k);                     % find all the times we presented stim k
+    s = unique(params.stimidx(j, :), "rows");      % make sure there's only one stim
+    switch numel(s)
+        case 2
+            npsth(s(2), s(1), :) = num2cell(vmean(j, :, :), [1, 2]);                  % average the response
+        case 3
+            npsth(s(2), s(1), s(3), :) = num2cell(vmean(j, :, :), [1, 2]);                  % average the response
+        case 4
+            npsth(s(2), s(1), s(3), s(4), :) = num2cell(vmean(j, :, :), [1, 2]);                  % average the response
+        case 5
+            npsth(s(2), s(1), s(3), s(4), s(5), :) = num2cell(vmean(j, :, :), [1, 2]);                  % average the response
+    end
+end
 
 end

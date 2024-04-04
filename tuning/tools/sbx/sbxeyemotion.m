@@ -1,17 +1,10 @@
 
 function eye = sbxeyemotion(fn, rad_range, concat_fpath)
+
+fprintf("Processing pupil data...\n");
+
 fn = char(fn);
-if exist([fn '_eye.mj2'],'file')
-    vw = VideoReader([fn '_eye.mj2']);
-    data = zeros(vw.Height,vw.Width,1,vw.NumFrames,'uint8');
-    k = 0;
-    while hasFrame(vw)
-        k = k+1;
-        data(:,:,1,k) = readFrame(vw);
-    end
-else
-    load(fn, 'data');                  % should be a '*_eye.mat' file
-end
+load(fn, 'data');                  % should be a '*_eye.mat' file
 
 if size(rad_range, 1) == 1
     % Edit patrick - allow rad_range to change as a function of time for
@@ -61,7 +54,8 @@ for n = 1:size(data_crop, 3)
 end
 
 eye = struct('Centroid', A, 'Radius', B, 'Area', C, 'Data', D);
-for n = 1:size(data, 3)
+parfor n = 1:size(data, 3)
+    warning off;
     [center, radii, metric] = imfindcircles(squeeze(data_crop(:, :, n)), rad_range(n, :), 'Sensitivity', 0.95);
     if isempty(center)
         eye(n).Centroid = [NaN NaN];    % could not find anything...

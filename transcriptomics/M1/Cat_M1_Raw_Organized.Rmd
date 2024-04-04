@@ -99,7 +99,6 @@ DimPlot(obj.cat, reduction = "umap", group.by = "predicted_doublets", raster = F
 #glutamatergic 
 FeaturePlot(obj.cat, reduction = "umap", features = c("SNAP25"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 FeaturePlot(obj.cat, reduction = "umap", features = c("SLC17A7"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
-FeaturePlot(obj.cat, reduction = "umap", features = c("GAD2"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 FeaturePlot(obj.cat, reduction = "umap", features = c("CSF1R"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 FeaturePlot(obj.cat, reduction = "umap", features = c("MOG"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 FeaturePlot(obj.cat, reduction = "umap", features = c("PDGFRA"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
@@ -108,6 +107,7 @@ FeaturePlot(obj.cat, reduction = "umap", features = c("COL1A1"), raster = FALSE)
 
 #GABAergic 
 FeaturePlot(obj.cat, reduction = "umap", features = c("PVALB"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.cat, reduction = "umap", features = c("GAD2"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 FeaturePlot(obj.cat, reduction = "umap", features = c("SST"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 FeaturePlot(obj.cat, reduction = "umap", features = c("VIP"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 FeaturePlot(obj.cat, reduction = "umap", features = c("LAMP5"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
@@ -120,19 +120,20 @@ FeaturePlot(obj.cat, reduction = "umap", features = c("PDGFRA"), raster = FALSE)
 FeaturePlot(obj.cat, reduction = "umap", features = c("AQP4"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal() # astrocytes
 FeaturePlot(obj.cat, reduction = "umap", features = c("COL1A1"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal() # VLMC
 FeaturePlot(obj.cat, reduction = "umap", features = c("TEK"), raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal() # endothelial
+
 ```
 
 
 ```{r}
 
-cells.glutamatergic <- WhichCells(obj.cat, ident = c(1))
-obj.cat$class <- ifelse(colnames(obj.cat) %in% cells.glutamatergic, "glutamatergic", "ambiguous")
+cells.glutamatergic <- WhichCells(obj.cat, ident = c(1, 2, 3, 4, 5, 7, 8, 9, 10, 13, 15, 17, 19, 21, 23, 24, 26, 29, 30, 31, 33, 35, 36))
+obj.cat$class <- ifelse(colnames(obj.cat) %in% obj.cat.glutamatergic, "glutamatergic", "ambiguous")
 
-cells.gabaergic <- WhichCells(obj.cat, ident = c(6, 12, 16, 20, 22 ))
-obj.cat$class[cells.gabaergic] <- "gabaergic"
+cells.gabaergic <- WhichCells(obj.cat, ident = c(6, 12, 14, 16, 20, 22, 25, 28))
+obj.cat$class[obj.cat.gabaergic] <- "gabaergic"
 
-cells.nonneuronal <- WhichCells(obj.cat, ident = c(8, 10, 21, 23, 25, 26, 27, 29))
-obj.cat$class[cells.nonneuronal] <- "nonneuronal"
+cells.nonneuronal <- WhichCells(obj.cat, ident = c(11, 18, 27, 32, 34))
+obj.cat$class[obj.cat.nonneuronal] <- "nonneuronal"
 
 ```
 
@@ -144,31 +145,64 @@ DimPlot(obj.cat, reduction = "umap", group.by = "class", raster = FALSE) + xlim(
 
 ```
 
-
-```{r}
-obj.cat.gabaergic <- FindNeighbors(obj.cat.gabaergic, dims = 1:30)
-obj.cat.gabaergic <- FindClusters(obj.cat.gabaergic, resolution = 1.1, algorithm = 4, method = "igraph")
-obj.cat.gabaergic <- RunUMAP(obj.cat.gabaergic, dims = 1:30, method="umap-learn")
-```
-
-
-```{r}
-obj.cat.glutamatergic <- FindNeighbors(obj.cat.glutamatergic, dims = 1:30)
-obj.cat.glutamatergic <- FindClusters(obj.cat.glutamatergic, resolution = 1, algorithm = 4, method = "igraph")
-obj.cat.glutamatergic <- RunUMAP(obj.cat.glutamatergic, dims = 1:30, method="umap-learn")
-```
-
-
-
 ```{r}
 
 obj.cat.glutamatergic <- subset(obj.cat, subset = class == "glutamatergic")
-SaveH5Seurat(obj.cat.glutamatergic, "E:/cat_M1/seurat/cat_m1_glutamatergic_raw.h5seurat", overwrite = TRUE, verbose = TRUE)
-
 obj.cat.gabaergic <- subset(obj.cat, subset = class == "gabaergic")
-SaveH5Seurat(obj.cat.gabaergic, "E:/cat_M1/seurat/cat_m1_gabaergic_raw.h5seurat", overwrite = TRUE, verbose = TRUE)
-
 obj.cat.nonneuronal <- subset(obj.cat, subset = class == "nonneuronal")
+
+```
+
+
+```{r}
+
+obj.cat.glutamatergic <- NormalizeData(obj.cat.glutamatergic, normalization.method = "LogNormalize", scale.factor = 10000)
+obj.cat.glutamatergic <- FindVariableFeatures(obj.cat.glutamatergic, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.cat.glutamatergic)
+obj.cat.glutamatergic <- ScaleData(obj.cat.glutamatergic, features = all.genes)
+obj.cat.glutamatergic <- RunPCA(obj.cat, features = VariableFeatures(object = obj.cat.glutamatergic))
+
+obj.cat.glutamatergic <- FindNeighbors(obj.cat.glutamatergic, dims = 1:30)
+obj.cat.glutamatergic <- FindClusters(obj.cat.glutamatergic, resolution = 1, algorithm = 4, method = "igraph")
+obj.cat.glutamatergic <- RunUMAP(obj.cat.glutamatergic, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+obj.cat.gabaergic <- NormalizeData(obj.cat.gabaergic, normalization.method = "LogNormalize", scale.factor = 10000)
+obj.cat.gabaergic <- FindVariableFeatures(obj.cat.gabaergic, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.cat.gabaergic)
+obj.cat.gabaergic <- ScaleData(obj.cat.gabaergic, features = all.genes)
+obj.cat.gabaergic <- RunPCA(obj.cat.gabaergic, features = VariableFeatures(object = obj.cat.gabaergic))
+
+obj.cat.gabaergic <- FindNeighbors(obj.cat.gabaergic, dims = 1:30)
+obj.cat.gabaergic <- FindClusters(obj.cat.gabaergic, resolution = 1.1, algorithm = 4, method = "igraph")
+obj.cat.gabaergic <- RunUMAP(obj.cat.gabaergic, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+obj.cat.nonneuronal <- NormalizeData(obj.cat.nonneuronal, normalization.method = "LogNormalize", scale.factor = 10000)
+obj.cat.nonneuronal <- FindVariableFeatures(obj.cat.nonneuronal, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.cat.nonneuronal)
+obj.cat.nonneuronal <- ScaleData(obj.cat.nonneuronal, features = all.genes)
+obj.cat.nonneuronal <- RunPCA(obj.cat.nonneuronal, features = VariableFeatures(object = obj.cat.nonneuronal))
+
+obj.cat.nonneuronal <- FindNeighbors(obj.cat.nonneuronal, dims = 1:30)
+obj.cat.nonneuronal <- FindClusters(obj.cat.nonneuronal, resolution = 1, algorithm = 4, method = "igraph")
+obj.cat.nonneuronal <- RunUMAP(obj.cat.nonneuronal, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+SaveH5Seurat(obj.cat.glutamatergic, "E:/cat_M1/seurat/cat_m1_glutamatergic_raw.h5seurat", overwrite = TRUE, verbose = TRUE)
+SaveH5Seurat(obj.cat.gabaergic, "E:/cat_M1/seurat/cat_m1_gabaergic_raw.h5seurat", overwrite = TRUE, verbose = TRUE)
 SaveH5Seurat(obj.cat.nonneuronal, "E:/cat_M1/seurat/cat_m1_nonneuronal_raw.h5seurat", overwrite = TRUE, verbose = TRUE)
 
 ```

@@ -2,10 +2,14 @@ function [eye, imgs] = load_eye_data(path, animal, exp, id)
 
     % Assemble a full or relative path
     if nargin < 4
-        fpath = strcat(path, "_", animal, "_", exp);
+        [animal, exp, id] = deal(path, animal, exp);
+        fpath = strcat(animal, "_", exp, "_", id);
     else
         fpath = strcat(path, filesep, animal, filesep, animal, "_", exp, "_", id);
     end
+    % get suite2p path for eye center
+    concat_code = split(join(repmat(exp, [1, 3]), ""), "");
+    concat_fpath = strcat(animal, "_", join(concat_code(2:3:10), ""), "_", join(concat_code(2:3:10), ""));
     % Check for realtime or suite2p data and load spikes and traces
     d = dir(fpath);
     fnames = {d.name};
@@ -14,7 +18,7 @@ function [eye, imgs] = load_eye_data(path, animal, exp, id)
         fname = strcat(fpath, filesep, fnames{eye_idx});
         variable_info = who("-file", fname);
         if ~ismember("eye", variable_info)
-            sbxeyemotion(fpath, fname, [2, 50]);
+            sbxeyemotion(fname, [2, 50], concat_fpath);
         end
         load(fname, "-mat", "eye", "data");
         imgs = squeeze(data);
