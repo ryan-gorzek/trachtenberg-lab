@@ -24,6 +24,7 @@ contrast_c = linspace(0.,1.,nco);
 
 
 fixed_points = zeros(nsol,nco,nc2);
+num_iters = zeros(nsol, nco);
 dynpars = data_all.dynpars;
 for ico = 1:nco
     fprintf('%d',ico)
@@ -47,6 +48,7 @@ for ico = 1:nco
 
         end
         fixed_points(isol,ico,:) = r1;
+        num_iters(isol, ico) = it;
     end
     fprintf('\n')
 end
@@ -98,7 +100,6 @@ for ico = 1:nco
                 r1 = r0 + (-r0 + subplus(W*[r0; h] + Oh).^2 ).*dynpars.dt;
                 rt = cat(2, rt, r1);
                 dr = sum((r1(:) - r0(:)).^2);
-                
             end
             
             if iu == 1
@@ -110,6 +111,8 @@ for ico = 1:nco
             else
                 if it < dynpars.nt && max(rt(:)) < dynpars.max_x
                     r_opto_vip(ico,:,isol) = r1;
+                elseif max(rt(:)) < dynpars.max_x
+                    disp("Unstable...");
                 end
                 r_opto_vip_t{ico,isol} = rt;
                 time_steps_vip(ico,isol) = it;
