@@ -1,0 +1,11 @@
+2024-04-06 15:35:35: == Sync Started by User Command
+2024-04-06 15:35:35: Start only 2 threads, limited by tasks to run
+2024-04-06 15:35:35: ConnectCloned connected to file:///E:/Imaging/code
+2024-04-06 15:35:35: ConnectCloned connected to file:///E:/Imaging/code
+2024-04-06 15:35:35: ConnectCloned connected to file:///C:/Ryan/GitHub/trachtenberg-lab/tuning
+2024-04-06 15:35:35: ConnectCloned connected to file:///C:/Ryan/GitHub/trachtenberg-lab/tuning
+2024-04-06 15:35:35: Copy New 'E:/Imaging/code/population_singlecell.asv' -> 'C:/Ryan/GitHub/trachtenberg-lab/tuning/population_singlecell.asv' (23,405)
+2024-04-06 15:35:35: Copy Over 'E:/Imaging/code/population_singlecell.m' -> 'C:/Ryan/GitHub/trachtenberg-lab/tuning/population_singlecell.m' (24,220)
+2024-04-06 15:35:35: Save State File E:/Imaging/code/_gsdata_/_file_state_v4._gs
+2024-04-06 15:35:35: Save State File C:/Ryan/GitHub/trachtenberg-lab/tuning/_gsdata_/_file_state_v4._gs
+2024-04-06 15:35:35: == Sync Complete. Time: 00:00:00, Speed: 0.00/s, OK: 2, Errors: 0

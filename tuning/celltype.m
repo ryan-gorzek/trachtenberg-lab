@@ -4,9 +4,9 @@ addpath(genpath(fullfile("E:/Imaging/code/tools/")));
 
 expsts = [];
 path = "E:/Imaging/";
-subjects = ["pv_vip_01", "pv_vip_04", "pv_vip_06"]; % 
-celltypes = ["Pyr", "Pyr", "Pyr", "Sst", "Sst", "Sst", "Sst"]; % 
-recordings = {["6", "7"], ["1"], ["5", "6", "7", "8"]}; % 
+subjects = ["pv_vip_01", "pv_vip_04", "pv_vip_06", "pv_vip_07"]; % 
+celltypes = ["Pyr", "Pyr", "Pyr", "Sst", "Sst", "Sst", "Sst", "Pyr"]; % 
+recordings = {["6", "7"], ["1"], ["5", "6", "7", "8"], ["1"]}; % 
 stims = ["trinoise", "randorisf", "battery1", "battery2", "battery3", "battery4"];
 sid = 1:6;
 stim_radius = 20; pix_per_deg = 14.3258;
@@ -105,9 +105,7 @@ contrast_response(expsts, "battery3", "dFF", celltypes, colors, cells);
 set(f, "Color", "w");
 f.Position = [41.5714 434.1429 2.1103e+03 639.4285];
 
-print(gcf,'-vector','-dsvg',['all_params', '.svg']);
-
-%% cluster cells
+%% cluster and classify cells
 
 [tbl, ctypes, ids] = build_table(expsts, celltypes, cells);
 clrs = vertcat(colors{:});
@@ -119,6 +117,8 @@ vars = ["cri_mod_mean_B4_dFF", "ci_mod_mean_B4_dFF", "cs_size_corr_B4_dFF", ...
         "TF_B2_spikes", ...
         "Ctrst_B3_spikes", "Size_B3_spikes"];
 
+% vars = ["cri_mod_mean_B4_dFF", "ci_mod_mean_B4_dFF", "cs_size_corr_B4_dFF"];
+
 tblsub = tbl(:, vars);
 arr = table2array(tblsub);
 % remove NaN
@@ -129,7 +129,7 @@ tblz = zscore(arr, 0, 1);
 X = arr;
 [~, S] = pca(tblz);
 
-f = figure; tiledlayout(1, 2);
+f = figure; tiledlayout(1, 3);
 nexttile; scatter(S(:, 1), S(:, 2), 20, clrs, "filled"); axis square; xlabel("PC 1"); ylabel("PC 2");
 Y = tsne(S);
 nexttile; hold on;
@@ -138,6 +138,48 @@ scatter(Y(pyr_idx(~nanidx), 1), Y(pyr_idx(~nanidx), 2), 20, "filled", "MarkerFac
 scatter(Y(sst_idx(~nanidx), 1), Y(sst_idx(~nanidx), 2), 20, "filled", "MarkerFaceColor", colors{2}, "MarkerEdgeColor", colors{2});
 axis square; xlabel("t-SNE 1"); ylabel("t-SNE 2");
 legend("Pyr", "SST", "Box", "off");
+
+% classifier (balanced classes)
+
+pyr_recs = ["pv_vip_01_6", "pv_vip_01_7", "pv_vip_04_1", "pv_vip_07_1"];
+sst_recs = ["pv_vip_06_5", "pv_vip_06_6", "pv_vip_06_7", "pv_vip_06_8"];
+
+perf = cell(numel(pyr_recs) * numel(sst_recs), 2);
+err = nan(numel(pyr_recs) * numel(sst_recs), 2);
+
+cv_idx = 1;
+for sim = 1:10
+    for pyr = pyr_recs
+        for sst = sst_recs
+            X = tblz;
+            y = ctypes(~nanidx) == "Sst";
+            dset = ids(~nanidx, 1);
+            all_idx = 1:size(X, 1);
+            train_idx_pyr = ismember(dset, setdiff(pyr_recs, pyr));
+            train_idx_sst = ismember(dset, setdiff(sst_recs, sst));
+            test_idx_pyr = ismember(dset, pyr); if nnz(test_idx_pyr) == 0, break; end
+            test_idx_sst = ismember(dset, sst); if nnz(test_idx_sst) == 0, continue; end
+            [train_idx_pyr, train_idx_sst] = balance_classes(train_idx_pyr, train_idx_sst);
+            [test_idx_pyr, test_idx_sst] = balance_classes(test_idx_pyr, test_idx_sst);
+            train_idx = train_idx_pyr | train_idx_sst;
+            test_idx = test_idx_pyr | test_idx_sst;
+            mdl = fitcdiscr(X(train_idx, :), y(train_idx));
+            y_pred = predict(mdl, X(test_idx, :));
+            X_perm = X(test_idx, :);
+            y_perm = predict(mdl, X_perm(randperm(size(X_perm, 1)), :));
+            perf{cv_idx, 1} = classperf(y(test_idx), y_perm);
+            perf{cv_idx, 2} = classperf(y(test_idx), y_pred);
+            err(cv_idx, :) = [perf{cv_idx, 1}.CorrectRate, perf{cv_idx, 2}.CorrectRate];
+            cv_idx = cv_idx + 1;
+        end
+    end
+end
+
+nexttile; hold on; axis square;
+histogram(err(:, 1), 0:0.1:1, "Normalization", "probability", "FaceColor", "white", "EdgeColor", "black");
+histogram(err(:, 2), 0:0.1:1, "Normalization", "probability", "FaceColor", [0.7, 0.7, 0.7], "EdgeColor", [0.7, 0.7, 0.7]);
+xlabel("Cross-Validated Accuracy"); ylabel("Fraction of Folds");
+legend("Shuffled", "Observed", "box", "off", "Location", "northwest");
 
 set(f, "Color", "w");
 f.Position = [645 507.8571 718.2857 306.2857];
@@ -446,8 +488,19 @@ function contrast_response(expsts, session, dtype, celltypes, colors, idx)
         scatter(X(2:end), Y(2:end), "filled", "MarkerFaceColor", colors{c}, "MarkerEdgeColor", colors{c});
     end
     % xticks(X); % xticklabels(expsts.(recs{1}).(session).(dtype).dimvals{1});
-%     ylim([-0.1, 0.6]); yticks(-0.1:0.1:0.6);
+    % ylim([-0.1, 0.6]); yticks(-0.1:0.1:0.6);
     xlabel('log(Contrast)'); ylabel('log(\DeltaF/F)');
-%     axis square;
+    % axis square;
 end
 
+function [idx_class_1, idx_class_2] = balance_classes(idx_class_1, idx_class_2)
+    if nnz(idx_class_1) > nnz(idx_class_2)
+        idx_1 = find(idx_class_1);
+        rand_idx_1 = idx_1(randperm(numel(idx_1)));
+        idx_class_1(rand_idx_1(1:nnz(idx_class_1) - nnz(idx_class_2))) = 0;
+    elseif nnz(idx_class_1) < nnz(idx_class_2)
+        idx_2 = find(idx_class_2);
+        rand_idx_2 = idx_2(randperm(numel(idx_2)));
+        idx_class_2(rand_idx_2(1:nnz(idx_class_2) - nnz(idx_class_1))) = 0;
+    end
+end
