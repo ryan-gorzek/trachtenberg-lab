@@ -1,0 +1,13 @@
+2024-04-06 13:28:27: == Sync Started by User Command
+2024-04-06 13:28:27: ConnectCloned connected to file:///C:/Ryan/GitHub/trachtenberg-lab/tuning
+2024-04-06 13:28:27: ConnectCloned connected to file:///C:/Ryan/GitHub/trachtenberg-lab/tuning
+2024-04-06 13:28:27: ConnectCloned connected to file:///C:/Ryan/GitHub/trachtenberg-lab/tuning
+2024-04-06 13:28:27: ConnectCloned connected to file:///E:/Imaging/code
+2024-04-06 13:28:27: ConnectCloned connected to file:///E:/Imaging/code
+2024-04-06 13:28:27: ConnectCloned connected to file:///E:/Imaging/code
+2024-04-06 13:28:27: Copy New 'E:/Imaging/code/make_suite2p_ops.ipynb' -> 'C:/Ryan/GitHub/trachtenberg-lab/tuning/make_suite2p_ops.ipynb' (975)
+2024-04-06 13:28:27: Copy Over 'E:/Imaging/code/celltype.m' -> 'C:/Ryan/GitHub/trachtenberg-lab/tuning/celltype.m' (27,620) (User Action)
+2024-04-06 13:28:27: Copy Over 'E:/Imaging/code/suite2p_ops_upd.npy' -> 'C:/Ryan/GitHub/trachtenberg-lab/tuning/suite2p_ops_upd.npy' (2,449)
+2024-04-06 13:28:27: Save State File C:/Ryan/GitHub/trachtenberg-lab/tuning/_gsdata_/_file_state_v4._gs
+2024-04-06 13:28:27: Save State File E:/Imaging/code/_gsdata_/_file_state_v4._gs
+2024-04-06 13:28:27: == Sync Complete. Time: 00:00:00, Speed: 0.00/s, OK: 85, Errors: 0

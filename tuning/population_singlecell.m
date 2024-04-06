@@ -3,8 +3,8 @@
 addpath(genpath(fullfile("E:/Imaging/code/tools/")));
 
 expst = [];
-subj = "pv_vip_06";
-sessions = ["810", "820", "830", "840", "850", "860"];
+subj = "pv_vip_04";
+sessions = ["110", "120", "130", "140", "150", "160"];
 runs = ["000", "000", "000", "000", "000", "000"];
 stims = ["trinoise", "randorisf", "battery1", "battery2", "battery3", "battery4"];
 sid = 1:6;
@@ -55,20 +55,20 @@ off_noise = ~(off_snr & off_ve);
 % visually responsive
 SNR = vertcat(expst.randorisf.spikes.stats.SNR) > expst.randorisf.spikes.calc.SNR_thr;
 % intersect
-% cells = SNR & ((on_centered & off_centered) | (on_centered & off_noise) | (off_centered & on_noise));
-cells = on_dist;
+cells = SNR & ((on_centered & off_centered) | (on_centered & off_noise) | (off_centered & on_noise));
 
 f = figure; tiledlayout(6, 16);
 % eye locations
-% nexttile(1, [2, 4]); 
-figure; imshow(expst.trinoise.spikes.eye.img); hold on;
+nexttile(1, [2, 4]);
+imshow(expst.trinoise.spikes.eye.img); hold on;
 colors = hsv(6);
-positions = []; labels = []; logicals = [];
+positions = []; labels = []; logicals = []; fractions = [];
 for s = stims
     stimpos = expst.(s).spikes.eye.pos;
     positions = vertcat(positions, stimpos);
     labels = vertcat(labels, repmat(find(stims == s), [size(stimpos, 1), 1]));
     logicals = vertcat(logicals, expst.(s).spikes.eye.logical);
+    fractions = vertcat(fractions, nnz(expst.(s).spikes.eye.logical) / numel(expst.(s).spikes.eye.logical));
 end
 positions_pass = positions(logicals == 1, :); labels_pass = labels(logicals == 1);
 idx = randperm(size(positions_pass, 1));
@@ -76,31 +76,40 @@ scatter(positions_pass(idx, 1), positions_pass(idx, 2), 1, [0.9, 0.2, 0.2], "fil
 scatter(positions(logicals == 0, 1), positions(logicals == 0, 2), 1, [0.2, 0.2, 0.9], "filled", "MarkerFaceAlpha", 0.2, "MarkerEdgeAlpha", 0.2);
 % plot mask on top
 start = expst.trinoise.spikes.eye.center - [eye_radius*2, eye_radius*2] ./ 2;
-rectangle("Position", [start eye_radius*2 eye_radius*2], "Curvature", 0);
-% % plot stimuli modes
-% for s = stims
-%     stimmode = mode(expst.(s).spikes.eye.pos);
-%     text(stimmode(1), stimmode(2), num2str(find(stims == s)), "FontSize", 5, "HorizontalAlignment", "center", "VerticalAlignment", "middle");
-% end
+rectangle("Position", [start eye_radius*2 eye_radius*2], "Curvature", 0, "LineWidth", 1);
+% plot stimuli modes
+for s = stims
+    stimmode = mode(expst.(s).spikes.eye.pos);
+    textsize = ceil(fractions(stims == s) * 10);
+    text(stimmode(1), stimmode(2), num2str(find(stims == s)), "FontSize", textsize, "HorizontalAlignment", "center", "VerticalAlignment", "middle");
+end
+% zoom in a bit
+im_center = median(positions, 1);
+range_x = 20; range_y = round((range_x / im_center(1)) * im_center(2));
+xlim([im_center(1) - range_x, im_center(1) + range_x]); 
+ylim([im_center(2) - range_y, im_center(2) + range_y]);
 
 % imaging field
-% mask = 255 .* (sum(expst.trinoise.spikes.masks(:, :, cells), 3) > 0);
-% nmask = 255 .* (sum(expst.trinoise.spikes.masks(:, :, ~cells), 3) > 0);
-% mask = cat(3, mask, zeros(size(mask)), nmask);
-% nexttile(33, [2, 4]); 
-figure; imshow(repmat(expst.trinoise.spikes.maxproj(:, :, 1), [1, 1, 3])); % hold on; h = imshow(mask); pbaspect([size(expst.trinoise.spikes.maxproj, [2, 1]), 1]); axis off; % 
-% set(h, "AlphaData", repmat(0.5, size(mask, [1, 2])));
-print(gcf,'-vector','-dsvg',['imaging_plane_nomask', '.svg']);
+mask = 255 .* (sum(expst.trinoise.spikes.masks(:, :, cells), 3) > 0);
+nmask = 255 .* (sum(expst.trinoise.spikes.masks(:, :, ~cells), 3) > 0);
+mask = cat(3, mask, zeros(size(mask)), nmask);
+nexttile(33, [2, 4]); 
+imshow(repmat(expst.trinoise.spikes.maxproj(:, :, 1), [1, 1, 3])); hold on; h = imshow(mask); pbaspect([size(expst.trinoise.spikes.maxproj, [2, 1]), 1]); axis off; % 
+set(h, "AlphaData", repmat(0.5, size(mask, [1, 2])));
+
 % trinoise kernel locations
-% nexttile(65, [2, 4]); 
-figure;
+nexttile(65, [2, 4]);
 imagesc(zeros(1080, 1920) + 0.2); colormap gray; hold on; pbaspect([1920, 1080, 1]); axis off;
 ON = 80 .* [vertcat(expst.trinoise.spikes.stats.on_x_fit) + 1, vertcat(expst.trinoise.spikes.stats.on_y_fit) + 1];
 OFF = 80 .* [vertcat(expst.trinoise.spikes.stats.off_x_fit) + 1, vertcat(expst.trinoise.spikes.stats.off_y_fit) + 1];
 for c = 1:numel(cells)
-    if cells(c), scatter(ON(c, 1), ON(c, 2), ".r", "MarkerEdgeAlpha", 0.9); end
-    if ~cells(c), scatter(ON(c, 1), ON(c, 2), ".b", "MarkerEdgeAlpha", 0.9); end
-    % if cells(c), scatter(OFF(c, 1), OFF(c, 2), "+b", "MarkerEdgeAlpha", 0.5); end
+    if cells(c) && on_centered(c)
+        scatter(ON(c, 1), ON(c, 2), 10, "r", "filled", "MarkerFaceAlpha", 0.5, "MarkerEdgeAlpha", 0.5);
+    elseif cells(c) && off_centered(c)
+        scatter(OFF(c, 1), OFF(c, 2), 10, "r", "filled", "MarkerFaceAlpha", 0.2, "MarkerEdgeAlpha", 0.2);
+    elseif ~cells(c)
+        scatter(ON(c, 1), ON(c, 2), 10, "b", "filled", "MarkerFaceAlpha", 0.2, "MarkerEdgeAlpha", 0.2);
+    end
 end
 % color by grid location
 % grid_colors = hot(9);
@@ -116,10 +125,9 @@ pixel_radius = stim_radius * pix_per_deg;
 start = expst.trinoise.spikes.stim_center - [pixel_radius, pixel_radius] ./ 2;
 rectangle("Position", [start pixel_radius pixel_radius], "Curvature", 1);
 rectangle("Position", [1, 1, [1920, 1080] - 1], "Curvature", 0);
-print(gcf,'-vector','-dsvg',['spatial_rfs', '.svg']);
-pause; 
+
 % randorisf histograms incl. ori, sf, SNR (and thr), F1F0
-nexttile(5, [2, 2]); hold on; feature_hist(expst.randorisf.spikes.table, "SNR_ROSF_spikes", cells, "SNR"); xline(expst.randorisf.spikes.calc.SNR_thr, "--r", "LineWidth", 1);
+nexttile(5, [2, 2]); hold on; feature_hist(expst.randorisf.spikes.table, "SNR_ROSF_spikes", true(size(cells)), "SNR"); xline(expst.randorisf.spikes.calc.SNR_thr, "--r", "LineWidth", 1);
 nexttile(37, [2, 2]); hold on; feature_hist(expst.randorisf.spikes.table, "F1F0_ROSF_spikes", cells, "F1F0");
 nexttile(69, [2, 2]); hold on; feature_hist(expst.randorisf.spikes.table, "Ori_ROSF_spikes", cells, "Orientation");
 nexttile(7, [2, 2]); hold on; feature_hist(expst.randorisf.spikes.table, "SF_ROSF_spikes", cells, "Spatial Frequency");
