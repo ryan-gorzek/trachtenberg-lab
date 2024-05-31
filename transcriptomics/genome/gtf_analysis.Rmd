@@ -1,0 +1,626 @@
+---
+title: "GTF Analysis"
+output: html_notebook
+---
+
+
+```{r}
+
+library(ggplot2)
+library(gridExtra)
+
+genes.species <- list()
+path.species <- c("/Users/ryan.gorzek/Downloads/gtfs/Monodelphis_domestica.ASM229v1.112.gtf", 
+                  "/Users/ryan.gorzek/Downloads/gtfs/Mus_musculus.GRCm39.112.gtf")
+name.species <- c("Opossum", "Mouse")
+
+for (sp in 1:2) {
+
+gtf <- read.table(path.species[sp],
+                 skip = 5, sep = "\t", header = F)
+# gtf <- read.table(,
+#                  skip = 5, sep = "\t", header = F)
+
+colnames(gtf) <- c("seqname", "source", "feature", "start", "end", "score", "strand", "frame", "attribute")
+variable.col <- gtf$attribute
+gtf <- gtf[, 1:8]
+
+get.var <- function(var.col, item) {
+  
+  var.col.spl <- strsplit(variable.col, "; ")
+  var.col.idx <- lapply(var.col.spl, function(x) grepl(item, x, fixed = TRUE))
+  var.col.item <- mapply(function(x, y) x[y], var.col.spl, var.col.idx)
+  missing <- lapply(var.col.item, function(x) identical(x, character(0)))
+  var.col.item[unlist(missing)] <- NA
+  var.col.nona <- lapply(var.col.item[is.na(var.col.item) == F], function(x) strsplit(x, " ")[[1]][2])
+  var.col.nona <- lapply(var.col.nona, function(x) strsplit(x, ";")[[1]])
+  var.col.item[is.na(var.col.item) == F] <- var.col.nona
+  return(unlist(var.col.item))
+  
+}
+
+gtf$gene.id <- get.var(variable.col, "gene_id")
+gtf$gene.name <- get.var(variable.col, "gene_name")
+gtf$gene.biotype <- get.var(variable.col, "gene_biotype")
+gtf$transcript.id <- get.var(variable.col, "transcript_id")
+
+biotypes.basic <- c("protein_coding", "lncRNA")
+biotypes.immune <- c("IG_LV_gene", "IG_V_gene", "IG_V_pseudogene", "IG_D_gene", "IG_J_gene", 
+                    "IG_J_pseudogene", "IG_C_gene", "IG_C_pseudogene", "TR_V_gene", "TR_V_pseudogene", 
+                    "TR_D_gene", "TR_J_gene", "TR_J_pseudogene", "TR_C_gene")
+
+# filter GTF like cellranger mkref
+gtf.filtered <- gtf[gtf$gene.biotype %in% c(biotypes.basic, biotypes.immune),]
+
+# replace all the IGs and TRs with a single label
+gtf.filtered$gene.biotype.v2 <- gtf.filtered$gene.biotype
+gtf.filtered$gene.biotype.v2[gtf.filtered$gene.biotype.v2 %in% biotypes.immune] <- "IG_TR"
+
+# replace all scaffolds with a single name
+gtf.filtered$seqname.v2 <- gtf.filtered$seqname
+gtf.filtered$seqname.v2[unlist(lapply(gtf.filtered$seqname, function(x) nchar(x) > 2))] <- "SC"
+
+genes <- gtf.filtered[gtf.filtered$feature == "gene",]
+
+# how common are the gene biotypes?
+biotype_table <- table(genes$gene.biotype.v2)
+# what fraction of genes are on each chromosome?
+chrom_table <- table(genes$seqname.v2)
+# what fraction of each biotype is on each chromosome?
+biotype_chrom_table <- NA
+for (chr in unique(genes$seqname.v2)) {
+  genes.chr <- genes[genes$seqname.v2 == chr,]
+  biotype.table <- table(genes.chr$gene.biotype.v2)
+  biotype.df <- as.data.frame(biotype.table)
+  for (biotype.name in c("protein_coding", "lncRNA", "IG_TR")) {
+    if (!(biotype.name %in% biotype.df$Var1)) {
+    biotype.df <- rbind(biotype.df, data.frame(Var1 = biotype.name, Freq = 0))
+                                            }
+                                          }
+  biotype.table <- xtabs(Freq ~ Var1, data = biotype.df)
+  biotype.table <- biotype.table[c("protein_coding", "lncRNA", "IG_TR")]
+  biotype_chrom_table <- rbind(biotype_chrom_table, biotype.table)
+}
+biotype_chrom_table <- t(biotype_chrom_table)[, -1]
+colnames(biotype_chrom_table) <- unique(genes$seqname.v2)
+
+# collapse by features that are annotated multiple times if included in different transcripts
+gtf.filtered.unique <- unique(gtf.filtered, by = "start")
+
+# how detailed is the annotation?
+# how many exons?
+exon.bool <- gtf.filtered.unique$feature == "exon"
+num.exons <- aggregate(exon.bool ~ gene.id, gtf.filtered.unique, sum)
+genes$num.exons <- NA
+genes$num.exons[match(num.exons$gene.id, genes$gene.id)] <- num.exons$exon.bool
+exon_table <- table(genes$num.exons > 1)
+
+# how many transcripts?
+transcript.bool <- gtf.filtered$feature == "transcript"
+num.transcripts <- aggregate(transcript.bool ~ gene.id, gtf.filtered, sum)
+genes$num.transcripts <- NA
+genes$num.transcripts[match(num.transcripts$gene.id, genes$gene.id)] <- num.transcripts$transcript.bool
+transcript_table <- table(genes$num.transcripts > 1)
+
+# create exon/transcript code
+genes$exon.transcript <- NA
+ids.exon <- genes$gene.id[genes$num.exons > 1]
+ids.transcript <- genes$gene.id[genes$num.transcripts > 1]
+ids.both <- intersect(ids.exon, ids.transcript)
+ids.neither <- setdiff(genes$gene.id, c(ids.exon, ids.transcript, ids.both))
+genes$exon.transcript[match(ids.exon, genes$gene.id)] <- "exon"
+genes$exon.transcript[match(ids.transcript, genes$gene.id)] <- "transcript"
+genes$exon.transcript[match(ids.both, genes$gene.id)] <- "both"
+genes$exon.transcript[match(ids.neither, genes$gene.id)] <- "neither"
+exon_extr_table <- table(genes$exon.transcript == "exon")
+transcript_extr_table <- table(genes$exon.transcript == "transcript")
+both_extr_table <- table(genes$exon.transcript == "both")
+neither_extr_table <- table(genes$exon.transcript == "neither")
+tbls <- list(exon_extr_table, transcript_extr_table, both_extr_table, neither_extr_table)
+for (tbl in 1:length(tbls)) {
+  df <- as.data.frame(tbls[[tbl]])
+  for (tf in c("TRUE", "FALSE")) {
+    if (!(tf %in% df$Var1)) {
+    df <- rbind(df, data.frame(Var1 = tf, Freq = 0))
+                                          } }
+  df.table <- xtabs(Freq ~ Var1, data = df)
+  tbls[[tbl]] <- df.table[c("FALSE", "TRUE")]
+}
+exon_extr_table <- tbls[[1]]
+transcript_extr_table <- tbls[[2]]
+both_extr_table <- tbls[[3]]
+neither_extr_table <- tbls[[4]]
+
+# does gene have a 3' UTR and how many?
+three_prime_utr.bool <- gtf.filtered.unique$feature == "three_prime_utr"
+num.three_prime_utrs <- aggregate(three_prime_utr.bool ~ gene.id, gtf.filtered.unique, sum)
+genes$num.three_prime_utrs <- NA
+genes$num.three_prime_utrs[match(num.three_prime_utrs$gene.id, genes$gene.id)] <- num.three_prime_utrs$three_prime_utr.bool
+three_prime_utr_table <- table(genes$num.three_prime_utrs > 0)
+
+# does gene have a 5' UTR and how many?
+five_prime_utr.bool <- gtf.filtered.unique$feature == "five_prime_utr"
+num.five_prime_utrs <- aggregate(five_prime_utr.bool ~ gene.id, gtf.filtered.unique, sum)
+genes$num.five_prime_utrs <- NA
+genes$num.five_prime_utrs[match(num.five_prime_utrs$gene.id, genes$gene.id)] <- num.five_prime_utrs$five_prime_utr.bool
+five_prime_utr_table <- table(genes$num.five_prime_utrs > 0)
+
+# create UTR code
+genes$utrs <- NA
+ids.three <- num.three_prime_utrs$gene.id[num.three_prime_utrs$three_prime_utr.bool > 0]
+ids.five <- num.five_prime_utrs$gene.id[num.five_prime_utrs$five_prime_utr.bool > 0]
+ids.both <- intersect(ids.three, ids.five)
+ids.neither <- setdiff(genes$gene.id, c(ids.three, ids.five, ids.both))
+genes$utrs[match(ids.three, genes$gene.id)] <- "three"
+genes$utrs[match(ids.five, genes$gene.id)] <- "five"
+genes$utrs[match(ids.both, genes$gene.id)] <- "both"
+genes$utrs[match(ids.neither, genes$gene.id)] <- "neither"
+# does gene have both a 3' and 5' UTR?
+both_utr_table <- table(genes$utrs == "both")
+# does gene have neither a 3' and 5' UTR?
+neither_utr_table <- table(genes$utrs == "neither")
+
+# all annotation percentages (for stacked barplot)
+tbls <- list(exon_table, transcript_table, both_extr_table, neither_extr_table, exon_extr_table, transcript_extr_table,
+             three_prime_utr_table, five_prime_utr_table, both_utr_table, neither_utr_table)
+  for (tbl in 1:length(tbls)) {
+    ann.df <- as.data.frame(tbls[[tbl]])
+    for (tf in c("TRUE", "FALSE")) {
+      if (!(tf %in% ann.df$Var1)) {
+      ann.df <- rbind(ann.df, data.frame(Var1 = tf, Freq = 0))
+                                            } }
+    ann.table <- xtabs(Freq ~ Var1, data = ann.df)
+    tbls[[tbl]] <- ann.table[c("FALSE", "TRUE")]
+  }
+ann.percentage.table <- t(rbind(tbls[[1]], tbls[[2]], tbls[[3]], tbls[[4]], tbls[[5]], tbls[[6]], tbls[[7]], tbls[[8]], tbls[[9]], tbls[[10]]))[c(2, 1),]
+colnames(ann.percentage.table) <- c(">1 Exon", ">1 Transcript", ">1 Ex. & Tr.", 
+                                "1 Ex., 1 Tr.", ">1 Ex., 1 Tr.", "1 Ex., >1 Tr.", 
+                                "3' UTR", "5' UTR", "Both UTRs", "No UTRs")
+ann.percentage.table.props <- sweep(ann.percentage.table, 2, colSums(ann.percentage.table), FUN = "/")
+
+# gene biotype by annotation table (for heatmap)
+ann.biotype.table <- t(rbind(exon_table, transcript_table, both_extr_table, neither_extr_table, exon_extr_table, transcript_extr_table,
+                         three_prime_utr_table, five_prime_utr_table, both_utr_table, neither_utr_table))[c(2),] / nrow(genes)
+for (bt in c("protein_coding", "lncRNA", "IG_TR")) {
+  
+  genes.biotype <- genes[genes$gene.biotype.v2 == bt,]
+  exon_table.biotype <- table(genes.biotype$num.exons > 1)
+  transcript_table.biotype <- table(genes.biotype$num.transcripts > 1)
+  both_extr_table.biotype <- table(genes.biotype$exon.transcript == "both")
+  neither_extr_table.biotype <- table(genes.biotype$exon.transcript == "neither")
+  exon_extr_table.biotype <- table(genes.biotype$exon.transcript == "exon")
+  transcript_extr_table.biotype <- table(genes.biotype$exon.transcript == "transcript")
+  three_prime_utr_table.biotype <- table(genes.biotype$num.three_prime_utrs > 0)
+  five_prime_utr_table.biotype <- table(genes.biotype$num.five_prime_utrs > 0)
+  both_utr_table.biotype <- table(genes.biotype$utrs == "both")
+  neither_utr_table.biotype <- table(genes.biotype$utrs == "neither")
+  tbls <- list(exon_table.biotype, transcript_table.biotype, both_extr_table.biotype, 
+               neither_extr_table.biotype, exon_extr_table.biotype, transcript_extr_table.biotype,
+               three_prime_utr_table.biotype, five_prime_utr_table.biotype, both_utr_table.biotype, neither_utr_table.biotype)
+  for (tbl in 1:length(tbls)) {
+    ann.df <- as.data.frame(tbls[[tbl]])
+    for (tf in c("TRUE", "FALSE")) {
+      if (!(tf %in% ann.df$Var1)) {
+      ann.df <- rbind(ann.df, data.frame(Var1 = tf, Freq = 0))
+                                            } }
+    ann.table <- xtabs(Freq ~ Var1, data = ann.df)
+    tbls[[tbl]] <- ann.table[c("FALSE", "TRUE")]
+  }
+  ann.biotype.table <- rbind(ann.biotype.table, t(rbind(tbls[[1]], tbls[[2]], tbls[[3]], 
+                                                        tbls[[4]], tbls[[5]], tbls[[6]], 
+                                                        tbls[[7]], tbls[[8]], tbls[[9]], 
+                                                        tbls[[10]]))[c(2),] / nrow(genes.biotype))
+}
+rownames(ann.biotype.table) <- c("all", "protein_coding", "lncRNA", "IG_TR")
+colnames(ann.biotype.table) <- c(">1 Exon", ">1 Transcript", ">1 Ex. & Tr.", 
+                             "1 Ex., 1 Tr.", ">1 Ex., 1 Tr.", "1 Ex., >1 Tr.", 
+                             "3' UTR", "5' UTR", "Both UTRs", "No UTRs")
+ann.biotype.table <- as.data.frame(as.table(ann.biotype.table * 100))
+ann.biotype.table$Freq <- round(ann.biotype.table$Freq, 0)
+ann.biotype.table$Freq[is.na(ann.biotype.table$Freq)] <- 0
+
+# exon/transcript annotation by UTR annotation
+exon.transcript.utr.table <- t(rbind(three_prime_utr_table, five_prime_utr_table, both_utr_table, neither_utr_table))[c(2),] / nrow(genes)
+for (et in c("exon", "transcript", "both", "neither")) {
+  
+  genes.exon.transcript <- genes[genes$exon.transcript == et,]
+  three_prime_utr_table.exon.transcript <- table(genes.exon.transcript$num.three_prime_utrs > 0)
+  five_prime_utr_table.exon.transcript <- table(genes.exon.transcript$num.five_prime_utrs > 0)
+  both_utr_table.exon.transcript <- table(genes.exon.transcript$utrs == "both")
+  neither_utr_table.exon.transcript <- table(genes.exon.transcript$utrs == "neither")
+  tbls <- list(three_prime_utr_table.exon.transcript,
+               five_prime_utr_table.exon.transcript, both_utr_table.exon.transcript, neither_utr_table.exon.transcript)
+  for (tbl in 1:length(tbls)) {
+    ann.df <- as.data.frame(tbls[[tbl]])
+    for (tf in c("TRUE", "FALSE")) {
+      if (!(tf %in% ann.df$Var1)) {
+      ann.df <- rbind(ann.df, data.frame(Var1 = tf, Freq = 0))
+                                            } }
+    ann.table <- xtabs(Freq ~ Var1, data = ann.df)
+    tbls[[tbl]] <- ann.table[c("FALSE", "TRUE")]
+  }
+  exon.transcript.utr.table <- rbind(exon.transcript.utr.table, t(rbind(tbls[[1]], tbls[[2]], tbls[[3]], 
+                                                tbls[[4]]))[c(2),] / nrow(genes.exon.transcript))
+}
+rownames(exon.transcript.utr.table) <- c("all", ">1 Exon, 1 Transcript", "1 Exon, >1 Transcript", 
+                                     ">1 Exon, >1 Transcript", "1 Exon, 1 Transcript")
+colnames(exon.transcript.utr.table) <- c("3' UTR", "5' UTR", "Both UTRs", "No UTRs")
+exon.transcript.utr.table <- as.data.frame(as.table(exon.transcript.utr.table * 100))
+exon.transcript.utr.table$Freq <- round(exon.transcript.utr.table$Freq, 0)
+exon.transcript.utr.table$Freq[is.na(exon.transcript.utr.table$Freq)] <- 0
+
+# how long are the genes?
+genes$len.gene <- genes$end - genes$start
+
+exons <- gtf.filtered.unique[gtf.filtered.unique$feature == "exon",]
+three_prime_utrs <- gtf.filtered.unique[gtf.filtered.unique$feature == "three_prime_utr",]
+five_prime_utrs <- gtf.filtered.unique[gtf.filtered.unique$feature == "five_prime_utr",]
+# how long are the total exonic regions?
+len.exons.transcript <- aggregate((end - start) ~ transcript.id + gene.id, exons, sum)
+len.three_prime_utrs.transcript <- aggregate((end - start) ~ transcript.id + gene.id, three_prime_utrs, sum)
+len.five_prime_utrs.transcript <- aggregate((end - start) ~ transcript.id + gene.id, five_prime_utrs, sum)
+idx.three_prime_utrs <- match(len.three_prime_utrs.transcript$transcript.id, len.exons.transcript$transcript.id)
+idx.five_prime_utrs <- match(len.five_prime_utrs.transcript$transcript.id, len.exons.transcript$transcript.id)
+len.exons.transcript$`(end - start)`[idx.three_prime_utrs] <- len.exons.transcript$`(end - start)`[idx.three_prime_utrs] - len.three_prime_utrs.transcript$`(end - start)`
+len.exons.transcript$`(end - start)`[idx.five_prime_utrs] <- len.exons.transcript$`(end - start)`[idx.five_prime_utrs] - len.five_prime_utrs.transcript$`(end - start)`
+len.exons.mean <- aggregate(`(end - start)` ~ gene.id, len.exons.transcript, mean)
+len.exons.median <- aggregate(`(end - start)` ~ gene.id, len.exons.transcript, median)
+len.exons.max <- aggregate(`(end - start)` ~ gene.id, len.exons.transcript, max)
+len.exons.min <- aggregate(`(end - start)` ~ gene.id, len.exons.transcript, min)
+genes$len.exons.mean <- NA
+genes$len.exons.mean[match(len.exons.mean$gene.id, genes$gene.id)] <- round(len.exons.mean$`(end - start)`, 0)
+genes$len.exons.median <- NA
+genes$len.exons.median[match(len.exons.median$gene.id, genes$gene.id)] <- round(len.exons.median$`(end - start)`, 0)
+genes$len.exons.max <- NA
+genes$len.exons.max[match(len.exons.max$gene.id, genes$gene.id)] <- round(len.exons.max$`(end - start)`, 0)
+genes$len.exons.min <- NA
+genes$len.exons.min[match(len.exons.min$gene.id, genes$gene.id)] <- round(len.exons.min$`(end - start)`, 0)
+
+# how long are the UTRs?
+len.three_prime_utrs.transcript <- aggregate((end - start) ~ transcript.id + gene.id, three_prime_utrs, sum)
+len.three_prime_utrs.mean <- aggregate(`(end - start)` ~ gene.id, len.three_prime_utrs.transcript, mean)
+len.three_prime_utrs.median <- aggregate(`(end - start)` ~ gene.id, len.three_prime_utrs.transcript, median)
+len.three_prime_utrs.max <- aggregate(`(end - start)` ~ gene.id, len.three_prime_utrs.transcript, max)
+len.three_prime_utrs.min <- aggregate(`(end - start)` ~ gene.id, len.three_prime_utrs.transcript, min)
+genes$len.three_prime_utrs.mean <- NA
+genes$len.three_prime_utrs.mean[match(len.three_prime_utrs.mean$gene.id, genes$gene.id)] <- round(len.three_prime_utrs.mean$`(end - start)`, 0)
+genes$len.three_prime_utrs.median <- NA
+genes$len.three_prime_utrs.median[match(len.three_prime_utrs.median$gene.id, genes$gene.id)] <- round(len.three_prime_utrs.median$`(end - start)`, 0)
+genes$len.three_prime_utrs.max <- NA
+genes$len.three_prime_utrs.max[match(len.three_prime_utrs.max$gene.id, genes$gene.id)] <- round(len.three_prime_utrs.max$`(end - start)`, 0)
+genes$len.three_prime_utrs.min <- NA
+genes$len.three_prime_utrs.min[match(len.three_prime_utrs.min$gene.id, genes$gene.id)] <- round(len.three_prime_utrs.min$`(end - start)`, 0)
+
+len.five_prime_utrs.transcript <- aggregate((end - start) ~ transcript.id + gene.id, five_prime_utrs, sum)
+len.five_prime_utrs.mean <- aggregate(`(end - start)` ~ gene.id, len.five_prime_utrs.transcript, mean)
+len.five_prime_utrs.median <- aggregate(`(end - start)` ~ gene.id, len.five_prime_utrs.transcript, median)
+len.five_prime_utrs.max <- aggregate(`(end - start)` ~ gene.id, len.five_prime_utrs.transcript, max)
+len.five_prime_utrs.min <- aggregate(`(end - start)` ~ gene.id, len.five_prime_utrs.transcript, min)
+genes$len.five_prime_utrs.mean <- NA
+genes$len.five_prime_utrs.median <- NA
+genes$len.five_prime_utrs.max <- NA
+genes$len.five_prime_utrs.min <- NA
+genes$len.five_prime_utrs.mean[match(len.five_prime_utrs.mean$gene.id, genes$gene.id)] <- round(len.five_prime_utrs.mean$`(end - start)`, 0)
+genes$len.five_prime_utrs.median[match(len.five_prime_utrs.median$gene.id, genes$gene.id)] <- round(len.five_prime_utrs.median$`(end - start)`, 0)
+genes$len.five_prime_utrs.max[match(len.five_prime_utrs.max$gene.id, genes$gene.id)] <- round(len.five_prime_utrs.max$`(end - start)`, 0)
+genes$len.five_prime_utrs.min[match(len.five_prime_utrs.min$gene.id, genes$gene.id)] <- round(len.five_prime_utrs.min$`(end - start)`, 0)
+
+genes.protein_coding <- genes[genes$gene.biotype.v2 == "protein_coding",]
+genes.lncRNA <- genes[genes$gene.biotype.v2 == "lncRNA",]
+
+genes.species[[name.species[sp]]] <- genes.protein_coding
+
+}
+
+```
+
+
+```{r}
+
+# how common are the gene biotypes?
+biotype_table <- sort(biotype_table, decreasing = TRUE)
+percentages <- round(100 * biotype_table / sum(biotype_table), 1)
+labels <- paste(names(biotype_table), " (", percentages, "%)", sep="")
+pie(biotype_table, labels = labels, col = c("#474dd1", "#d14947", "#d18e47"), main="Gene Biotype")
+
+# what fraction of genes are on each chromosome?
+chrom_table <- sort(chrom_table, decreasing = TRUE)
+percentages <- round(100 * chrom_table / sum(chrom_table), 1)
+labels <- paste(names(chrom_table), " (", percentages, "%)", sep="")
+pie(chrom_table, labels = labels, main="Chromosome")
+
+biotype_chrom_table.props <- sweep(biotype_chrom_table, 2, colSums(biotype_chrom_table), FUN = "/")
+par(mar = c(6, 4, 4, 2) + 0.1)
+barplot(biotype_chrom_table.props, beside=FALSE, col = c("#474dd1", "#d14947", "#d18e47"), las = 2,
+        main="Gene Biotype by Chromosome", xlab="Categories", ylab="Frequency")
+legend("topright", inset = c(-0.05, -0.3), legend = rownames(biotype_chrom_table.props), fill = c("#474dd1", "#d14947", "#d18e47"), bty = "n", xpd = TRUE)
+
+par(mar = c(8, 4, 4, 2) + 0.1)
+barplot(ann.percentage.table.props, beside=FALSE, col = c("#378dc6", "#d5e0e8"), las = 2,
+        main="Whole-Genome Annotation Quality", xlab="", ylab="Fraction")
+legend("topright", inset = c(-0.05, -0.3), legend = rownames(ann.percentage.table.props), fill = c("#378dc6", "#d5e0e8"), bty = "n", xpd = TRUE)
+
+ggplot(ann.biotype.table, aes(x = Var2, y = Var1, fill = Freq)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = Freq), color = "black", size = 6) +
+  scale_fill_gradient(low = "white", high = "red") +
+  labs(title = "% Annotated by Gene Biotype", x = "", y = "") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 0, size = 10), axis.text.y = element_text(size = 12), legend.position = "none") +
+  scale_y_discrete(limits = rev(levels(ann.biotype.table$Var1))) +  # Reverse the order of the y-axis
+  scale_x_discrete(position = "top") +  # Put x labels on top
+  coord_fixed()  # Ensure the cells are square
+
+ggplot(exon.transcript.utr.table, aes(x = Var2, y = Var1, fill = Freq)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = Freq), color = "black", size = 6) +
+  scale_fill_gradient(low = "white", high = "red") +
+  labs(title = "", x = "", y = "") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(size = 10), axis.text.y = element_text(size = 12), legend.position = "none") +
+  scale_y_discrete(limits = rev(levels(exon.transcript.utr.table$Var1))) +  # Reverse the order of the y-axis
+  scale_x_discrete(position = "top") +  # Put x labels on top
+  coord_fixed()  # Ensure the cells are square
+
+```
+
+
+```{r, fig.height = 4, fig.width = 15}
+
+h <- data.frame(data = genes.protein_coding$num.exons)
+h$data[h$data > 150] <- 150
+p.pc.ex <- ggplot(h, aes(x = data)) +
+            geom_histogram(aes(y = after_stat(count) / sum(after_stat(count)) * 100), breaks = seq(0, 150, by = 10), fill = "blue", color = "black", alpha = 0.7) +
+            labs(title = "Exons per Gene, Protein Coding Genes",
+                 x = "# of Exons",
+                 y = "% of Genes") +
+            theme_minimal()
+
+h <- data.frame(data = genes.lncRNA$num.exons)
+h$data[h$data > 150] <- 150
+p.lr.ex <- ggplot(h, aes(x = data)) +
+            geom_histogram(aes(y = after_stat(count) / sum(after_stat(count)) * 100), breaks = seq(0, 150, by = 10), fill = "blue", color = "black", alpha = 0.7) +
+            labs(title = "Exons per Gene, lncRNA Genes",
+                 x = "# of Exons",
+                 y = "% of Genes") +
+            theme_minimal()
+
+h <- data.frame(data = genes.protein_coding$num.transcripts)
+h$data[h$data > 15] <- 15
+p.pc.tr <- ggplot(h, aes(x = data)) +
+            geom_histogram(aes(y = after_stat(count) / sum(after_stat(count)) * 100), breaks = seq(0, 15, by = 1), fill = "blue", color = "black", alpha = 0.7) +
+            labs(title = "Transcripts per Gene",
+                 x = "# of Transcripts",
+                 y = "% of Genes") +
+            theme_minimal()
+
+h <- data.frame(data = genes.lncRNA$num.transcripts)
+h$data[h$data > 15] <- 15
+p.lr.tr <- ggplot(h, aes(x = data)) +
+            geom_histogram(aes(y = after_stat(count) / sum(after_stat(count)) * 100), breaks = seq(0, 15, by = 1), fill = "blue", color = "black", alpha = 0.7) +
+            labs(title = "Transcripts per Gene",
+                 x = "# of Transcripts",
+                 y = "% of Genes") +
+            theme_minimal()
+
+h <- data.frame(data = genes.protein_coding$num.three_prime_utrs)
+h$data[h$data > 20] <- 20
+p.pc.tu <- ggplot(h, aes(x = data)) +
+            geom_histogram(aes(y = after_stat(count) / sum(after_stat(count)) * 100), breaks = seq(0, 20, by = 1), fill = "blue", color = "black", alpha = 0.7) +
+            labs(title = "3' UTRs per Gene",
+                 x = "# of 3' UTRs",
+                 y = "% of Genes") +
+            theme_minimal()
+
+h <- data.frame(data = genes.lncRNA$num.three_prime_utrs)
+h$data[h$data > 20] <- 20
+p.lr.tu <- ggplot(h, aes(x = data)) +
+            geom_histogram(aes(y = after_stat(count) / sum(after_stat(count)) * 100), breaks = seq(0, 20, by = 1), fill = "blue", color = "black", alpha = 0.7) +
+            labs(title = "3' UTRs per Gene",
+                 x = "# of 3' UTRs",
+                 y = "% of Genes") +
+            theme_minimal()
+
+h <- data.frame(data = genes.protein_coding$num.five_prime_utrs)
+h$data[h$data > 15] <- 15
+p.pc.fu <- ggplot(h, aes(x = data)) +
+            geom_histogram(aes(y = after_stat(count) / sum(after_stat(count)) * 100), breaks = seq(0, 15, by = 1), fill = "blue", color = "black", alpha = 0.7) +
+            labs(title = "5' UTRs per Gene",
+                 x = "# of 5' UTRs",
+                 y = "% of Genes") +
+            theme_minimal()
+
+h <- data.frame(data = genes.lncRNA$num.five_prime_utrs)
+h$data[h$data > 15] <- 15
+p.lr.fu <- ggplot(h, aes(x = data)) +
+            geom_histogram(aes(y = after_stat(count) / sum(after_stat(count)) * 100), breaks = seq(0, 15, by = 1), fill = "blue", color = "black", alpha = 0.7) +
+            labs(title = "5' UTRs per Gene",
+                 x = "# of 5' UTRs",
+                 y = "% of Genes") +
+            theme_minimal()
+
+pc <- (p.pc.ex | p.pc.tr | p.pc.tu | p.pc.fu)
+print(pc)
+lr <- (p.lr.ex | p.lr.tr | p.lr.tu | p.lr.fu)
+print(lr)
+
+```
+
+
+```{r, fig.height = 4, fig.width = 15}
+
+h <- data.frame(data = genes.protein_coding$len.gene)
+h$data[h$data > 2e5] <- 2e5
+p.pc.gn <- ggplot(h, aes(x = data)) +
+            geom_histogram(aes(y = after_stat(count) / sum(after_stat(count)) * 100), breaks = seq(0, 2e5, by = 1000), fill = "blue", color = "black", alpha = 0.7) +
+            labs(title = "Gene Length (bp), Protein Coding Genes",
+                 x = "Length (bp)",
+                 y = "% of Genes") +
+            theme_minimal()
+
+h <- data.frame(data = genes.lncRNA$len.gene)
+h$data[h$data > 2e5] <- 2e5
+p.lr.gn <- ggplot(h, aes(x = data)) +
+            geom_histogram(aes(y = after_stat(count) / sum(after_stat(count)) * 100), breaks = seq(0, 2e5, by = 1000), fill = "blue", color = "black", alpha = 0.7) +
+            labs(title = "Gene Length (bp), lncRNA Genes",
+                 x = "Length (bp)",
+                 y = "% of Genes") +
+            theme_minimal()
+
+h <- data.frame(data = genes.protein_coding$len.exons.mean)
+h$data[h$data > 5000] <- 5000
+p.pc.ex <- ggplot(h, aes(x = data)) +
+            geom_histogram(aes(y = after_stat(count) / sum(after_stat(count)) * 100), breaks = seq(0, 5000, by = 100), fill = "blue", color = "black", alpha = 0.7) +
+            labs(title = "Mean Total Exonic Region",
+                 x = "Length (bp)",
+                 y = "% of Genes") +
+            theme_minimal()
+
+h <- data.frame(data = genes.lncRNA$len.exons.mean)
+h$data[h$data > 5000] <- 5000
+p.lr.ex <- ggplot(h, aes(x = data)) +
+            geom_histogram(aes(y = after_stat(count) / sum(after_stat(count)) * 100), breaks = seq(0, 5000, by = 100), fill = "blue", color = "black", alpha = 0.7) +
+            labs(title = "Mean Total Exonic Region",
+                 x = "Length (bp)",
+                 y = "% of Genes") +
+            theme_minimal()
+
+h <- data.frame(data = genes.protein_coding$len.three_prime_utrs.mean)
+h$data[h$data > 5000] <- 5000
+p.pc.tu <- ggplot(h, aes(x = data)) +
+            geom_histogram(aes(y = after_stat(count) / sum(after_stat(count)) * 100), breaks = seq(0, 5000, by = 100), fill = "blue", color = "black", alpha = 0.7) +
+            labs(title = "Mean 3' UTR",
+                 x = "Length (bp)",
+                 y = "% of Genes") +
+            theme_minimal()
+
+h <- data.frame(data = genes.lncRNA$len.three_prime_utrs.mean)
+h$data[h$data > 5000] <- 5000
+p.lr.tu <- ggplot(h, aes(x = data)) +
+            geom_histogram(aes(y = after_stat(count) / sum(after_stat(count)) * 100), breaks = seq(0, 5000, by = 100), fill = "blue", color = "black", alpha = 0.7) +
+            labs(title = "Mean 3' UTR",
+                 x = "Length (bp)",
+                 y = "% of Genes") +
+            theme_minimal()
+
+h <- data.frame(data = genes.protein_coding$len.five_prime_utrs.mean)
+h$data[h$data > 5000] <- 5000
+p.pc.fu <- ggplot(h, aes(x = data)) +
+            geom_histogram(aes(y = after_stat(count) / sum(after_stat(count)) * 100), breaks = seq(0, 5000, by = 100), fill = "blue", color = "black", alpha = 0.7) +
+            labs(title = "Mean 5' UTR",
+                 x = "Length (bp)",
+                 y = "% of Genes") +
+            theme_minimal()
+
+h <- data.frame(data = genes.lncRNA$len.five_prime_utrs.mean)
+h$data[h$data > 5000] <- 5000
+p.lr.fu <- ggplot(h, aes(x = data)) +
+            geom_histogram(aes(y = after_stat(count) / sum(after_stat(count)) * 100), breaks = seq(0, 5000, by = 100), fill = "blue", color = "black", alpha = 0.7) +
+            labs(title = "Mean 5' UTR",
+                 x = "Length (bp)",
+                 y = "% of Genes") +
+            theme_minimal()
+
+pc <- (p.pc.gn | p.pc.ex | p.pc.tu | p.pc.fu)
+print(pc)
+lr <- (p.lr.gn | p.lr.ex | p.lr.tu | p.lr.fu)
+print(lr)
+
+```
+
+
+```{r}
+
+# do PCA on gene attributes and see if they cluster at all...
+# Step 1: Select data frame columns
+selected_columns <- genes[, c("num.exons", "num.transcripts", "num.three_prime_utrs", "num.five_prime_utrs")]  # Replace with your actual column names
+
+# Step 2: Fill missing values with zeros
+selected_columns[is.na(selected_columns)] <- 0
+
+# Step 3: Scale the data
+scaled_data <- scale(selected_columns)
+
+# Step 4: Perform PCA
+pca_result <- prcomp(scaled_data, center = TRUE, scale. = TRUE)
+
+# Step 5: Plot the scores against the first two PCs
+pca_scores <- as.data.frame(pca_result$x)
+
+# Step 6: Plot the variance explained by the PCs
+# Calculate the proportion of variance explained
+variance_explained <- pca_result$sdev^2 / sum(pca_result$sdev^2)
+var_explained_df <- data.frame(
+  PC = paste0("PC", 1:length(variance_explained)),
+  VarianceExplained = variance_explained
+)
+
+# Create a scree plot
+ggplot(var_explained_df, aes(x = PC, y = VarianceExplained)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Variance Explained by Principal Components",
+       x = "Principal Component",
+       y = "Proportion of Variance Explained") +
+  theme_minimal()
+
+# Create a scatter plot of PC1 vs PC2
+ggplot(pca_scores, aes(x = PC3, y = PC4)) +
+  geom_point() +
+  labs(title = "PCA Plot",
+       x = "Principal Component 1",
+       y = "Principal Component 2") +
+  theme_minimal()
+
+# num_pcs <- 8
+# top_pcs <- as.data.frame(pca_result$x[, 1:num_pcs])
+# 
+# # Perform t-SNE on the top PCs
+# set.seed(123)  # For reproducibility
+# tsne_result <- Rtsne(top_pcs, dims = 2, perplexity = 30, verbose = TRUE, check_duplicates = FALSE)
+# 
+# # Convert t-SNE result to a data frame
+# tsne_data <- as.data.frame(tsne_result$Y)
+# colnames(tsne_data) <- c("TSNE1", "TSNE2")
+# 
+# # Plot the t-SNE results
+# ggplot(tsne_data, aes(x = TSNE1, y = TSNE2)) +
+#   geom_point() +
+#   labs(title = "t-SNE of Top Principal Components",
+#        x = "t-SNE 1",
+#        y = "t-SNE 2") +
+#   theme_minimal()
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,113 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+get.var <- function(var.col, item) {
+  
+  var.col.spl <- strsplit(variable.col, "; ")
+  var.col.idx <- lapply(var.col.spl, function(x) grepl(item, x, fixed = TRUE))
+  var.col.item <- mapply(function(x, y) x[y], var.col.spl, var.col.idx)
+  missing <- lapply(var.col.item, function(x) identical(x, character(0)))
+  var.col.item[unlist(missing)] <- NA
+  var.col.nona <- lapply(var.col.item[is.na(var.col.item) == F], function(x) strsplit(x, " ")[[1]][2])
+  var.col.nona <- lapply(var.col.nona, function(x) strsplit(x, ";")[[1]])
+  var.col.item[is.na(var.col.item) == F] <- var.col.nona
+  return(unlist(var.col.item))
+  
+}
+
+gtf.opossum = read.table("/Users/ryan.gorzek/Downloads/gtfs/Monodelphis_domestica.ASM229v1.112.gtf", skip = 5, sep = "\t", header = F)
+
+colnames(gtf.opossum) <- c("seqname", "source", "feature", "start", "end", "score", "strand", "frame", "attribute")
+variable.col <- gtf.opossum$attribute
+gtf.opossum <- gtf.opossum[, 1:8]
+
+gtf.opossum$gene.id <- get.var(variable.col, "gene_id")
+gtf.opossum$gene.name <- get.var(variable.col, "gene_name")
+gtf.opossum$gene.biotype <- get.var(variable.col, "gene_biotype")
+
+gtf.mouse = read.table("/Users/ryan.gorzek/Downloads/gtfs/Mus_musculus.GRCm39.112.gtf", skip = 5, sep = "\t", header = F)
+
+colnames(gtf.mouse) <- c("seqname", "source", "feature", "start", "end", "score", "strand", "frame", "attribute")
+variable.col <- gtf.mouse$attribute
+gtf.mouse <- gtf.mouse[, 1:8]
+
+gtf.mouse$gene.id <- get.var(variable.col, "gene_id")
+gtf.mouse$gene.name <- get.var(variable.col, "gene_name")
+gtf.mouse$gene.biotype <- get.var(variable.col, "gene_biotype")
+
+```
+
+
+```{r}
+
+biotypes.immune <- c("IG_LV_gene", "IG_V_gene", "IG_V_pseudogene", "IG_D_gene", "IG_J_gene", 
+                    "IG_J_pseudogene", "IG_C_gene", "IG_C_pseudogene", "TR_V_gene", "TR_V_pseudogene", 
+                    "TR_D_gene", "TR_J_gene", "TR_J_pseudogene", "TR_C_gene")
+
+opossum.genes <- list()
+opossum.genes$protein_coding <- gtf.opossum$gene.id[gtf.opossum$feature == "gene" & gtf.opossum$gene.biotype == "protein_coding"]
+opossum.genes$lncRNA <- gtf.opossum$gene.id[gtf.opossum$feature == "gene" & gtf.opossum$gene.biotype == "lncRNA"]
+opossum.genes$immune <- gtf.opossum$gene.id[gtf.opossum$feature == "gene" & gtf.opossum$gene.biotype %in% biotypes.immune]
+mouse.genes <- list()
+mouse.genes$protein_coding <- gtf.mouse$gene.id[gtf.mouse$feature == "gene" & gtf.mouse$gene.biotype == "protein_coding"]
+mouse.genes$lncRNA <- gtf.mouse$gene.id[gtf.mouse$feature == "gene" & gtf.mouse$gene.biotype == "lncRNA"]
+mouse.genes$immune <- gtf.mouse$gene.id[gtf.mouse$feature == "gene" & gtf.mouse$gene.biotype %in% biotypes.immune]
+
+# Count the number of genes in each element
+counts.opossum <- sapply(opossum.genes, length)
+counts.mouse <- sapply(mouse.genes, length)
+
+# Create a data frame for plotting
+data <- data.frame(
+  Element = rep(names(counts.opossum), 2),
+  Count = c(counts.opossum, counts.mouse),
+  List = rep(c("Opossum", "Mouse"), each = length(counts.opossum))
+)
+data$List <- factor(data$List, levels = c("Opossum", "Mouse"))
+data$Element <- factor(data$Element, levels = c("protein_coding", "lncRNA", "immune"))
+
+# Load ggplot2 for plotting
+library(ggplot2)
+
+# Create the grouped barplot
+ggplot(data, aes(x = Element, y = Count, fill = List)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.9)) +
+  labs(title = "Gene Counts by Biotype", x = "Gene Biotype", y = "Gene Count") +
+  theme_minimal() +
+  theme(plot.margin = margin(5.5, 12, 5.5, 5.5)) # Adjust margins if needed
+
+shared.genes <- read.table("/Users/ryan.gorzek/Downloads/Opossum_Mouse_Genes.txt", sep = ",", header = T)
+
+```
+
+
+```{r}
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
