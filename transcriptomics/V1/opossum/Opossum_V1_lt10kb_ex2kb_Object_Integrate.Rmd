@@ -1,0 +1,239 @@
+---
+title: "Opossum M1 Object"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+library(data.table)
+
+data_path <- "E:/Transcriptomics_V1/Opossum/output/Extended_lt10kb_ex2kb/"
+
+sample_IDs <- c('OpossumV1-1A', 'OpossumV1-1B', 'OpossumV1-2A', 'OpossumV1-2B')
+
+objs <- c()
+
+for (sample in sample_IDs) {
+  
+  temp.obj.path <- paste(data_path, sample, "/outs/filtered_feature_bc_matrix/", sep = "")
+  temp.obj.data <- Read10X(temp.obj.path)
+  temp.obj <- CreateSeuratObject(counts = temp.obj.data, project = "Opossum_V1")
+  temp.obj$sample <- sample
+  temp.obj <- scrublet_R(seurat_obj = temp.obj)
+  objs <- append(objs, temp.obj)
+  
+}
+
+```
+
+
+```{r}
+
+obj.opossum <- merge(objs[[1]], y = objs[2:4], add.cell.ids = sample_IDs, project = "Opossum_V1")
+
+```
+
+
+```{r}
+
+genes.mapping <- read.csv("E:/_genomes/Opossum_Mouse_Genes.txt")
+genes.mapping.mouse <- as.list(genes.mapping$Mouse.gene.name)
+genes.mapping.opossum <- as.list(genes.mapping$Gene.name)
+ids.mapping.opossum <- as.list(genes.mapping$Gene.stable.ID)
+genes.opossum = rownames(obj.opossum)
+for (gene in genes.mapping.mouse) {
+  
+    idx.mouse <- which(genes.mapping.mouse %in% gene)
+
+    if (length(idx.mouse) == 1) {
+      
+      gene.opossum <- genes.mapping.opossum[idx.mouse]
+      id.opossum <- ids.mapping.opossum[idx.mouse]
+      
+      if (gene.opossum == "") {
+        
+        idx.opossum <- which(genes.opossum %in% id.opossum)
+        genes.opossum[idx.opossum] <- gene
+        
+      } else {
+        
+        idx.opossum <- which(genes.opossum %in% gene.opossum)
+        genes.opossum[idx.opossum] <- gene
+        
+      }
+      
+    }
+  
+}
+
+```
+
+
+```{r}
+
+obj.df <- as.data.frame(as.matrix(obj.opossum[["RNA"]]@counts))
+rownames(obj.df) <- genes.opossum
+obj.opossum.temp <- CreateSeuratObject(counts = obj.df, meta.data = obj.opossum[[]])
+obj.opossum <- obj.opossum.temp
+
+```
+
+
+```{r}
+
+VlnPlot(obj.opossum, features = c("nFeature_RNA"), group.by = "sample", raster = FALSE)
+VlnPlot(obj.opossum, features = c("nCount_RNA"), group.by = "sample", raster = FALSE)
+FeatureScatter(obj.opossum, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", raster = FALSE)
+
+```
+
+
+```{r}
+
+cell_mask <- Reduce(intersect,list(WhichCells(obj.opossum, expression = nFeature_RNA > 700),
+                                   WhichCells(obj.opossum, expression = nFeature_RNA < 6500),
+                                   WhichCells(obj.opossum, expression = nCount_RNA < 40000)))
+
+gene_mask <- rownames(obj.opossum)[Matrix::rowSums(obj.opossum[["RNA"]]@counts > 0) > 8]
+
+obj.opossum <- subset(obj.opossum, features = gene_mask, cells = cell_mask)
+
+```
+
+
+```{r}
+
+VlnPlot(obj.opossum, features = c("nFeature_RNA"), group.by = "sample", raster = FALSE)
+VlnPlot(obj.opossum, features = c("nCount_RNA"), group.by = "sample", raster = FALSE)
+FeatureScatter(obj.opossum, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", raster = FALSE)
+
+```
+
+
+```{r}
+
+obj.list <- SplitObject(obj.opossum, split.by = "sample")
+for (o in 1:length(obj.list)) {
+  obj.list[[o]] <- SCTransform(obj.list[[o]], vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE)
+}
+features <- SelectIntegrationFeatures(object.list = obj.list, nfeatures = 5000)
+obj.list <- PrepSCTIntegration(object.list = obj.list, assay = "SCT", anchor.features = features)
+anchors <- FindIntegrationAnchors(object.list = obj.list, normalization.method = "SCT", anchor.features = features)
+features.to.integrate <- Reduce(intersect, lapply(obj.list, rownames))
+obj.combined <- IntegrateData(anchorset = anchors, normalization.method = "SCT", features.to.integrate = features.to.integrate)
+
+```
+
+
+```{r}
+
+obj.combined <- RunPCA(obj.combined)
+obj.combined <- FindNeighbors(obj.combined, dims = 1:30)
+obj.combined <- FindClusters(obj.combined, resolution = 1, algorithm = 4, method = "igraph")
+obj.combined <- RunUMAP(obj.combined, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+DimPlot(obj.combined, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", group.by = "sample", raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined, "nFeature_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined, "nCount_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.combined) <- "RNA"
+
+FeaturePlot(obj.combined, reduction = "umap", features = c("Snap25"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined, reduction = "umap", features = c("Sv2b"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined, reduction = "umap", features = c("Cux2"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined, reduction = "umap", features = c("Gucy1a1"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined, reduction = "umap", features = c("Cdh22"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined, reduction = "umap", features = c("Rorb"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined, reduction = "umap", features = c("Kank1"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined, reduction = "umap", features = c("Fam163a"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined, reduction = "umap", features = c("Foxp2"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined, reduction = "umap", features = c("Myt1"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined, reduction = "umap", features = c("Cdh9"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+FeaturePlot(obj.combined, reduction = "umap", features = c("Aldh1l1"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined, reduction = "umap", features = c("Flt1"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined, reduction = "umap", features = c("Cx3cr1"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined, reduction = "umap", features = c("Mog"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined, reduction = "umap", features = c("Pdgfra"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined, reduction = "umap", features = c("Slc47a1"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+FeaturePlot(obj.combined, reduction = "umap", features = c("Pvalb"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined, reduction = "umap", features = c("Sst"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined, reduction = "umap", features = c("Vip"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined, reduction = "umap", features = c("Lamp5"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+cells.glutamatergic <- WhichCells(obj.combined, ident = c("1", "2", "4", "5", "10", "12", "13", "15", "16", "18", "20", "22", "26", "28", "30", "31"))
+obj.combined$class <- ifelse(colnames(obj.combined) %in% cells.glutamatergic, "Glutamatergic", "Ambiguous")
+
+cells.gabaergic <- WhichCells(obj.combined, ident = c("7", "17", "21", "29", "35"))
+obj.combined$class[cells.gabaergic] <- "GABAergic"
+
+cells.nonneuronal <- WhichCells(obj.combined, ident = c("3", "6", "8", "9", "14", "19"))
+obj.combined$class[cells.nonneuronal] <- "Nonneuronal"
+
+```
+
+
+```{r}
+
+DimPlot(obj.combined, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", group.by = "class", raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.combined$orig_integrated_snn_res.1 <- obj.combined$integrated_snn_res.1
+
+obj.combined.glutamatergic <- subset(obj.combined, subset = class == "Glutamatergic")
+SaveH5Seurat(obj.combined.glutamatergic, "E:/Transcriptomics_v1/Opossum/seurat/opossum_v1_ext_glutamatergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+obj.combined.gabaergic <- subset(obj.combined, subset = class == "GABAergic")
+SaveH5Seurat(obj.combined.gabaergic, "E:/Transcriptomics_v1/Opossum/seurat/opossum_v1_ext_gabaergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+obj.combined.nonneuronal <- subset(obj.combined, subset = class == "Nonneuronal")
+SaveH5Seurat(obj.combined.nonneuronal, "E:/Transcriptomics_v1/Opossum/seurat/opossum_v1_ext_nonneuronal.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+
+
+```{r}
+
+SaveH5Seurat(obj.combined, "E:/Transcriptomics_v1/Opossum/seurat/opossum_v1_ext_all_integrated.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

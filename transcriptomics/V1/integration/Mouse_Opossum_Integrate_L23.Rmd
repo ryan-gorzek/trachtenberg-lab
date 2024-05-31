@@ -1,0 +1,105 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+library(data.table)
+
+obj.combined <- LoadH5Seurat("E:/Transcriptomics_v1/Opossum/seurat/opossum_mouse_v1_glutamatergic_mapped_processed.h5seurat")
+obj.combined.list = SplitObject(obj.combined, split.by = "species")
+
+```
+
+
+```{r}
+
+obj.combined.L23 <- subset(merge(obj.combined.list[["Mouse"]], y = obj.combined.list[["Opossum"]]), idents = "L2/3")
+
+```
+
+
+```{r}
+
+obj.combined.L23.list <- SplitObject(obj.combined.L23, split.by = "species")
+obj.combined.L23.list[["Mouse"]] <- SCTransform(obj.combined.L23.list[["Mouse"]], vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE)
+Idents(obj.combined.L23.list[["Opossum"]]) <- "sample"
+obj.combined.L23.list[["Opossum"]] <- subset(obj.combined.L23.list[["Opossum"]], idents = c("OpossumV1-2A", "OpossumV1-2B"))
+obj.combined.L23.list[["Opossum"]] <- SCTransform(obj.combined.L23.list[["Opossum"]], vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE)
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.combined.L23.list[["Mouse"]]) <- "SCT"
+# obj.combined.L23.list[["Mouse"]] <- FindVariableFeatures(obj.combined.L23.list[["Mouse"]])
+# obj.combined.L23.list[["Mouse"]] <- ScaleData(obj.combined.L23.list[["Mouse"]])
+shared.vfs <- VariableFeatures(obj.combined.L23.list[["Mouse"]]) %in% rownames(obj.combined.L23.list[["Opossum"]])
+VariableFeatures(obj.combined.L23.list[["Mouse"]]) <- VariableFeatures(obj.combined.L23.list[["Mouse"]])[shared.vfs]
+obj.combined.L23.list[["Mouse"]] <- RunPCA(obj.combined.L23.list[["Mouse"]])
+
+```
+
+
+```{r}
+
+DimPlot(obj.combined.L23.list[["Mouse"]], dims = c(1, 3), reduction = "pca", group.by = "type", label = TRUE) + NoLegend() + xlim(-25, 25) + ylim(-25, 25) + coord_equal()
+FeaturePlot(obj.combined.L23.list[["Mouse"]], dims = c(1, 3), reduction = "pca", features = "Trpc6") + xlim(-25, 25) + ylim(-25, 25) + coord_equal()
+FeaturePlot(obj.combined.L23.list[["Mouse"]], dims = c(1, 3), reduction = "pca", features = "Adamts2") + xlim(-25, 25) + ylim(-25, 25) + coord_equal()
+
+```
+
+
+```{r}
+
+mouse.loadings <- obj.combined.L23.list[["Mouse"]]@reductions$pca@feature.loadings
+
+DefaultAssay(obj.combined.L23.list[["Opossum"]]) <- "SCT"
+# obj.combined.L23.list[["Opossum"]] <- FindVariableFeatures(obj.combined.L23.list[["Opossum"]])
+obj.combined.L23.list[["Opossum"]] <- ScaleData(obj.combined.L23.list[["Opossum"]], features = rownames(mouse.loadings))
+opossum.embeddings <- t(obj.combined.L23.list[["Opossum"]]@assays$SCT@scale.data[rownames(mouse.loadings),]) %*% mouse.loadings
+obj.combined.L23.list[["Opossum"]][["pca"]] <- CreateDimReducObject(embeddings = opossum.embeddings, key = "PC_", assay = "SCT")
+
+```
+
+
+```{r}
+
+DimPlot(obj.combined.L23.list[["Opossum"]], dims = c(1, 3), reduction = "pca", label = TRUE) + NoLegend() + xlim(-5, 5) + ylim(-5, 5) + coord_equal()
+FeaturePlot(obj.combined.L23.list[["Opossum"]], dims = c(1, 3), reduction = "pca", features = "nCount_RNA") + xlim(-5, 5) + ylim(-5, 5) + coord_equal()
+FeaturePlot(obj.combined.L23.list[["Opossum"]], dims = c(1, 3), reduction = "pca", features = "Trpc6") + xlim(-5, 5) + ylim(-5, 5) + coord_equal()
+FeaturePlot(obj.combined.L23.list[["Opossum"]], dims = c(1, 3), reduction = "pca", features = "Adamts2") + xlim(-5, 5) + ylim(-5, 5) + coord_equal()
+FeaturePlot(obj.combined.L23.list[["Opossum"]], dims = c(1, 3), reduction = "pca", features = "Parm1") + xlim(-5, 5) + ylim(-5, 5) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.combined.L23.list[["Opossum"]] <- SCTransform(obj.combined.L23.list[["Opossum"]], vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE)
+DefaultAssay(obj.combined.L23.list[["Opossum"]]) <- "SCT"
+# obj.combined.L23.list[["Opossum"]] <- FindVariableFeatures(obj.combined.L23.list[["Opossum"]])
+# obj.combined.L23.list[["Opossum"]] <- ScaleData(obj.combined.L23.list[["Opossum"]])
+obj.combined.L23.list[["Opossum"]] <- RunPCA(obj.combined.L23.list[["Opossum"]])
+
+```
+
+
+```{r}
+
+DimPlot(obj.combined.L23.list[["Opossum"]], dims = c(2, 4), group.by = "sample", reduction = "pca", label = TRUE) + NoLegend() + xlim(-25, 25) + ylim(-25, 25) + coord_equal()
+FeaturePlot(obj.combined.L23.list[["Opossum"]], dims = c(2, 4), reduction = "pca", features = "nCount_RNA") + xlim(-25, 25) + ylim(-25, 25) + coord_equal()
+FeaturePlot(obj.combined.L23.list[["Opossum"]], dims = c(2, 4), reduction = "pca", features = "Trpc6") + xlim(-25, 25) + ylim(-25, 25) + coord_equal()
+FeaturePlot(obj.combined.L23.list[["Opossum"]], dims = c(2, 4), reduction = "pca", features = "Bdnf") + xlim(-25, 25) + ylim(-25, 25) + coord_equal()
+FeaturePlot(obj.combined.L23.list[["Opossum"]], dims = c(2, 4), reduction = "pca", features = "Adamts2") + xlim(-25, 25) + ylim(-25, 25) + coord_equal()
+FeaturePlot(obj.combined.L23.list[["Opossum"]], dims = c(2, 4), reduction = "pca", features = "Epha3") + xlim(-25, 25) + ylim(-25, 25) + coord_equal()
+
+```

@@ -1,0 +1,126 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+obj.combined.processed <- LoadH5Seurat("E:/Transcriptomics_v1/Opossum/seurat/opossum_mouse_v1_glutamatergic_mapped_processed.h5seurat")
+
+```
+
+
+```{r}
+
+obj.opossum.glutamatergic.list <- SplitObject(obj.opossum.glutamatergic, split.by = "sample")
+
+```
+
+
+```{r}
+
+for (o in 1:length(obj.opossum.glutamatergic.list)) {
+  obj.opossum.glutamatergic.list[[o]] <- SCTransform(obj.opossum.glutamatergic.list[[o]], vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE)
+}
+features.opossum.glutamatergic <- SelectIntegrationFeatures(object.list = obj.opossum.glutamatergic.list, nfeatures = 5000)
+obj.opossum.glutamatergic.list <- PrepSCTIntegration(object.list = obj.opossum.glutamatergic.list, assay = "SCT", anchor.features = features.opossum.glutamatergic)
+anchors.opossum.glutamatergic <- FindIntegrationAnchors(object.list = obj.opossum.glutamatergic.list, normalization.method = "SCT", anchor.features = features.opossum.glutamatergic)
+features.to.integrate <- Reduce(intersect, lapply(obj.opossum.glutamatergic.list, rownames))
+obj.opossum.glutamatergic.combined <- IntegrateData(anchorset = anchors.opossum.glutamatergic, normalization.method = "SCT", features.to.integrate = features.to.integrate)
+
+```
+
+
+```{r}
+
+obj.opossum.glutamatergic.combined <- RunPCA(obj.opossum.glutamatergic.combined)
+obj.opossum.glutamatergic.combined <- FindNeighbors(obj.opossum.glutamatergic.combined, dims = 1:30)
+obj.opossum.glutamatergic.combined <- FindClusters(obj.opossum.glutamatergic.combined, resolution = 1, algorithm = 4, method = "igraph")
+obj.opossum.glutamatergic.combined <- RunUMAP(obj.opossum.glutamatergic.combined, dims = 1:30, method="umap-learn", return.model = TRUE)
+
+```
+
+
+```{r}
+
+opossum.cell.names <- colnames(obj.combined)
+opossum.cell.names <- opossum.cell.names[opossum.cell.names %in% colnames(obj.combined.processed)]
+opossum.types <- obj.combined[[]][opossum.cell.names, "integrated_snn_res.1"]
+idx <- match(opossum.cell.names, colnames(obj.combined.processed))
+obj.combined.processed$type[idx] <- opossum.types
+
+```
+
+
+```{r}
+
+obj.list <- SplitObject(obj.combined.processed, split.by = "species")
+
+```
+
+
+```{r}
+
+# Source scripts with functions
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+DefaultAssay(obj.list[["Opossum"]]) <- "integrated"
+DefaultAssay(obj.list[["Mouse"]]) <- "integrated"
+
+Idents(obj.list[["Opossum"]]) <- "type"
+Idents(obj.list[["Mouse"]]) <- "type"
+
+# Define a wrapper function to train model on common highly variable genes
+TrainXGBoost = function(train, test, train.clusters = "", test.clusters = "", features = c()){
+  
+  Idents(train) = train.clusters
+  Idents(test) = test.clusters
+  
+  AC_model <- TrainModel(train, training_genes = features)
+  
+  return(AC_model)
+}
+
+# Train model
+MO_model <- TrainXGBoost(obj.list[["Mouse"]], 
+                         obj.list[["Opossum"]], 
+                         train.clusters = "type", 
+                         test.clusters = "type", 
+                         features = rownames(obj.list[["Mouse"]]))
+
+```
+
+
+```{r}
+
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+Idents(obj.list[["Opossum"]]) <- "type"
+Idents(obj.list[["Mouse"]]) <- "type"
+confusion_matrix <- BuildConfusionMatrix(obj.list[["Opossum"]], obj.list[["Mouse"]], model = MO_model)
+plotConfusionMatrix(confusion_matrix, plot.return = TRUE, stagger.threshold = 15)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,110 @@
+---
+title: "mouse M1 Object"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+library(data.table)
+
+data_path <- "E:/Transcriptomics_v1/Mouse/P38NR/filtered_feature_bc_matrix_glut/"
+
+sample_IDs <- c('P38_1a', 'P38_2a', 'P38_2b')
+
+objs <- c()
+
+for (sample in sample_IDs) {
+  
+  temp.obj.path <- paste(data_path, sample, "/", sep = "")
+  temp.obj.data <- Read10X(temp.obj.path, gene.column = 1)
+  temp.obj <- CreateSeuratObject(counts = temp.obj.data, project = "Mouse_V1_P38")
+  temp.obj$sample <- sample
+  subclass <- read.csv(paste(temp.obj.path, "subclass.csv", sep = ""), header = FALSE)
+  rownames(subclass) <- colnames(temp.obj)
+  temp.obj <- AddMetaData(temp.obj, subclass, "subclass")
+  type <- read.csv(paste(temp.obj.path, "type.csv", sep = ""), header = FALSE)
+  rownames(type) <- colnames(temp.obj)
+  temp.obj <- AddMetaData(temp.obj, type, "type")
+  temp.obj <- scrublet_R(seurat_obj = temp.obj)
+  objs <- append(objs, temp.obj)
+  
+}
+
+```
+
+
+```{r}
+
+obj.mouse.gabaergic <- merge(objs[[1]], y = objs[2:3], add.cell.ids = sample_IDs, project = "Mouse_V1_P38")
+
+```
+
+
+```{r}
+
+VlnPlot(obj.mouse.gabaergic, features = c("nFeature_RNA"), group.by = "sample", raster = FALSE)
+VlnPlot(obj.mouse.gabaergic, features = c("nCount_RNA"), group.by = "sample", raster = FALSE)
+FeatureScatter(obj.mouse.gabaergic, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", raster = FALSE)
+
+```
+
+
+```{r}
+
+obj.mouse.gabaergic <- NormalizeData(obj.mouse.gabaergic, features = all.genes)
+obj.mouse.gabaergic <- FindVariableFeatures(obj.mouse.gabaergic, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.mouse.gabaergic)
+obj.mouse.gabaergic <- ScaleData(obj.mouse.gabaergic, features = all.genes)
+obj.mouse.gabaergic <- RunPCA(obj.mouse.gabaergic, features = VariableFeatures(object = obj.mouse.gabaergic))
+ElbowPlot(obj.mouse.gabaergic, ndims = 50)
+
+```
+
+
+```{r}
+
+obj.mouse.gabaergic <- FindNeighbors(obj.mouse.gabaergic, dims = 1:30)
+obj.mouse.gabaergic <- FindClusters(obj.mouse.gabaergic, resolution = 1, algorithm = 4, method = "igraph")
+obj.mouse.gabaergic <- RunUMAP(obj.mouse.gabaergic, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+DimPlot(obj.mouse.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, "nFeature_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, "nCount_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by = "type", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Cux2"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Rorb"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Deptor"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Foxp2"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Tshz2"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+# FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Stac"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+# FeaturePlot(obj.mouse.gabaergic, reduction = "umap", features = c("Sncg"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+SaveH5Seurat(obj.mouse.gabaergic, "E:/Transcriptomics_v1/Mouse/seurat/mouse_v1_glutamatergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

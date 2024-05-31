@@ -1,0 +1,141 @@
+---
+title: "Opossum M1 GABAergic"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+obj.opossum <- readRDS("E:/Transcriptomics_Retina/Opossum/opossum_initial.rds")
+
+```
+
+
+```{r}
+
+obj.opossum <- subset(obj.opossum, subset = nCount_RNA < 40000)
+VlnPlot(obj.opossum, features = c("nFeature_RNA"), group.by = "orig.file", raster = FALSE)
+VlnPlot(obj.opossum, features = c("nCount_RNA"), group.by = "orig.file", raster = FALSE)
+FeatureScatter(obj.opossum, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", raster = FALSE)
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum, reduction = "umap", group.by = "orig.file", raster = FALSE, shuffle = TRUE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum, reduction = "umap", group.by = "cell_class", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum, reduction = "umap", group.by = "type", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum, "nFeature_RNA", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum, "nCount_RNA", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.opossum.rgc <- subset(obj.opossum, cell_class == "RGC")
+obj.opossum.rgc <- subset(obj.opossum.rgc, type == "Unannotated", invert = TRUE)
+obj.opossum.rgc$animal <- obj.opossum.rgc$orig.file
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.rgc, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.rgc, reduction = "umap", group.by = "animal", raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.rgc, reduction = "umap", group.by = "cell_class", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.rgc, reduction = "umap", group.by = "type", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.rgc, "nFeature_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.rgc, "nCount_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+# # SCT Integration
+# obj.opossum.rgc.list <- SplitObject(obj.opossum.rgc, split.by = "orig.file")
+# for (i in 1:length(obj.opossum.rgc.list)) {
+#       obj.opossum.rgc.list[[i]] <- SCTransform(obj.opossum.rgc.list[[i]], vst.flavor = "v2", return.only.var.genes = FALSE)
+# }
+# 
+# features <- SelectIntegrationFeatures(object.list = obj.opossum.rgc.list, nfeatures = 3000)
+# obj.opossum.rgc.list <- PrepSCTIntegration(object.list = obj.opossum.rgc.list, anchor.features = features)
+# anchors <- FindIntegrationAnchors(object.list = obj.opossum.rgc.list, normalization.method = "SCT", anchor.features = features)
+# features.list <- lapply(obj.opossum.rgc.list, rownames)
+# common.features <- intersect(intersect(features.list[[1]], features.list[[2]]), features.list[[3]])
+# obj.opossum.rgc.combined <- IntegrateData(anchorset = anchors, normalization.method = "SCT", features.to.integrate = common.features)
+
+# Old-Fashioned Integration
+obj.opossum.rgc.list <- SplitObject(obj.opossum.rgc, split.by = "orig.file")
+for (i in 1:length(obj.opossum.rgc.list)) {
+      obj.opossum.rgc.list[[i]] <- NormalizeData(obj.opossum.rgc.list[[i]], verbose = FALSE)
+      obj.opossum.rgc.list[[i]] <- FindVariableFeatures(obj.opossum.rgc.list[[i]], selection.method = "vst", nfeatures = 2000, verbose = FALSE)
+}
+
+anchors <- FindIntegrationAnchors(object.list = obj.opossum.rgc.list, normalization.method = "LogNormalize", anchor.features = features)
+features.list <- lapply(obj.opossum.rgc.list, rownames)
+common.features <- intersect(intersect(features.list[[1]], features.list[[2]]), features.list[[3]])
+obj.opossum.rgc.combined <- IntegrateData(anchorset = anchors, normalization.method = "LogNormalize", features.to.integrate = common.features)
+obj.opossum.rgc.combined <- ScaleData(obj.opossum.rgc.combined, verbose = FALSE)
+
+```
+
+
+```{r}
+
+obj.opossum.rgc <- SCTransform(obj.opossum.rgc, vst.flavor = "v2")
+obj.opossum.rgc <- RunPCA(obj.opossum.rgc)
+obj.opossum.rgc <- FindNeighbors(obj.opossum.rgc, reduction = "pca", dims = 1:30)
+obj.opossum.rgc <- FindClusters(obj.opossum.rgc, resolution = 1, algorithm = 4, method = "igraph")
+obj.opossum.rgc <- RunUMAP(obj.opossum.rgc, reduction = "pca", dims = 1:30)
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.rgc, reduction = "umap", group.by = "animal", shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.rgc, reduction = "umap", group.by = "cell_class", label = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.rgc, reduction = "umap", group.by = "type", label = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+VlnPlot(obj.opossum.rgc, features = c("nFeature_RNA"), group.by = "type", raster = FALSE)
+VlnPlot(obj.opossum.rgc, features = c("nCount_RNA"), group.by = "type", raster = FALSE)
+
+```
+
+
+```{r}
+
+obj.opossum.rgc.combined <- RunPCA(obj.opossum.rgc.combined)
+obj.opossum.rgc.combined <- FindNeighbors(obj.opossum.rgc.combined, reduction = "pca", dims = 1:30)
+obj.opossum.rgc.combined <- FindClusters(obj.opossum.rgc.combined, resolution = 1, algorithm = 4, method = "igraph")
+obj.opossum.rgc.combined <- RunUMAP(obj.opossum.rgc.combined, reduction = "pca", dims = 1:30)
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.rgc.combined, reduction = "umap", group.by = "orig.file", shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.rgc.combined, reduction = "umap", group.by = "cell_class", label = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.rgc.combined, reduction = "umap", group.by = "type", label = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+VlnPlot(obj.opossum.rgc.combined, features = c("nFeature_RNA"), group.by = "type", raster = FALSE)
+VlnPlot(obj.opossum.rgc.combined, features = c("nCount_RNA"), group.by = "type", raster = FALSE)
+
+```
+
+```{r}
+
+# SaveH5Seurat(obj.opossum.rgc, "E:/Transcriptomics_Retina/opossum/opossum_retina_rgc.h5seurat", overwrite = TRUE, verbose = TRUE)
+saveRDS(obj.opossum.rgc, "E:/Transcriptomics_Retina/Opossum/opossum_retina_rgc_raw.rds")
+
+```
+

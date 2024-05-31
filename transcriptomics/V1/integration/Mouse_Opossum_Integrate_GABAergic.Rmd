@@ -1,0 +1,183 @@
+---
+title: "Opossum M1 Object"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+library(data.table)
+
+obj.opossum.gabaergic <- LoadH5Seurat("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_gabaergic.h5seurat")
+obj.opossum.gabaergic$species <- "Opossum"
+obj.mouse.gabaergic <- LoadH5Seurat("E:/Transcriptomics_v1/Mouse/seurat/mouse_v1_gabaergic.h5seurat")
+obj.mouse.gabaergic$species <- "Mouse"
+
+obj.opossum.gabaergic <- obj.opossum.gabaergic[, sample(colnames(obj.opossum.gabaergic), size = ncol(obj.mouse.gabaergic), replace = FALSE)]
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.opossum.gabaergic) <- "RNA"
+DefaultAssay(obj.mouse.gabaergic) <- "RNA"
+common.features <- intersect(rownames(obj.mouse.gabaergic), rownames(obj.opossum.gabaergic))
+obj.combined <- merge(obj.mouse.gabaergic[common.features,], y = obj.opossum.gabaergic[common.features,])
+obj.list <- SplitObject(obj.combined, split.by = "sample")
+
+```
+
+
+```{r}
+
+for (o in 1:length(obj.list)) {
+  obj.list[[o]] <- SCTransform(obj.list[[o]], vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE)
+}
+features <- SelectIntegrationFeatures(object.list = obj.list, nfeatures = 3000)
+obj.list <- PrepSCTIntegration(object.list = obj.list, assay = "SCT", anchor.features = features)
+anchors <- FindIntegrationAnchors(object.list = obj.list, normalization.method = "SCT", anchor.features = features)
+features.to.integrate <- Reduce(intersect, lapply(obj.list, rownames))
+obj.combined <- IntegrateData(anchorset = anchors, normalization.method = "SCT", features.to.integrate = features.to.integrate)
+
+```
+
+
+```{r}
+
+obj.combined <- RunPCA(obj.combined)
+obj.combined <- FindNeighbors(obj.combined, dims = 1:30)
+obj.combined <- FindClusters(obj.combined, resolution = 1, algorithm = 4, method = "igraph")
+obj.combined <- RunUMAP(obj.combined, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+DimPlot(obj.combined, reduction = "umap", group.by = "species", raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", group.by = "subclass", split.by = "species", raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", group.by = "type", split.by = "species", raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", group.by = "orig_integrated_snn_res.1", split.by = "species", raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.combined) <- "RNA"
+FeaturePlot(obj.combined, reduction = "umap", features = c("Cpne5"), split.by = "species", max.cutoff = 2, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.list <- SplitObject(obj.combined, split.by = "species")
+
+```
+
+
+```{r}
+
+# Source scripts with functions
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+DefaultAssay(obj.list[["Opossum"]]) <- "integrated"
+DefaultAssay(obj.list[["Mouse"]]) <- "integrated"
+
+Idents(obj.list[["Opossum"]]) <- "type"
+Idents(obj.list[["Mouse"]]) <- "type"
+
+# Define a wrapper function to train model on common highly variable genes
+TrainXGBoost = function(train, test, train.clusters = "", test.clusters = "", features = c()){
+  
+  Idents(train) = train.clusters
+  Idents(test) = test.clusters
+  
+  AC_model <- TrainModel(train, training_genes = features)
+  
+  return(AC_model)
+}
+
+# Train model
+MO_model <- TrainXGBoost(obj.list[["Mouse"]], 
+                         obj.list[["Opossum"]], 
+                         train.clusters = "type", 
+                         test.clusters = "type", 
+                         features = VariableFeatures(obj.list[["Mouse"]]))
+
+```
+
+
+```{r}
+
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+Idents(obj.list[["Opossum"]]) <- "type"
+Idents(obj.list[["Mouse"]]) <- "type"
+confusion_matrix <- BuildConfusionMatrix(obj.list[["Opossum"]], obj.list[["Mouse"]], model = MO_model)
+plotConfusionMatrix(confusion_matrix, plot.return = TRUE, stagger.threshold = 15)
+
+```
+
+
+```{r}
+
+# Source scripts with functions
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+DefaultAssay(obj.list[["Opossum"]]) <- "integrated"
+DefaultAssay(obj.list[["Mouse"]]) <- "integrated"
+
+Idents(obj.list[["Opossum"]]) <- "type"
+Idents(obj.list[["Mouse"]]) <- "type"
+
+# Define a wrapper function to train model on common highly variable genes
+TrainXGBoost = function(train, test, train.clusters = "", test.clusters = "", features = c()){
+  
+  Idents(train) = train.clusters
+  Idents(test) = test.clusters
+  
+  AC_model <- TrainModel(train, training_genes = features)
+  
+  return(AC_model)
+}
+
+# Train model
+MO_model <- TrainXGBoost(obj.list[["Opossum"]], 
+                         obj.list[["Mouse"]], 
+                         train.clusters = "type", 
+                         test.clusters = "type", 
+                         features = rownames(obj.list[["Mouse"]]))
+
+```
+
+
+```{r}
+
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+Idents(obj.list[["Opossum"]]) <- "type"
+Idents(obj.list[["Mouse"]]) <- "type"
+confusion_matrix <- BuildConfusionMatrix(obj.list[["Mouse"]], obj.list[["Opossum"]], model = MO_model)
+plotConfusionMatrix(confusion_matrix, plot.return = TRUE, stagger.threshold = 15)
+
+```
+
+
+```{r}
+
+SaveH5Seurat(obj.combined, "E:/Transcriptomics_v1/Opossum/seurat/opossum_mouse_v1_gabaergic_integrated.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

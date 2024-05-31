@@ -1,0 +1,405 @@
+---
+title: "Opossum M1 Object"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+library(data.table)
+
+obj.combined.mapped.glutamatergic <- LoadH5Seurat("E:/Transcriptomics_v1/Opossum/seurat/opossum_mouse_v1_glutamatergic_mapped_2AB.h5seurat")
+
+```
+
+
+```{r}
+
+obj.list.species <- SplitObject(obj.combined.mapped.glutamatergic, split.by = "species")
+
+```
+
+
+```{r}
+
+obj.list.species[["Mouse"]] <- SCTransform(obj.list.species[["Mouse"]], vst.flavor = "v2", verbose = FALSE) %>%
+                               RunPCA(npcs = 30, verbose = FALSE) %>%
+                               FindNeighbors(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+                               FindClusters(resolution = 1, algorithm = 4, method = "igraph") %>%
+                               RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
+
+obj.list.species[["Opossum"]] <- SCTransform(obj.list.species[["Opossum"]], vst.flavor = "v2", verbose = FALSE) %>%
+                                 RunPCA(npcs = 30, verbose = FALSE) %>%
+                                 FindNeighbors(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+                                 FindClusters(resolution = 1, algorithm = 4, method = "igraph") %>%
+                                 RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
+
+DimPlot(obj.list.species[["Mouse"]], label = TRUE, group.by = "sample") + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.list.species[["Mouse"]], label = TRUE, group.by = "subclass") + NoLegend() + xlim(-15, 15) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.list.species[["Mouse"]], label = TRUE, group.by = "type") + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+DimPlot(obj.list.species[["Opossum"]], label = TRUE, group.by = "predicted_doublets") + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.list.species[["Opossum"]], label = TRUE, group.by = "sample") + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.list.species[["Opossum"]], label = TRUE, group.by = "subclass") + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.list.species[["Opossum"]], label = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+VlnPlot(obj.list.species[["Opossum"]], features = "nCount_RNA")
+
+```
+
+
+```{r}
+
+obj.opossum.clean <- subset(obj.list.species[["Opossum"]], idents = c(9, 10, 16, 17, 21, 22, 24), invert = TRUE)
+
+obj.opossum.clean <- SCTransform(obj.opossum.clean, vst.flavor = "v2", verbose = FALSE) %>%
+                                 RunPCA(npcs = 30, verbose = FALSE) %>%
+                                 FindNeighbors(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+                                 FindClusters(resolution = 1, algorithm = 4, method = "igraph") %>%
+                                 RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.clean, label = TRUE, group.by = "predicted_doublets") + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.clean, label = TRUE, group.by = "sample") + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.clean, label = TRUE, group.by = "subclass") + NoLegend() + xlim(-25, 25) + ylim(-25, 25) + coord_equal()
+DimPlot(obj.opossum.clean, label = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.clean, features = "Rorb") + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.clean, features = "predicted.subclass.score") + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+VlnPlot(obj.opossum.clean, features = "nCount_RNA")
+
+```
+
+
+```{r}
+
+obj.opossum.clean <- subset(obj.opossum.clean, idents = c(15), invert = TRUE)
+obj.opossum.clean$orig.predicted.subclass <- obj.opossum.clean$predicted.subclass
+obj.opossum.clean$orig.predicted.subclass.score <- obj.opossum.clean$predicted.subclass.score
+
+```
+
+
+```{r}
+
+obj.merge <- merge(obj.list.species[["Mouse"]], y = obj.opossum.clean)
+obj.list <- SplitObject(obj.merge, split.by = "species")
+
+```
+
+
+```{r}
+
+for (o in 1:length(obj.list)) {
+  obj.list[[o]] <- SCTransform(obj.list[[o]], vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE)
+}
+features <- SelectIntegrationFeatures(object.list = obj.list, nfeatures = 5000)
+obj.list <- PrepSCTIntegration(object.list = obj.list, assay = "SCT", anchor.features = features)
+anchors <- FindIntegrationAnchors(object.list = obj.list, normalization.method = "SCT", anchor.features = features)
+features.to.integrate <- Reduce(intersect, lapply(obj.list, rownames))
+obj.combined <- IntegrateData(anchorset = anchors, normalization.method = "SCT", features.to.integrate = features.to.integrate)
+
+```
+
+
+```{r}
+
+obj.combined <- RunPCA(obj.combined)
+obj.combined <- FindNeighbors(obj.combined, dims = 1:30)
+obj.combined <- FindClusters(obj.combined, resolution = 1, algorithm = 4, method = "igraph")
+obj.combined <- RunUMAP(obj.combined, dims = 1:30, method="umap-learn", return.model = TRUE)
+
+```
+
+
+```{r}
+
+DimPlot(obj.combined, reduction = "umap", group.by = "species", raster = FALSE, shuffle = TRUE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", group.by = "subclass", split.by = "species", raster = FALSE, shuffle = TRUE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", group.by = "predicted.subclass", split.by = "species", raster = FALSE, shuffle = TRUE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", group.by = "orig.predicted.subclass", split.by = "species", raster = FALSE, shuffle = TRUE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+# FeaturePlot(obj.combined, reduction = "umap", features = "predicted.subclass.score", split.by = "species", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", group.by = "integrated_snn_res.1", split.by = "species", raster = FALSE, shuffle = TRUE, label = TRUE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", group.by = "sample", split.by = "species", raster = FALSE, shuffle = TRUE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", group.by = "predicted_doublets", split.by = "species", raster = FALSE, shuffle = TRUE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.combined, reduction = "umap", features = "nCount_RNA", split.by = "species", max.cutoff = 5000, raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.combined.list <- SplitObject(obj.combined, split.by = "species")
+
+```
+
+
+```{r}
+
+transfer.anchors <- FindTransferAnchors(
+               reference = obj.combined.list[["Mouse"]],
+               reference.assay = "integrated",
+               query = obj.combined.list[["Opossum"]],
+               query.assay = "integrated",
+               recompute.residuals = FALSE,
+               normalization.method = "SCT",
+               reference.reduction = "pca",
+               dims = 1:50
+                              )
+
+```
+
+
+```{r}
+
+obj.opossum.mapped <- MapQuery(
+                          anchorset = transfer.anchors,
+                          query = obj.combined.list[["Opossum"]],
+                          reference = obj.combined.list[["Mouse"]],
+                          refdata = list(
+                            subclass = "subclass"
+                          ),
+                          reference.reduction = "pca", 
+                          reduction.model = "umap"
+                              )
+
+obj.combined.list[["Opossum"]] <- obj.opossum.mapped
+
+```
+
+
+```{r}
+
+DimPlot(obj.combined.list[["Mouse"]], reduction = "umap", group.by = "subclass", raster = FALSE, shuffle = TRUE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.combined.list[["Opossum"]], reduction = "umap", group.by = "predicted.subclass", raster = FALSE, shuffle = TRUE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.combined.list[["Opossum"]], reduction = "umap", group.by = "orig.predicted.subclass", raster = FALSE, shuffle = TRUE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.opossum.types <- SCTransform(obj.combined.list[["Opossum"]], vst.flavor = "v2", verbose = FALSE) %>%
+                                 RunPCA(npcs = 30, verbose = FALSE) %>%
+                                 FindNeighbors(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+                                 FindClusters(resolution = 1, algorithm = 4, method = "igraph") %>%
+                                 RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
+
+DimPlot(obj.opossum.types, label = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.types, group.by = "predicted.subclass", label = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.types, features = "Cdh13") + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.types, features = "Bdnf") + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.types, features = "Nptx2") + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+```{r}
+
+Idents(obj.opossum.types) <- "predicted.subclass"
+DotPlot(obj.opossum.types, features = c("Cux2", "Rorb"))
+
+```
+
+
+
+```{r}
+
+# SaveH5Seurat(obj.combined, "E:/Transcriptomics_v1/Opossum/seurat/opossum_mouse_v1_glutamatergic_mapped_preprocessed.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+
+
+```{r}
+
+# remove bad clusters and re-integrate
+Idents(obj.combined) <- "integrated_snn_res.1"
+obj.combined <- subset(obj.combined, ident = c("20"), invert = TRUE)
+obj.list <- SplitObject(obj.combined, split.by = "sample")
+
+```
+
+
+```{r}
+
+for (o in 1:length(obj.list)) {
+  obj.list[[o]] <- SCTransform(obj.list[[o]], vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE)
+}
+features <- SelectIntegrationFeatures(object.list = obj.list, nfeatures = 5000)
+obj.list <- PrepSCTIntegration(object.list = obj.list, assay = "SCT", anchor.features = features)
+anchors <- FindIntegrationAnchors(object.list = obj.list, normalization.method = "SCT", anchor.features = features)
+features.to.integrate <- Reduce(intersect, lapply(obj.list, rownames))
+obj.combined <- IntegrateData(anchorset = anchors, normalization.method = "SCT", features.to.integrate = features.to.integrate)
+
+```
+
+
+```{r}
+
+obj.combined <- RunPCA(obj.combined)
+obj.combined <- FindNeighbors(obj.combined, dims = 1:30)
+obj.combined <- FindClusters(obj.combined, resolution = 1, algorithm = 4, method = "igraph")
+obj.combined <- RunUMAP(obj.combined, dims = 1:30, method="umap-learn", return.model = TRUE)
+
+```
+
+
+```{r}
+
+DimPlot(obj.combined, reduction = "umap", group.by = "species", raster = FALSE, shuffle = TRUE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", group.by = "subclass", split.by = "species", raster = FALSE, shuffle = TRUE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", group.by = "predicted.subclass", split.by = "species", raster = FALSE, shuffle = TRUE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.combined, reduction = "umap", features = "predicted.subclass.score", split.by = "species", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", group.by = "integrated_snn_res.1", split.by = "species", raster = FALSE, shuffle = TRUE, label = TRUE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", group.by = "sample", split.by = "species", raster = FALSE, shuffle = TRUE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", group.by = "predicted_doublets", split.by = "species", raster = FALSE, shuffle = TRUE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.combined, reduction = "umap", features = "nCount_RNA", split.by = "species", max.cutoff = 5000, raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+# store original (whole-dataset) subclass mappings and generate new ones within-class
+obj.combined$orig.predicted.subclass <- obj.combined$predicted.subclass
+obj.combined$orig.predicted.subclass.score <- obj.combined$predicted.subclass.score
+obj.combined <- PrepSCTFindMarkers(obj.combined)
+obj.combined.list <- SplitObject(obj.combined, split.by = "species")
+
+```
+
+
+```{r}
+
+transfer.anchors <- FindTransferAnchors(
+               reference = obj.combined.list[["Mouse"]],
+               reference.assay = "integrated",
+               query = obj.combined.list[["Opossum"]],
+               query.assay = "integrated",
+               recompute.residuals = FALSE,
+               normalization.method = "SCT",
+               reference.reduction = "pca",
+               dims = 1:50
+                              )
+
+```
+
+
+```{r}
+
+obj.opossum.mapped <- MapQuery(
+                          anchorset = transfer.anchors,
+                          query = obj.combined.list[["Opossum"]],
+                          reference = obj.combined.list[["Mouse"]],
+                          refdata = list(
+                            subclass = "subclass"
+                          ),
+                          reference.reduction = "pca", 
+                          reduction.model = "umap"
+                              )
+
+obj.combined.list[["Opossum"]] <- obj.opossum.mapped
+
+```
+
+
+```{r}
+
+DimPlot(obj.combined.list[["Mouse"]], reduction = "umap", group.by = "subclass", label = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined.list[["Opossum"]], reduction = "ref.umap", group.by = "predicted.subclass", label = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.list[["Opossum"]], reduction = "ref.umap", features = "predicted.subclass.score") + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined.list[["Opossum"]], reduction = "ref.umap", group.by = "integrated_snn_res.1", label = TRUE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.combined.list[["Opossum"]]$subclass <- obj.opossum.mapped$predicted.subclass
+
+```
+
+
+```{r}
+
+glut.subclass.markers.mouse <- c()
+glut.subclass.markers.opossum <- c()
+glut.subclass.markers.conserved <- c()
+
+for (sbcl in c("L2/3", "L4", "L5IT", "L5NP", "L5PT", "L6IT", "L6CT", "L6b")) { # 
+
+  print(sbcl)
+  
+  DefaultAssay(obj.combined.list[["Mouse"]]) <- "SCT"
+  Idents(obj.combined.list[["Mouse"]]) <- "subclass"
+  glut.subclass.markers.mouse[[sbcl]] <- FindMarkers(obj.combined.list[["Mouse"]], assay = "SCT", ident.1 = sbcl, recorrect_umi = FALSE)
+  
+  DefaultAssay(obj.combined.list[["Opossum"]]) <- "SCT"
+  Idents(obj.combined.list[["Opossum"]]) <- "subclass"
+  glut.subclass.markers.opossum[[sbcl]] <- FindMarkers(obj.combined.list[["Opossum"]], assay = "SCT", ident.1 = sbcl, recorrect_umi = FALSE)
+  
+  obj.combined.mapped <- merge(obj.combined.list[["Mouse"]], y = obj.combined.list[["Opossum"]])
+  DefaultAssay(obj.combined.mapped) <- "SCT"
+  Idents(obj.combined.mapped) <- "subclass"
+  glut.subclass.markers.conserved[[sbcl]] <- FindConservedMarkers(obj.combined.mapped, assay = "SCT", grouping.var = "species", ident.1 = sbcl, recorrect_umi = FALSE)
+
+}
+
+```
+
+
+```{r}
+
+for (sbcl in c("L2/3", "L4", "L5IT", "L5NP", "L5PT", "L6IT", "L6CT", "L6b")) { # 
+
+  saveRDS(glut.subclass.markers.mouse[[sbcl]], sprintf("E:/Transcriptomics_v1/Mouse/seurat/marker_genes/mouse_glutamatergic_%s_marker_genes.rds", gsub("/", "", sbcl)))
+  saveRDS(glut.subclass.markers.opossum[[sbcl]], sprintf("E:/Transcriptomics_v1/Opossum/seurat/marker_genes/opossum_glutamatergic_%s_marker_genes.rds", gsub("/", "", sbcl)))
+  saveRDS(glut.subclass.markers.conserved[[sbcl]], sprintf("E:/Transcriptomics_v1/Opossum/seurat/marker_genes/conserved_glutamatergic_%s_marker_genes.rds", gsub("/", "", sbcl)))
+
+}
+
+```
+
+
+```{r}
+
+#### examine markers
+
+top.markers.conserved <- glut.subclass.markers.conserved$`L5NP` %>% filter(Opossum_avg_log2FC > 0.2, Mouse_avg_log2FC > 0.2, Opossum_pct.2 < 0.2, Mouse_pct.2 < 0.2)
+DotPlot(obj.combined.mapped, assay = "SCT", features = rownames(top.markers.conserved), split.by = "species") + coord_flip()
+
+top.markers.mouse <- glut.subclass.markers.mouse$`L5NP` %>% filter(avg_log2FC > 0.2, pct.1 > 0.6, pct.2 < 0.2)
+DotPlot(obj.combined.list[["Mouse"]], assay = "SCT", features = rownames(top.markers.mouse)) + coord_flip()
+
+top.markers.opossum <- glut.subclass.markers.opossum$`L5NP` %>% filter(avg_log2FC > 0.2, pct.1 > 0.3, pct.2 < 0.1)
+DotPlot(obj.combined.list[["Opossum"]], assay = "SCT", features = rownames(top.markers.opossum)) + coord_flip()
+
+```
+
+
+```{r}
+
+feature <- "Cdh12"
+
+DimPlot(obj.combined.list[["Mouse"]], reduction = "umap", group.by = "type", label = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.list[["Mouse"]], reduction = "umap", split.by = "species", features = feature) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.list[["Opossum"]], reduction = "ref.umap", split.by = "species", features = feature, max.cutoff = 5) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+VlnPlot(obj.combined.list[["Mouse"]], feature, group.by = "subclass", slot = "counts") + NoLegend()
+VlnPlot(obj.combined.list[["Opossum"]], feature, group.by = "predicted.subclass", slot = "counts") + NoLegend()
+
+```
+
+
+```{r}
+
+obj.combined.processed <- merge(obj.combined.list[["Mouse"]], y = obj.combined.list[["Opossum"]])
+SaveH5Seurat(obj.combined.processed, "E:/Transcriptomics_v1/Opossum/seurat/opossum_mouse_v1_glutamatergic_mapped_processed.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

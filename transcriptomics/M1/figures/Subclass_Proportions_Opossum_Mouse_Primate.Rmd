@@ -1,0 +1,430 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(tidyverse)
+library(dplyr)
+
+human.counts <- read.csv("G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Human_Subclass_Sample.csv")
+human.counts <- human.counts[-1, ]
+rownames(human.counts) <- human.counts$X
+human.counts <- human.counts[, -1]
+human.counts$species <- "Primate"
+human.counts$Stac <- 0
+human.counts$Frem1 <- 0
+human.counts$Meis2 <- 0
+human.counts$Peri <- 0
+human.counts$SMC <- 0
+human.counts$Pvalb <- human.counts$Pvalb + human.counts$Chandelier
+human.counts$Lamp5 <- human.counts$Lamp5 + human.counts$Lamp5_Lhx6
+human.counts$Sst <- human.counts$Sst + human.counts$Sst.Chodl
+human.counts$Glutamatergic <- rowSums(human.counts[, c("L2.3.IT", "L4.IT", "L5.ET", "L5.IT", "L5.6.NP", "L6.CT", "L6.IT", "L6.IT.Car3", "L6b")])
+human.counts$GABAergic <- rowSums(human.counts[, c("Pvalb", "Sst", "Vip", "Sncg", "Lamp5", "Pax6")])
+human.counts$MGE <- rowSums(human.counts[, c("Pvalb", "Sst")])
+human.counts$CGE <- rowSums(human.counts[, c("Vip", "Lamp5", "Sncg")])
+human.counts$Neuronal <- rowSums(human.counts[, c("Glutamatergic", "GABAergic")])
+human.counts$Nonneuronal <- rowSums(human.counts[, c("Astro", "Endo", "Micro.PVM", "Oligo", "OPC", "Peri", "SMC", "VLMC")])
+
+chimp.counts <- read.csv("G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Chimp_Subclass_Sample.csv")
+chimp.counts <- chimp.counts[-1, ]
+rownames(chimp.counts) <- chimp.counts$X
+chimp.counts <- chimp.counts[, -1]
+chimp.counts$Pvalb <- chimp.counts$Pvalb + chimp.counts$Chandelier
+chimp.counts$Lamp5 <- chimp.counts$Lamp5 + chimp.counts$Lamp5_Lhx6
+chimp.counts$Peri <- 0
+chimp.counts$SMC <- 0
+chimp.counts$Glutamatergic <- rowSums(chimp.counts[, c("L2.3.IT", "L5.ET", "L5.IT", "L5.6.NP", "L6.CT", "L6.IT", "L6b")])
+chimp.counts$GABAergic <- rowSums(chimp.counts[, c("Pvalb", "Sst", "Sst.Chodl", "Vip", "Sncg", "Lamp5", "Pax6")])
+chimp.counts$MGE <- rowSums(chimp.counts[, c("Pvalb", "Sst")])
+chimp.counts$CGE <- rowSums(chimp.counts[, c("Vip", "Lamp5", "Sncg")])
+chimp.counts$Nonneuronal <- rowSums(chimp.counts[, c("Astro", "Endo", "Micro.PVM", "Oligo", "OPC", "Peri", "SMC", "VLMC")])
+chimp.counts$Neuronal <- rowSums(chimp.counts[, c("Glutamatergic", "GABAergic")])
+chimp.counts$L4.IT <- 0
+chimp.counts$Stac <- 0
+chimp.counts$Frem1 <- 0
+chimp.counts$Meis2 <- 0
+chimp.counts$species <- "Primate"
+
+marmoset.counts <- read.csv("G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Marmoset_Subclass_Sample.csv")
+marmoset.counts <- marmoset.counts[-1, ]
+rownames(marmoset.counts) <- marmoset.counts$X
+marmoset.counts <- marmoset.counts[, -1]
+marmoset.counts$Pvalb <- marmoset.counts$Pvalb + marmoset.counts$Chandelier
+marmoset.counts$Lamp5 <- marmoset.counts$Lamp5 + marmoset.counts$Lamp5_Lhx6
+marmoset.counts$Peri <- 0
+marmoset.counts$SMC <- 0
+marmoset.counts$Glutamatergic <- rowSums(marmoset.counts[, c("L2.3.IT", "L5.ET", "L5.IT", "L5.6.NP", "L6.CT", "L6.IT", "L6b")])
+marmoset.counts$GABAergic <- rowSums(marmoset.counts[, c("Pvalb", "Sst", "Sst.Chodl", "Vip", "Sncg", "Lamp5", "Pax6")])
+marmoset.counts$MGE <- rowSums(marmoset.counts[, c("Pvalb", "Sst")])
+marmoset.counts$CGE <- rowSums(marmoset.counts[, c("Vip", "Lamp5", "Sncg")])
+marmoset.counts$Nonneuronal <- rowSums(marmoset.counts[, c("Astro", "Endo", "Micro.PVM", "Oligo", "OPC", "Peri", "SMC", "VLMC")])
+marmoset.counts$Neuronal <- rowSums(marmoset.counts[, c("Glutamatergic", "GABAergic")])
+marmoset.counts$L4.IT <- 0
+marmoset.counts$Stac <- 0
+marmoset.counts$Frem1 <- 0
+marmoset.counts$Meis2 <- 0
+marmoset.counts$species <- "Primate"
+
+mouse.counts <- read.csv("G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Mouse_Subclass_Sample.csv")
+mouse.counts <- mouse.counts[-1, ]
+rownames(mouse.counts) <- mouse.counts$X
+mouse.counts <- mouse.counts[, -1]
+mouse.counts$species <- "Mouse"
+mouse.counts$L4.IT <- 0
+mouse.counts$L6.IT.Car3 <- 0
+mouse.counts$Stac <- 0
+mouse.counts$Frem1 <- 0
+mouse.counts$Lamp5_Lhx6 <- 0
+mouse.counts$Chandelier <- 0
+mouse.counts$Pax6 <- 0
+mouse.counts$Sst <- mouse.counts$Sst + mouse.counts$Sst.Chodl
+mouse.counts$Glutamatergic <- rowSums(mouse.counts[, c("L2.3.IT", "L5.ET", "L5.IT", "L5.6.NP", "L6.CT", "L6.IT", "L6b")])
+mouse.counts$GABAergic <- rowSums(mouse.counts[, c("Pvalb", "Sst", "Vip", "Sncg", "Lamp5", "Meis2")])
+mouse.counts$MGE <- rowSums(mouse.counts[, c("Pvalb", "Sst")])
+mouse.counts$CGE <- rowSums(mouse.counts[, c("Vip", "Lamp5", "Sncg")])
+mouse.counts$Neuronal <- rowSums(mouse.counts[, c("Glutamatergic", "GABAergic")])
+mouse.counts$Nonneuronal <- rowSums(mouse.counts[, c("Astro", "Endo", "Micro.PVM", "Oligo", "OPC", "Peri", "SMC", "VLMC")])
+
+opossum.counts <- read.csv("G:/Shared drives/Opossum transcriptomics/figures/Figure_1_Opossum_Subclass_Sample.csv")
+rownames(opossum.counts) <- opossum.counts$X
+opossum.counts <- opossum.counts[, -1]
+opossum.counts$species <- "Opossum"
+opossum.counts$L4.IT <- 0
+# opossum.counts$L6.IT <- 0
+opossum.counts$Sncg <- 0
+opossum.counts$Meis2 <- 0
+opossum.counts$SMC <- 0
+opossum.counts$Stac <- 0
+opossum.counts$Frem1 <- 0
+opossum.counts$Lamp5_Lhx6 <- 0
+opossum.counts$Chandelier <- 0
+opossum.counts$L6.IT.Car3 <- 0
+opossum.counts$Pax6 <- 0
+opossum.counts$Sst.Chodl <- 0
+opossum.counts$Peri <- 0
+opossum.counts$Glutamatergic <- rowSums(opossum.counts[, c("L2.3.IT", "L5.ET", "L5.IT", "L5.6.NP", "L6.CT", "L6.IT", "L6b")])
+opossum.counts$GABAergic <- rowSums(opossum.counts[, c("Pvalb", "Sst", "Vip", "Lamp5")])
+opossum.counts$MGE <- rowSums(opossum.counts[, c("Pvalb", "Sst")])
+opossum.counts$CGE <- rowSums(opossum.counts[, c("Vip", "Lamp5", "Sncg")])
+opossum.counts$Neuronal <- rowSums(opossum.counts[, c("Glutamatergic", "GABAergic")])
+opossum.counts$Nonneuronal <- rowSums(opossum.counts[, c("Astro", "Endo", "Micro.PVM", "Oligo", "OPC", "Peri", "VLMC")])
+
+all.counts <- rbind(human.counts, mouse.counts)
+all.counts <- rbind(all.counts, chimp.counts)
+all.counts <- rbind(all.counts, marmoset.counts)
+all.counts <- rbind(all.counts, opossum.counts)
+all.counts$sample <- rownames(all.counts)
+
+```
+
+
+```{r}
+
+all.props <- all.counts %>%
+  mutate(VIP.PV = Vip / Pvalb, 
+         VIP.PV_L23 = ((Vip / Pvalb) / L2.3.IT) * 1000,
+         PV_L23 = Pvalb / L2.3.IT,
+         PV_L5 = Pvalb / (L5.IT + L5.ET + L5.6.NP),
+         PV_ALL = Pvalb / (Glutamatergic),
+         VIP_L23 = Vip / L2.3.IT,
+         L2.3.IT = L2.3.IT / Glutamatergic,
+         L5.ET = L5.ET / Glutamatergic,
+         L5.IT = L5.IT / Glutamatergic,
+         L5.6.NP = L5.6.NP / Glutamatergic,
+         L6.CT = L6.CT / Glutamatergic,
+         L6.IT = L6.IT / Glutamatergic,
+         L6b = L6b / Glutamatergic, 
+         CGE.PV = CGE / Pvalb, 
+         Pvalb_CGE = Pvalb / (Pvalb + CGE), 
+         CGE_Pvalb = CGE / (CGE + Pvalb), 
+         Pvalb = Pvalb / GABAergic,
+         Sst = Sst / GABAergic,
+         Vip = Vip / GABAergic,
+         Sncg = Sncg / GABAergic,
+         Lamp5 = Lamp5 / GABAergic,
+         Meis2 = Meis2 / GABAergic, 
+         MGE = MGE / GABAergic, 
+         CGE = CGE / GABAergic, 
+         EI = Glutamatergic / GABAergic, 
+         Glutamatergic = Glutamatergic / Neuronal, 
+         GABAergic = GABAergic / Neuronal
+         )
+
+scatter.props <- all.props
+
+all.props.long <- all.props %>%
+                  pivot_longer(
+                    cols = c("VIP.PV", "VIP.PV_L23", "PV_L23", "PV_L5", "PV_ALL", "VIP_L23", 
+                             "L2.3.IT", "L5.ET", "L5.IT", "L5.6.NP", "L6.CT", "L6.IT", "L6b", 
+                             "Pvalb", "Sst", "Vip", "Sncg", "Lamp5", "Meis2", 
+                             "Glutamatergic", "GABAergic", "Nonneuronal", "Neuronal", 
+                             "MGE", "CGE", "CGE.PV", "Pvalb_CGE", "CGE_Pvalb", "EI"),
+                    names_to = "cell.identity", 
+                    values_to = "fraction"
+                  )
+
+```
+
+
+```{r, fig.height=3, fig.width=3.1}
+
+all.props.long$species <- factor(all.props.long$species, levels = c("Opossum", "Mouse", "Primate"))
+
+curr.props <- all.props.long[all.props.long$cell.identity %in% c("Glutamatergic", "GABAergic"), ]
+
+hmo_class <- ggplot(curr.props, aes(x = factor(cell.identity, level = c("Glutamatergic", "GABAergic")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("Glutamatergic", "GABAergic")) +
+    scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1), expand = c(0, 0), limits = c(0, 1)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "Class Proportion", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa", "Primate" = "#f1c296"))
+
+ggsave(file="G:/Shared drives/Opossum transcriptomics/slides/Ryan OQE/_FIGURES/2. Transcriptomics/HMO_Class_Proportion.svg", plot=hmo_class, width=3.1, height=3, dpi=500)
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_Class_Proportion.png", plot=hmo_class, width=3.5, height=3, dpi=500)
+
+```
+
+
+```{r}
+
+res.aov2 <- aov(fraction ~ species * cell.identity, data = curr.props)
+tukey <- TukeyHSD(res.aov2, which = "species:cell.identity")
+
+```
+
+
+```{r, fig.height=3, fig.width=5.5}
+
+all.props.long$species <- factor(all.props.long$species, levels = c("Opossum", "Mouse", "Primate"))
+
+curr.props <- all.props.long[all.props.long$cell.identity %in% c("L2.3.IT", "L5.IT", "L6.IT", "L5.6.NP", "L5.ET", "L6.CT", "L6b"), ]
+
+hmo_glut <- ggplot(curr.props, aes(x = factor(cell.identity, level = c("L2.3.IT", "L5.IT", "L6.IT", "L5.6.NP", "L5.ET", "L6.CT", "L6b")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("L2.3.IT", "L5.IT", "L6.IT", "L5.6.NP", "L5.ET", "L6.CT", "L6b")) +
+    scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75), expand = c(0, 0), limits = c(0, 0.751)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "Fraction of Glutamatergic Cells", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa", "Primate" = "#f1c296"))
+
+ggsave(file="G:/Shared drives/Opossum transcriptomics/slides/Ryan OQE/_FIGURES/2. Transcriptomics/HMO_Glutamatergic_Subclass_Proportion.svg", plot=hmo_glut, width=5.5, height=3, dpi=500)
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_Glutamatergic_Subclass_Proportion.png", plot=hmo_gabaergic, width=4.5, height=3, dpi=500)
+
+```
+
+
+```{r}
+
+res.aov2 <- aov(fraction ~ species * cell.identity, data = curr.props)
+tukey <- TukeyHSD(res.aov2, which = "species:cell.identity")
+
+```
+
+
+```{r, fig.height=3, fig.width=4.5}
+
+all.props.long$species <- factor(all.props.long$species, levels = c("Opossum", "Mouse", "Primate"))
+
+curr.props <- all.props.long[all.props.long$cell.identity %in% c("Pvalb", "Sst", "Vip", "Lamp5", "Sncg"), ]
+
+hmo_gaba <- ggplot(curr.props, aes(x = factor(cell.identity, level = c("Pvalb", "Sst", "Vip", "Lamp5", "Sncg")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("Pvalb", "Sst", "Vip", "Lamp5", "Sncg")) +
+    scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75), expand = c(0, 0), limits = c(0, 0.751)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "Fraction of GABAergic Cells", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa", "Primate" = "#f1c296"))
+
+ggsave(file="G:/Shared drives/Opossum transcriptomics/slides/Ryan OQE/_FIGURES/2. Transcriptomics/HMO_GABAergic_Subclass_Proportion.svg", plot=hmo_gaba, width=4.5, height=3, dpi=500)
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_GABAergic_Subclass_Proportion.png", plot=hmo_gabaergic, width=4.5, height=3, dpi=500)
+
+```
+
+
+```{r}
+
+res.aov2 <- aov(fraction ~ species * cell.identity, data = curr.props)
+tukey <- TukeyHSD(res.aov2, which = "species:cell.identity")
+
+```
+
+
+```{r, fig.height=3, fig.width=2.5}
+
+all.props.long$species <- factor(all.props.long$species, levels = c("Opossum", "Mouse", "Primate"))
+
+curr.props <- all.props.long[all.props.long$cell.identity %in% c("VIP.PV"), ]
+
+ggplot(curr.props, aes(x = factor(cell.identity, level = c("VIP.PV")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("")) +
+    scale_y_continuous(breaks = c(0, 0.5, 1, 1.5), expand = c(0, 0), limits = c(0, 1.5)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "VIP/PV Ratio", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa", "Primate" = "#f1c296"))
+
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_VIP_PV.svg", plot=hmo_class, width=2.5, height=3, dpi=500)
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_VIP_PV.png", plot=hmo_class, width=2.5, height=3, dpi=500)
+
+```
+
+
+```{r}
+
+res.aov <- aov(fraction ~ species, data = curr.props)
+tukey <- TukeyHSD(res.aov, which = "species")
+
+```
+
+
+```{r, fig.height=3, fig.width=2.5}
+
+all.props.long$species <- factor(all.props.long$species, levels = c("Opossum", "Mouse", "Primate"))
+
+curr.props <- all.props.long[all.props.long$cell.identity %in% c("VIP_L23"), ]
+
+ggplot(curr.props, aes(x = factor(cell.identity, level = c("VIP_L23")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("")) +
+    scale_y_continuous(breaks = c(0, 0.1, 0.2, 0.3, 0.4, 0.5), expand = c(0, 0), limits = c(0, 0.5)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "VIP:L2/3 Ratio", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa", "Primate" = "#f1c296"))
+
+# ggsave(file="G:/Shared drives/Grants/2024 Gorzek NRSA/_FIGURES/Figure 3/VIP_L23.svg", plot=vip_l23, width=2.5, height=3, dpi=500)
+# ggsave(file="G:/Shared drives/Grants/2024 Gorzek NRSA/_FIGURES/Figure 3/VIP_L23.png", plot=vip_l23, width=2.5, height=3, dpi=500)
+
+```
+
+
+```{r}
+
+res.aov <- aov(fraction ~ species, data = class.counts)
+tukey <- TukeyHSD(res.aov, which = "species")
+
+```
+
+
+```{r, fig.height=3, fig.width=2.5}
+
+all.props.long$species <- factor(all.props.long$species, levels = c("Opossum", "Mouse", "Primate"))
+
+curr.props <- all.props.long[all.props.long$cell.identity %in% c("PV_L23"), ]
+
+ggplot(curr.props, aes(x = factor(cell.identity, level = c("PV_L23")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("")) +
+    scale_y_continuous(breaks = c(0, 0.1, 0.2, 0.3, 0.4, 0.5), expand = c(0, 0), limits = c(0, 0.5)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "PV:L2/3 Ratio", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa", "Primate" = "#f1c296"))
+
+# ggsave(file="G:/Shared drives/Grants/2024 Gorzek NRSA/_FIGURES/Figure 3/VIP_L23.svg", plot=vip_l23, width=2.5, height=3, dpi=500)
+# ggsave(file="G:/Shared drives/Grants/2024 Gorzek NRSA/_FIGURES/Figure 3/VIP_L23.png", plot=vip_l23, width=2.5, height=3, dpi=500)
+
+```
+
+
+```{r, fig.height=3, fig.width=2.5}
+
+all.props.long$species <- factor(all.props.long$species, levels = c("Opossum", "Mouse", "Primate"))
+
+curr.props <- all.props.long[all.props.long$cell.identity %in% c("VIP.PV_L23"), ]
+
+ggplot(curr.props, aes(x = factor(cell.identity, level = c("VIP.PV_L23")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("")) +
+    scale_y_continuous(breaks = c(0, 0.1, 0.2, 0.3, 0.4, 0.5), expand = c(0, 0), limits = c(0, 0.5)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "PV:L2/3 Ratio", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa", "Primate" = "#f1c296"))
+
+# ggsave(file="G:/Shared drives/Grants/2024 Gorzek NRSA/_FIGURES/Figure 3/VIP_L23.svg", plot=vip_l23, width=2.5, height=3, dpi=500)
+# ggsave(file="G:/Shared drives/Grants/2024 Gorzek NRSA/_FIGURES/Figure 3/VIP_L23.png", plot=vip_l23, width=2.5, height=3, dpi=500)
+
+```
+
+
+```{r, fig.height=3, fig.width=2.5}
+
+all.props.long$species <- factor(all.props.long$species, levels = c("Opossum", "Mouse", "Primate"))
+
+curr.props <- all.props.long[all.props.long$cell.identity %in% c("PV_L5"), ]
+
+ggplot(curr.props, aes(x = factor(cell.identity, level = c("PV_L5")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("")) +
+    scale_y_continuous(breaks = c(0, 0.1, 0.2, 0.3, 0.4, 0.5), expand = c(0, 0), limits = c(0, 0.5)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "PV:L2/3 Ratio", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa", "Primate" = "#f1c296"))
+
+# ggsave(file="G:/Shared drives/Grants/2024 Gorzek NRSA/_FIGURES/Figure 3/VIP_L23.svg", plot=vip_l23, width=2.5, height=3, dpi=500)
+# ggsave(file="G:/Shared drives/Grants/2024 Gorzek NRSA/_FIGURES/Figure 3/VIP_L23.png", plot=vip_l23, width=2.5, height=3, dpi=500)
+
+```
+
+
+```{r, fig.height=3, fig.width=2.5}
+
+all.props.long$species <- factor(all.props.long$species, levels = c("Opossum", "Mouse", "Primate"))
+
+curr.props <- all.props.long[all.props.long$cell.identity %in% c("PV_ALL"), ]
+
+ggplot(curr.props, aes(x = factor(cell.identity, level = c("PV_ALL")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("")) +
+    scale_y_continuous(breaks = c(0, 0.1, 0.2, 0.3, 0.4, 0.5), expand = c(0, 0), limits = c(0, 0.5)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "PV:L2/3 Ratio", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa", "Primate" = "#f1c296"))
+
+# ggsave(file="G:/Shared drives/Grants/2024 Gorzek NRSA/_FIGURES/Figure 3/VIP_L23.svg", plot=vip_l23, width=2.5, height=3, dpi=500)
+# ggsave(file="G:/Shared drives/Grants/2024 Gorzek NRSA/_FIGURES/Figure 3/VIP_L23.png", plot=vip_l23, width=2.5, height=3, dpi=500)
+
+```
+
+
+```{r, fig.height=3, fig.width=2.5}
+
+all.props.long$species <- factor(all.props.long$species, levels = c("Opossum", "Mouse", "Primate"))
+
+curr.props <- all.props.long[all.props.long$cell.identity %in% c("CGE.PV"), ]
+
+cge_pv <- ggplot(curr.props, aes(x = factor(cell.identity, level = c("CGE.PV")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("")) +
+    scale_y_continuous(breaks = c(0, 0.5, 1, 1.5, 2.0, 2.5), expand = c(0, 0), limits = c(0, 2.5)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "CGE/PV Ratio", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa", "Primate" = "#f1c296"))
+
+ggsave(file="G:/Shared drives/Opossum transcriptomics/slides/Ryan OQE/_FIGURES/2. Transcriptomics/CGE_PV.svg", plot=cge_pv, width=2.5, height=3, dpi=500)
+# ggsave(file="G:/Shared drives/Grants/2024 Gorzek NRSA/_FIGURES/Figure 3/VIP_L23.png", plot=vip_l23, width=2.5, height=3, dpi=500)
+
+```
+

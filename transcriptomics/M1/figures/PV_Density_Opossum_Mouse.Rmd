@@ -1,0 +1,258 @@
+---
+title: "PV Density in Opossum & Mouse Sections"
+output: html_notebook
+---
+
+```{r}
+
+Opossum <- c(NA, 405.761658, 420.756541, 367.624986, NA)
+Mouse <- c(312.525333, 298.613220, 277.710731, 313.741436, 284.142407)
+
+df <- data.frame(Opossum, Mouse)
+df <- df %>%
+  pivot_longer(cols = c("Opossum", "Mouse"), names_to = "species", values_to = "density")
+df
+
+```
+
+
+```{r, fig.height=3, fig.width=2.15}
+
+df$species <- factor(df$species, levels = c("Opossum", "Mouse"))
+
+# class.counts <- df[df$species %in% c("L2.3.IT"), ]
+
+ggplot(df, aes(x = factor(species, level = c("density")), y = density, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("")) +
+    scale_y_continuous(breaks = c(0, 100, 200, 300, 400, 500), expand = c(0, 0), limits = c(0, 500)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = NULL, fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa"))
+
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/PV_Cell_Density.svg", plot=hmo_class, width=2.15, height=3, dpi=500)
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/PV_Cell_Density.png", plot=hmo_class, width=2.15, height=3, dpi=500)
+
+```
+
+
+```{r}
+
+res.aov <- aov(density ~ species, data = df)
+tukey <- TukeyHSD(res.aov, which = "species")
+
+```
+
+
+```{r}
+
+Opossum <- c(NA, 8.736, 9.696, 8.861, NA)
+Mouse <- c(7.775, 7.511, 6.694, 8.830, 7.158)
+
+df <- data.frame(Opossum, Mouse)
+df <- df %>%
+  pivot_longer(cols = c("Opossum", "Mouse"), names_to = "species", values_to = "density")
+df
+
+```
+
+
+```{r, fig.height=3, fig.width=2.15}
+
+df$species <- factor(df$species, levels = c("Opossum", "Mouse"))
+
+# class.counts <- df[df$species %in% c("L2.3.IT"), ]
+
+pv_perc <- ggplot(df, aes(x = factor(species, level = c("density")), y = density, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("")) +
+    scale_y_continuous(breaks = c(0, 2.5, 5, 7.5, 10), expand = c(0, 0), limits = c(0, 10)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = NULL, fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa"))
+
+ggsave(file="G:/Shared drives/Opossum transcriptomics/slides/Ryan OQE/_FIGURES/2. Transcriptomics/PV_Cell_Percentage.svg", plot=pv_perc, width=2.15, height=3, dpi=500)
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/PV_Cell_Density.png", plot=hmo_class, width=2.15, height=3, dpi=500)
+
+```
+
+
+```{r}
+
+res.aov <- aov(density ~ species, data = df)
+tukey <- TukeyHSD(res.aov, which = "species")
+
+```
+
+
+```{r}
+
+L1 <- c(NA, 899.263, 923.159, 659.390, NA)
+L23 <- c(NA, 4551.580, 3776.382, 4070.146, NA)
+L4 <- c(NA, 5123.344, 4374.854, 5349.064, NA)
+L5 <- c(NA, 4683.894, 4889.462, 4013.415, NA)
+L6 <- c(NA, 5475.180, 5656.946, 5186.175, NA)
+df.Opossum <- data.frame(L1, L23, L4, L5, L6)
+df.Opossum$species <- "Opossum"
+
+L1 <- c(460.728, 709.056, 950.704, 474.007, 411.494)
+L23 <- c(4472.527, 4489.497, 4409.832, 3736.776, 4356.953)
+L4 <- c(5024.533, 4890.051, 5116.693, 4421.668, 4753.501)
+L5 <- c(4154.044, 4007.812, 4057.016, 3996.253, 4441.006)
+L6 <- c(4404.636, 4353.516, 4524.997, 3867.221, 4104.712)
+df.Mouse <- data.frame(L1, L23, L4, L5, L6)
+df.Mouse$species <- "Mouse"
+
+df <- rbind(df.Opossum, df.Mouse)
+df <- df %>%
+  pivot_longer(cols = c("L1", "L23", "L4", "L5", "L6"), names_to = "layer", values_to = "density")
+df
+
+```
+
+
+```{r, fig.height=3, fig.width=3.5}
+
+df$species <- factor(df$species, levels = c("Opossum", "Mouse"))
+
+curr.props <- df[df$layer %in% c("L1", "L23", "L4", "L5", "L6"), ]
+
+mo_neun <- ggplot(curr.props, aes(x = factor(layer, level = c("L1", "L23", "L4", "L5", "L6")), y = density, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("L1", "L2/3", "L4", "L5", "L6")) +
+    scale_y_continuous(breaks = c(0, 2000, 4000, 6000), expand = c(0, 0), limits = c(0, 6000)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "Neurons / mm2", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa"))
+
+ggsave(file="G:/Shared drives/Opossum transcriptomics/slides/Ryan OQE/_FIGURES/2. Transcriptomics/MO_NeuN_Density.svg", plot=mo_neun, width=3.5, height=3, dpi=500)
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_GABAergic_Subclass_Proportion.png", plot=hmo_gabaergic, width=4.5, height=3, dpi=500)
+
+```
+
+
+```{r}
+
+res.aov <- aov(density ~ species * layer, data = df)
+tukey <- TukeyHSD(res.aov, which = "species:layer")
+
+```
+
+
+```{r}
+
+L1 <- c(NA, 0, 0, 0, NA)
+L23 <- c(NA, 219.023, 271.589, 230.070, NA)
+L4 <- c(NA, 504.282, 643.729, 512.520, NA)
+L5 <- c(NA, 730.309, 663.450, 648.321, NA)
+L6 <- c(NA, 302.458, 331.116, 334.592, NA)
+df.Opossum <- data.frame(L1, L23, L4, L5, L6)
+df.Opossum$species <- "Opossum"
+
+L1 <- c(0, 0, 12.189, 0, 12.859)
+L23 <- c(175.824, 197.266, 141.657, 172.910, 179.874)
+L4 <- c(412.814, 369.060, 379.014, 499.060, 356.513)
+L5 <- c(476.961, 539.192, 499.325, 516.000, 492.793)
+L6 <- c(309.622, 236.996, 204.816, 273.440, 236.909)
+df.Mouse <- data.frame(L1, L23, L4, L5, L6)
+df.Mouse$species <- "Mouse"
+
+df <- rbind(df.Opossum, df.Mouse)
+df <- df %>%
+  pivot_longer(cols = c("L1", "L23", "L4", "L5", "L6"), names_to = "layer", values_to = "density")
+df
+
+```
+
+
+```{r, fig.height=3, fig.width=3.5}
+
+df$species <- factor(df$species, levels = c("Opossum", "Mouse"))
+
+curr.props <- df[df$layer %in% c("L1", "L23", "L4", "L5", "L6"), ]
+
+mo_pv <- ggplot(curr.props, aes(x = factor(layer, level = c("L1", "L23", "L4", "L5", "L6")), y = density, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("L1", "L2/3", "L4", "L5", "L6")) +
+    scale_y_continuous(breaks = c(0, 200, 400, 600, 800), expand = c(0, 0), limits = c(0, 800)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "% PV Cells", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa"))
+
+ggsave(file="G:/Shared drives/Opossum transcriptomics/slides/Ryan OQE/_FIGURES/2. Transcriptomics/MO_PV_Density_Area.svg", plot=mo_pv, width=3.5, height=3, dpi=500)
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_GABAergic_Subclass_Proportion.png", plot=hmo_gabaergic, width=4.5, height=3, dpi=500)
+
+```
+
+
+```{r}
+
+res.aov <- aov(density ~ species * layer, data = df)
+tukey <- TukeyHSD(res.aov, which = "species:layer")
+
+```
+
+
+```{r}
+
+L1 <- c(NA, 0, 0, 0, NA)
+L23 <- c(NA, 4.81, 7.19, 5.65, NA)
+L4 <- c(NA, 9.84, 14.71, 9.58, NA)
+L5 <- c(NA, 15.59, 13.57, 16.15, NA)
+L6 <- c(NA, 5.52, 5.85, 6.45, NA)
+df.Opossum <- data.frame(L1, L23, L4, L5, L6)
+df.Opossum$species <- "Opossum"
+
+L1 <- c(0, 0, 1.28, 0, 3.13)
+L23 <- c(3.93, 4.39, 3.21, 4.63, 4.13)
+L4 <- c(8.22, 7.55, 7.40, 11.29, 7.50)
+L5 <- c(11.48, 13.45, 12.31, 12.91, 11.10)
+L6 <- c(7.03, 5.44, 4.53, 7.07, 5.77)
+df.Mouse <- data.frame(L1, L23, L4, L5, L6)
+df.Mouse$species <- "Mouse"
+
+df <- rbind(df.Opossum, df.Mouse)
+df <- df %>%
+  pivot_longer(cols = c("L1", "L23", "L4", "L5", "L6"), names_to = "layer", values_to = "density")
+df
+
+```
+
+
+```{r, fig.height=3, fig.width=3.5}
+
+df$species <- factor(df$species, levels = c("Opossum", "Mouse"))
+
+curr.props <- df[df$layer %in% c("L1", "L23", "L4", "L5", "L6"), ]
+
+mo_pv <- ggplot(curr.props, aes(x = factor(layer, level = c("L1", "L23", "L4", "L5", "L6")), y = density, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("L1", "L2/3", "L4", "L5", "L6")) +
+    scale_y_continuous(breaks = c(0, 5, 10, 15, 20), expand = c(0, 0), limits = c(0, 20)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "% PV Cells", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa"))
+
+ggsave(file="G:/Shared drives/Opossum transcriptomics/slides/Ryan OQE/_FIGURES/2. Transcriptomics/MO_PV_Density.svg", plot=mo_pv, width=3.5, height=3, dpi=500)
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_GABAergic_Subclass_Proportion.png", plot=hmo_gabaergic, width=4.5, height=3, dpi=500)
+
+```
+
+
+```{r}
+
+res.aov <- aov(density ~ species * layer, data = df)
+tukey <- TukeyHSD(res.aov, which = "species:layer")
+
+```
+

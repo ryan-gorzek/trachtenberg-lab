@@ -1,0 +1,255 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(tidyverse)
+library(dplyr)
+
+mouse.counts.v1 <- read.csv("G:/Shared drives/Opossum transcriptomics/figures/Mouse_Subclass_Sample_v1.csv")
+rownames(mouse.counts.v1) <- mouse.counts.v1$X
+mouse.counts.v1 <- mouse.counts.v1[, -1]
+mouse.counts.v1$species <- "Mouse"
+mouse.counts.v1$area <- "V1"
+mouse.counts.v1$GABAergic <- rowSums(mouse.counts.v1[, c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")])
+
+opossum.counts.v1 <- read.csv("G:/Shared drives/Opossum transcriptomics/figures/Opossum_Subclass_Sample_V1.csv")
+rownames(opossum.counts.v1) <- opossum.counts.v1$X
+opossum.counts.v1 <- opossum.counts.v1[, -1]
+opossum.counts.v1$species <- "Opossum"
+opossum.counts.v1$area <- "V1"
+# opossum.counts.v1$Pvalb <- round(opossum.counts.v1$Pvalb * 0.5)
+opossum.counts.v1$GABAergic <- rowSums(opossum.counts.v1[, c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")])
+
+# opossum.allen.counts <- read.csv("G:/Shared drives/Opossum transcriptomics/figures/Opossum_Subclass_Sample_V1_Allen.csv")
+# rownames(opossum.allen.counts) <- opossum.allen.counts$X
+# opossum.allen.counts <- opossum.allen.counts[, -1]
+# opossum.allen.counts$species <- "Opossum_Allen"
+# opossum.allen.counts$GABAergic <- rowSums(opossum.allen.counts[, c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")])
+
+mouse.counts.m1 <- read.csv("G:/Shared drives/Opossum transcriptomics/figures/Mouse_Subclass_Sample_M1.csv")
+rownames(mouse.counts.m1) <- mouse.counts.m1$X
+mouse.counts.m1 <- mouse.counts.m1[, -1]
+mouse.counts.m1$species <- "Mouse"
+mouse.counts.m1$area <- "M1"
+mouse.counts.m1$Sst <- mouse.counts.m1$Sst + mouse.counts.m1$Sst.Chodl
+mouse.counts.m1$Frem1 <- mouse.counts.m1$Sncg
+mouse.counts.m1 <- select(mouse.counts.m1, -c("Sst.Chodl", "Sncg"))
+mouse.counts.m1$Stac <- 0
+mouse.counts.m1$GABAergic <- rowSums(mouse.counts.m1[, c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")])
+
+opossum.counts.m1 <- read.csv("G:/Shared drives/Opossum transcriptomics/figures/Opossum_Subclass_Sample_M1.csv")
+rownames(opossum.counts.m1) <- opossum.counts.m1$X
+opossum.counts.m1 <- opossum.counts.m1[, -1]
+opossum.counts.m1$species <- "Opossum"
+opossum.counts.m1$area <- "M1"
+# opossum.counts.m1$Pvalb <- round(opossum.counts.m1$Pvalb * 0.5)
+opossum.counts.m1$Frem1 <- 0
+opossum.counts.m1$Stac <- 0
+opossum.counts.m1$GABAergic <- rowSums(opossum.counts.m1[, c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")])
+
+m1.counts <- rbind(mouse.counts.m1, opossum.counts.m1)
+m1.counts$sample <- rownames(m1.counts)
+
+v1.counts <- rbind(mouse.counts.v1, opossum.counts.v1)
+v1.counts$sample <- rownames(v1.counts)
+
+mouse.counts <- rbind(mouse.counts.m1, mouse.counts.v1)
+mouse.counts$sample <- rownames(mouse.counts)
+
+opossum.counts <- rbind(opossum.counts.m1, opossum.counts.v1)
+opossum.counts$sample <- rownames(opossum.counts)
+
+```
+
+
+```{r}
+
+m1.counts <- m1.counts %>%
+  mutate(Pvalb = Pvalb / GABAergic,
+         Sst = Sst / GABAergic,
+         Vip = Vip / GABAergic,
+         Lamp5 = Lamp5 / GABAergic,
+         Frem1 = Frem1 / GABAergic,
+         Stac = Stac / GABAergic
+         )
+
+scatter.m1.counts <- m1.counts
+
+m1.counts <- m1.counts %>%
+  pivot_longer(
+    cols = c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac"),
+    names_to = "cell.identity", 
+    values_to = "fraction"
+  )
+
+```
+
+
+```{r}
+
+v1.counts <- v1.counts %>%
+  mutate(Pvalb = Pvalb / GABAergic,
+         Sst = Sst / GABAergic,
+         Vip = Vip / GABAergic,
+         Lamp5 = Lamp5 / GABAergic,
+         Frem1 = Frem1 / GABAergic,
+         Stac = Stac / GABAergic
+         )
+
+scatter.v1.counts <- v1.counts
+
+v1.counts <- v1.counts %>%
+  pivot_longer(
+    cols = c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac"),
+    names_to = "cell.identity", 
+    values_to = "fraction"
+  )
+
+```
+
+
+```{r}
+
+mouse.counts <- mouse.counts %>%
+  mutate(Pvalb = Pvalb / GABAergic,
+         Sst = Sst / GABAergic,
+         Vip = Vip / GABAergic,
+         Lamp5 = Lamp5 / GABAergic,
+         Frem1 = Frem1 / GABAergic,
+         Stac = Stac / GABAergic
+         )
+
+scatter.mouse.counts <- mouse.counts
+
+mouse.counts <- mouse.counts %>%
+  pivot_longer(
+    cols = c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac"),
+    names_to = "cell.identity", 
+    values_to = "fraction"
+  )
+
+```
+
+
+```{r}
+
+opossum.counts <- opossum.counts %>%
+  mutate(Pvalb = Pvalb / GABAergic,
+         Sst = Sst / GABAergic,
+         Vip = Vip / GABAergic,
+         Lamp5 = Lamp5 / GABAergic,
+         Frem1 = Frem1 / GABAergic,
+         Stac = Stac / GABAergic
+         )
+
+scatter.opossum.counts <- opossum.counts
+
+opossum.counts <- opossum.counts %>%
+  pivot_longer(
+    cols = c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac"),
+    names_to = "cell.identity", 
+    values_to = "fraction"
+  )
+
+```
+
+
+```{r, fig.height=3, fig.width=4}
+
+m1.counts$species <- factor(m1.counts$species, levels = c("Opossum", "Mouse"))
+
+class.counts <- m1.counts[m1.counts$cell.identity %in% c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac"), ]
+
+ggplot(class.counts, aes(x = factor(cell.identity, level = c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")) +
+    scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75), expand = c(0, 0), limits = c(0, 0.751)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "Fraction of GABAergic Cells", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa"))
+
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_GABAergic_Subclass_Proportion.svg", plot=hmo_gabaergic, width=4.5, height=3, dpi=500)
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_GABAergic_Subclass_Proportion.png", plot=hmo_gabaergic, width=4.5, height=3, dpi=500)
+
+```
+
+
+```{r, fig.height=3, fig.width=4}
+
+v1.counts$species <- factor(v1.counts$species, levels = c("Opossum", "Mouse"))
+
+class.counts <- v1.counts[v1.counts$cell.identity %in% c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac"), ]
+
+ggplot(class.counts, aes(x = factor(cell.identity, level = c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")) +
+    scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75), expand = c(0, 0), limits = c(0, 0.751)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "Fraction of GABAergic Cells", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa"))
+
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_GABAergic_Subclass_Proportion.svg", plot=hmo_gabaergic, width=4.5, height=3, dpi=500)
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_GABAergic_Subclass_Proportion.png", plot=hmo_gabaergic, width=4.5, height=3, dpi=500)
+
+```
+
+
+```{r, fig.height=3, fig.width=4}
+
+mouse.counts$species <- factor(mouse.counts$area, levels = c("M1", "V1"))
+
+class.counts <- mouse.counts[mouse.counts$cell.identity %in% c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac"), ]
+
+ggplot(class.counts, aes(x = factor(cell.identity, level = c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")) +
+    scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75), expand = c(0, 0), limits = c(0, 0.751)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "Fraction of GABAergic Cells", fill = NULL) + 
+    scale_fill_manual("legend", values = c("M1" = "#c692b8", "V1" = "#aaaaaa"))
+
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_GABAergic_Subclass_Proportion.svg", plot=hmo_gabaergic, width=4.5, height=3, dpi=500)
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_GABAergic_Subclass_Proportion.png", plot=hmo_gabaergic, width=4.5, height=3, dpi=500)
+
+```
+
+
+```{r}
+
+res.aov2 <- aov(fraction ~ species * cell.identity, data = class.counts)
+tukey <- TukeyHSD(res.aov2, which = "species:cell.identity")
+
+```
+
+
+```{r, fig.height=3, fig.width=4}
+
+opossum.counts$species <- factor(opossum.counts$area, levels = c("M1", "V1"))
+
+class.counts <- opossum.counts[opossum.counts$cell.identity %in% c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac"), ]
+
+ggplot(class.counts, aes(x = factor(cell.identity, level = c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")) +
+    scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75), expand = c(0, 0), limits = c(0, 0.751)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "Fraction of GABAergic Cells", fill = NULL) + 
+    scale_fill_manual("legend", values = c("M1" = "#c692b8", "V1" = "#aaaaaa"))
+
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_GABAergic_Subclass_Proportion.svg", plot=hmo_gabaergic, width=4.5, height=3, dpi=500)
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/HMO_GABAergic_Subclass_Proportion.png", plot=hmo_gabaergic, width=4.5, height=3, dpi=500)
+
+```
+
+

@@ -1,0 +1,145 @@
+---
+title: "Human M1 GABAergic"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+obj.human.gabaergic <- LoadH5Seurat("E:/Transcriptomics_M1/Human/seurat/human_m1_gabaergic_raw.h5Seurat")
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.human.gabaergic) <- "RNA"
+genes.human <- rownames(obj.human.gabaergic)
+genes.mouse <- rownames(obj.mouse)
+for (gene in genes.human) {
+  
+    gene.name <- paste0(substr(gene, 1, 1), tolower(substr(gene, 2, nchar(gene))))
+    idx.mouse <- which(genes.mouse %in% gene.name)
+
+    if (length(idx.mouse) == 1) {
+      
+      gene.human <- gene.name
+      
+      if (gene.human != "") {
+        
+        idx.human <- which(genes.human %in% toupper(gene.human))
+        genes.human[idx.human] <- gene.human
+        
+      }
+      
+    }
+  
+}
+
+```
+
+
+```{r}
+
+obj.df <- as.data.frame(as.matrix(obj.human.gabaergic[["RNA"]]@counts))
+rownames(obj.df) <- genes.human
+obj.human.temp <- CreateSeuratObject(counts = obj.df, meta.data = obj.human.gabaergic[[]])
+obj.human.gabaergic <- obj.human.temp
+
+```
+
+
+```{r}
+
+obj.human.gabaergic[["RNA"]] <- split(obj.human.gabaergic[["RNA"]], f = obj.human.gabaergic$donor_id)
+
+obj.human.gabaergic <- NormalizeData(obj.human.gabaergic)
+obj.human.gabaergic <- FindVariableFeatures(obj.human.gabaergic)
+obj.human.gabaergic <- ScaleData(obj.human.gabaergic)
+obj.human.gabaergic <- RunPCA(obj.human.gabaergic)
+
+obj.human.gabaergic <- FindNeighbors(obj.human.gabaergic, dims = 1:30, reduction = "pca")
+obj.human.gabaergic <- FindClusters(obj.human.gabaergic, resolution = 2, cluster.name = "unintegrated_clusters")
+
+obj.human.gabaergic <- RunUMAP(obj.human.gabaergic, dims = 1:30, reduction = "pca", reduction.name = "umap.unintegrated")
+
+```
+
+
+```{r}
+
+obj.human.gabaergic <- IntegrateLayers(
+                    object = obj.human.gabaergic, 
+                    method = CCAIntegration, 
+                    orig.reduction = "pca", 
+                    new.reduction = "integrated.cca",
+                    verbose = FALSE
+                                )
+
+```
+
+
+```{r}
+
+obj.human.gabaergic <- FindNeighbors(obj.human.gabaergic, reduction = "integrated.cca", dims = 1:30)
+obj.human.gabaergic <- FindClusters(obj.human.gabaergic, resolution = 2, cluster.name = "cca_clusters")
+obj.human.gabaergic <- RunUMAP(obj.human.gabaergic, reduction = "integrated.cca", dims = 1:30, reduction.name = "umap.cca")
+
+```
+
+
+```{r}
+
+DimPlot(obj.human.gabaergic, reduction = "umap.cca", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.human.gabaergic, reduction = "umap.cca", group.by = "donor_id", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+#DimPlot(obj.human.sct, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.human.gabaergic, reduction = "umap.cca", group.by = "subclass_label", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.human.gabaergic <- subset(obj.human.gabaergic, idents = "38", invert = TRUE)
+
+```
+
+
+```{r}
+
+DimPlot(obj.human.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+# DimPlot(obj.human.gabaergic, reduction = "umap", group.by = "cluster_label", raster = FALSE) + xlim(-15, 12) + ylim(-15, 15) + coord_equal()
+
+```
+
+```{r}
+
+pvalb.palette <- "#468fba"
+sst.palette <- "#ba1851"
+vip.palette <- "#a85d96"
+lamp5.palette <- "#a2bc8c"
+sncg.palette <- "#f6cb7c"
+
+# levels(obj.human.gabaergic) <- c("Pvalb", "Sst", "Vip", "Lamp5", "Sncg")
+
+fig <- DimPlot(obj.human.gabaergic, reduction = "umap", raster = FALSE, label = TRUE, cols = c(pvalb.palette, sst.palette, vip.palette, lamp5.palette, sncg.palette)) + NoLegend() + xlim(-13, 17) + ylim(-17, 13) + coord_equal()
+
+ggsave("G:/Shared drives/Opossum transcriptomics/figures/Species_GABAergic_UMAP_Plots/Human_UMAP_GABAergic_subclass.png", fig, width=4, height=4, dpi=500)
+
+```
+
+
+```{r}
+
+obj.human.gabaergic <- JoinLayers(obj.human.gabaergic)
+obj.human.gabaergic$subclass <- obj.human.gabaergic$subclass_label
+Idents(obj.human.gabaergic) <- "subclass"
+SaveH5Seurat(obj.human.gabaergic, "E:/Transcriptomics_M1/Human/seurat/human_m1_gabaergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

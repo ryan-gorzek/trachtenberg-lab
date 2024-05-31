@@ -1,0 +1,141 @@
+---
+title: "Opossum M1 Object"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+library(data.table)
+
+obj.mapped.glutamatergic <- LoadH5Seurat("E:/Transcriptomics_v1/Opossum/seurat/opossum_mouse_v1_glutamatergic_mapped.h5seurat")
+
+```
+
+
+```{r}
+
+cell_mask <- Reduce(intersect,list(WhichCells(obj.mapped.glutamatergic, expression = nFeature_RNA > 700), 
+                                   WhichCells(obj.mapped.glutamatergic, expression = nFeature_RNA < 6500),
+                                   WhichCells(obj.mapped.glutamatergic, expression = nCount_RNA < 40000)))
+
+gene_mask <- rownames(obj.mapped.glutamatergic)[Matrix::rowSums(obj.mapped.glutamatergic[["RNA"]]@counts > 0) > 8]
+
+obj.mapped.glutamatergic <- subset(obj.mapped.glutamatergic, features = gene_mask, cells = cell_mask)
+
+```
+
+
+```{r}
+
+obj.list.species <- SplitObject(obj.mapped.glutamatergic, split.by = "species")
+obj.list <- SplitObject(obj.list.species[["Opossum"]], split.by = "sample")
+
+```
+
+
+```{r}
+
+for (o in 1:length(obj.list)) {
+  obj.list[[o]] <- SCTransform(obj.list[[o]], vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE)
+}
+features <- SelectIntegrationFeatures(object.list = obj.list, nfeatures = 5000)
+obj.list <- PrepSCTIntegration(object.list = obj.list, assay = "SCT", anchor.features = features)
+anchors <- FindIntegrationAnchors(object.list = obj.list, normalization.method = "SCT", anchor.features = features)
+features.to.integrate <- Reduce(intersect, lapply(obj.list, rownames))
+obj.combined <- IntegrateData(anchorset = anchors, normalization.method = "SCT", features.to.integrate = features.to.integrate)
+
+```
+
+
+```{r}
+
+obj.combined <- RunPCA(obj.combined)
+obj.combined <- FindNeighbors(obj.combined, dims = 1:30)
+obj.combined <- FindClusters(obj.combined, resolution = 1, algorithm = 4, method = "igraph")
+obj.combined <- RunUMAP(obj.combined, dims = 1:30, method="umap-learn", return.model = TRUE)
+
+```
+
+
+```{r}
+
+# DimPlot(obj.combined, reduction = "umap", group.by = "species", raster = FALSE, shuffle = TRUE) + xlim(-10, 15) + ylim(-10, 15) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", group.by = "predicted.subclass", raster = FALSE, shuffle = TRUE) + xlim(-10, 15) + ylim(-10, 15) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", group.by = "integrated_snn_res.1", raster = FALSE, shuffle = TRUE, label = TRUE) + xlim(-10, 15) + ylim(-10, 15) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", group.by = "sample", raster = FALSE, shuffle = TRUE) + xlim(-10, 15) + ylim(-10, 15) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", group.by = "predicted_doublets", raster = FALSE, shuffle = TRUE) + xlim(-10, 15) + ylim(-10, 15) + coord_equal()
+FeaturePlot(obj.combined, reduction = "umap", features = "nCount_RNA", max.cutoff = 5000, raster = FALSE) + xlim(-10, 15) + ylim(-10, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+cell_mask <- Reduce(intersect,list(WhichCells(obj.combined, expression = nCount_RNA > 3000)))
+
+obj.combined <- subset(obj.combined, features = gene_mask, cells = cell_mask)
+
+```
+
+
+```{r}
+
+Idents(obj.combined) <- "predicted.subclass"
+obj.combined.L23 <- subset(obj.combined, idents = "L2/3")
+
+```
+
+
+```{r}
+
+Idents(obj.combined.L23) <- "sample"
+obj.combined.L23 <- subset(obj.combined.L23, idents = c("OpossumV1-2A", "OpossumV1-2B"))
+obj.combined.L23 <- SCTransform(obj.combined.L23, vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE)
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.combined.L23) <- "SCT"
+# obj.combined.L23.list[["Opossum"]] <- FindVariableFeatures(obj.combined.L23.list[["Opossum"]])
+# obj.combined.L23.list[["Opossum"]] <- ScaleData(obj.combined.L23.list[["Opossum"]])
+obj.combined.L23 <- RunPCA(obj.combined.L23)
+
+```
+
+
+```{r}
+
+dims = c(1, 2)
+
+DimPlot(obj.combined.L23, dims = dims, group.by = "integrated_snn_res.1", reduction = "pca", label = TRUE) + NoLegend() + xlim(-25, 25) + ylim(-25, 25) + coord_equal()
+DimPlot(obj.combined.L23, dims = dims, group.by = "sample", reduction = "pca", label = TRUE) + NoLegend() + xlim(-25, 25) + ylim(-25, 25) + coord_equal()
+FeaturePlot(obj.combined.L23, dims = dims, reduction = "pca", features = "nFeature_RNA") + xlim(-25, 25) + ylim(-25, 25) + coord_equal()
+FeaturePlot(obj.combined.L23, dims = dims, reduction = "pca", features = "nCount_RNA") + xlim(-25, 25) + ylim(-25, 25) + coord_equal()
+FeaturePlot(obj.combined.L23, dims = dims, reduction = "pca", features = "Trpc6") + xlim(-25, 25) + ylim(-25, 25) + coord_equal()
+FeaturePlot(obj.combined.L23, dims = dims, reduction = "pca", features = "Bdnf") + xlim(-25, 25) + ylim(-25, 25) + coord_equal()
+FeaturePlot(obj.combined.L23, dims = dims, reduction = "pca", features = "Adamts2") + xlim(-25, 25) + ylim(-25, 25) + coord_equal()
+FeaturePlot(obj.combined.L23, dims = dims, reduction = "pca", features = "Epha3") + xlim(-25, 25) + ylim(-25, 25) + coord_equal()
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+

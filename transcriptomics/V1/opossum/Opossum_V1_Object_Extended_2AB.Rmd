@@ -1,0 +1,318 @@
+---
+title: "Opossum M1 Object"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+library(data.table)
+
+data_path <- "E:/Transcriptomics_V1/Opossum/output/Extended_lt10kb_ex5kb/"
+
+sample_IDs <- c('OpossumV1-2A', 'OpossumV1-2B')
+
+objs <- c()
+
+for (sample in sample_IDs) {
+  
+  temp.obj.path <- paste(data_path, sample, "/outs/filtered_feature_bc_matrix/", sep = "")
+  temp.obj.data <- Read10X(temp.obj.path)
+  temp.obj <- CreateSeuratObject(counts = temp.obj.data, project = "Opossum_V1")
+  temp.obj$sample <- sample
+  temp.obj <- scrublet_R(seurat_obj = temp.obj)
+  objs <- append(objs, temp.obj)
+  
+}
+
+```
+
+
+```{r}
+
+obj.opossum <- merge(objs[[1]], y = objs[[2]], add.cell.ids = sample_IDs, project = "Opossum_V1")
+
+```
+
+
+```{r}
+
+genes.mapping <- read.csv("E:/_genomes/Opossum_Mouse_Genes.txt")
+genes.mapping.mouse <- as.list(genes.mapping$Mouse.gene.name)
+genes.mapping.opossum <- as.list(genes.mapping$Gene.name)
+ids.mapping.opossum <- as.list(genes.mapping$Gene.stable.ID)
+genes.opossum = rownames(obj.opossum)
+for (gene in genes.mapping.mouse) {
+  
+    idx.mouse <- which(genes.mapping.mouse %in% gene)
+
+    if (length(idx.mouse) == 1) {
+      
+      gene.opossum <- genes.mapping.opossum[idx.mouse]
+      id.opossum <- ids.mapping.opossum[idx.mouse]
+      
+      if (gene.opossum == "") {
+        
+        idx.opossum <- which(genes.opossum %in% id.opossum)
+        genes.opossum[idx.opossum] <- gene
+        
+      } else {
+        
+        idx.opossum <- which(genes.opossum %in% gene.opossum)
+        genes.opossum[idx.opossum] <- gene
+        
+      }
+      
+    }
+  
+}
+
+```
+
+
+```{r}
+
+obj.df <- as.data.frame(as.matrix(obj.opossum[["RNA"]]@counts))
+rownames(obj.df) <- genes.opossum
+obj.opossum.temp <- CreateSeuratObject(counts = obj.df, meta.data = obj.opossum[[]])
+obj.opossum <- obj.opossum.temp
+
+```
+
+
+```{r}
+
+VlnPlot(obj.opossum, features = c("nFeature_RNA"), group.by = "sample", raster = FALSE)
+VlnPlot(obj.opossum, features = c("nCount_RNA"), group.by = "sample", raster = FALSE)
+FeatureScatter(obj.opossum, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", raster = FALSE)
+
+```
+
+
+```{r}
+
+cell_mask <- Reduce(intersect,list(WhichCells(obj.opossum, expression = nFeature_RNA > 700),
+                                   WhichCells(obj.opossum, expression = nFeature_RNA < 6500),
+                                   WhichCells(obj.opossum, expression = nCount_RNA < 40000)))
+
+gene_mask <- rownames(obj.opossum)[Matrix::rowSums(obj.opossum[["RNA"]]@counts > 0) > 8]
+
+obj.opossum <- subset(obj.opossum, features = gene_mask, cells = cell_mask)
+
+```
+
+
+```{r}
+
+VlnPlot(obj.opossum, features = c("nFeature_RNA"), group.by = "sample", raster = FALSE)
+VlnPlot(obj.opossum, features = c("nCount_RNA"), group.by = "sample", raster = FALSE)
+FeatureScatter(obj.opossum, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", raster = FALSE)
+
+```
+
+
+```{r}
+
+obj.opossum <- SCTransform(obj.opossum, vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE) %>%
+                           RunPCA(npcs = 30, verbose = FALSE) %>%
+                           FindNeighbors(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+                           FindClusters(resolution = 1, algorithm = 4, method = "igraph") %>%
+                           RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
+
+```
+
+
+```{r}
+
+# obj.combined <- LoadH5Seurat("E:/Transcriptomics_v1/Opossum/seurat/opossum_mouse_v1_all_integrated_2AB.h5seurat")
+# obj.opossum$predicted.subclass <- NA
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum, reduction = "umap", group.by = "sample", raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum, "nFeature_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum, "nCount_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.opossum) <- "RNA"
+
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Snap25"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Vip"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Lamp5"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Gad2"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Pvalb"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Sst"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Sv2b"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Cux2"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Gucy1a1"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Cdh22"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Rorb"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Kank1"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Fam163a"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Foxp2"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Myt1"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Cdh9"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Ust"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+DotPlot(obj.opossum, features = c("Snap25", "Gad2", "Sv2b", "Cux2", "Gucy1a1", "Rorb", "Kank1", "Foxp2", "Myt1", "Plxna1", "Cdh9", "Sorcs1", "Ust", "Podxl", "Tns1", "Nxph1"), scale = FALSE) + coord_flip()
+
+```
+
+
+```{r}
+
+obj.opossum.gabaergic <- subset(obj.opossum, idents = c(10, 15, 19, 29))
+
+```
+
+
+```{r}
+
+obj.opossum.gabaergic <- SCTransform(obj.opossum.gabaergic, vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE) %>%
+                             RunPCA(npcs = 30, verbose = FALSE) %>%
+                             FindNeighbors(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+                             FindClusters(resolution = 1, algorithm = 4, method = "igraph") %>%
+                             RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "sample", raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, "nFeature_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, "nCount_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+VlnPlot(obj.opossum.gabaergic, "nCount_RNA")
+
+```
+
+
+
+```{r}
+
+obj.opossum.gabaergic.all <- obj.opossum.gabaergic 
+obj.opossum.gabaergic <- subset(obj.opossum.gabaergic, idents = c(8, 11), invert = TRUE)
+
+```
+
+
+```{r}
+
+obj.opossum.gabaergic <- SCTransform(obj.opossum.gabaergic, vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE) %>%
+                             RunPCA(npcs = 30, verbose = FALSE) %>%
+                             FindNeighbors(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+                             FindClusters(resolution = 1.1, algorithm = 4, method = "igraph") %>%
+                             RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "sample", raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, "nFeature_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, "nCount_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+VlnPlot(obj.opossum.gabaergic, "nCount_RNA")
+
+```
+
+
+```{r}
+
+DotPlot(obj.opossum.gabaergic, features = c("Pvalb", "Lamp5", "Sst", "Vip", "Frem1", "Myo5b"), scale = FALSE) + coord_flip()
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.gabaergic) <- "SCT_snn_res.1.1"
+
+cells.pv <- WhichCells(obj.opossum.gabaergic, ident = c("2", "3", "6", "8"))
+obj.opossum.gabaergic$subclass <- ifelse(colnames(obj.opossum.gabaergic) %in% cells.pv, "Pvalb", "ambiguous")
+
+cells.sst <- WhichCells(obj.opossum.gabaergic, ident = c("1", "9", "10"))
+obj.opossum.gabaergic$subclass[cells.sst] <- "Sst"
+
+cells.vip <- WhichCells(obj.opossum.gabaergic, ident = c("4"))
+obj.opossum.gabaergic$subclass[cells.vip] <- "Vip"
+
+cells.lamp5 <- WhichCells(obj.opossum.gabaergic, ident = c("5"))
+obj.opossum.gabaergic$subclass[cells.lamp5] <- "Lamp5"
+
+cells.frem1 <- WhichCells(obj.opossum.gabaergic, ident = c("7"))
+obj.opossum.gabaergic$subclass[cells.frem1] <- "Frem1"
+
+Idents(obj.opossum.gabaergic) <- "subclass"
+# obj.opossum.gabaergic <- subset(obj.opossum.gabaergic, subset = subclass != "ambiguous")
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "subclass", raster = FALSE) + xlim(-15, 12) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+df <- as.data.frame(as.table(table(obj.opossum.gabaergic$subclass, obj.opossum.gabaergic$sample)))
+colnames(df) <- c("labels", "sample_id", "counts")
+
+library(dplyr)
+
+df <- df %>%
+  group_by(sample_id) %>%
+  mutate(relative_counts = counts / sum(counts)) %>%
+  ungroup()
+
+# Calculate median of relative proportions
+median_table <- df %>%
+  group_by(labels) %>%
+  summarise(median_relative_count = median(relative_counts)) %>%
+  ungroup()
+
+# Plot bar plot and scatter plot using ggplot2
+ggplot() +
+  # Bar plot of median relative proportions
+  geom_bar(data = median_table, aes(x = labels, y = median_relative_count), 
+           stat = "identity", fill = "lightblue", color = "black", alpha = 0.6) +
+  # Scatter plot of individual sample relative proportions
+  geom_jitter(data = df, aes(x = labels, y = relative_counts, color = sample_id), 
+              size = 2, width = 0.2) +
+  labs(
+    title = "Bar Plot of Median Relative Proportions with Scatter Plot of Samples",
+    x = "Labels",
+    y = "Relative Proportion",
+    color = "Sample ID"
+  ) +
+  theme_minimal()
+
+```
+

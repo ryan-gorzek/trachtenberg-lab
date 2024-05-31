@@ -1,0 +1,101 @@
+---
+title: "Opossum M1 Object"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+library(data.table)
+
+data_path_orig <- "E:/Transcriptomics_V1/Opossum/output/"
+data_path_ext <- "E:/Transcriptomics_V1/Opossum/output/Extended_lt10kb_ex2kb/"
+
+sample_IDs <- c('OpossumV1-1A')
+
+objs <- c()
+
+for (sample in sample_IDs) {
+  
+  temp.obj.orig.path <- paste(data_path_orig, sample, "/outs/filtered_feature_bc_matrix/", sep = "")
+  temp.obj.orig.data <- Read10X(temp.obj.orig.path)
+  temp.obj.orig <- CreateSeuratObject(counts = temp.obj.orig.data, project = "Opossum_V1_Orig")
+
+  temp.obj.ext.path <- paste(data_path_ext, sample, "/outs/filtered_feature_bc_matrix/", sep = "")
+  temp.obj.ext.data <- Read10X(temp.obj.ext.path)
+  temp.obj.ext <- CreateSeuratObject(counts = temp.obj.ext.data, project = "Opossum_V1_Ext")
+  # temp.obj$sample <- sample
+  # temp.obj <- scrublet_R(seurat_obj = temp.obj)
+  # objs <- append(objs, temp.obj)
+  
+}
+
+```
+
+
+```{r}
+
+VlnPlot(temp.obj.orig, features = "CUX2")
+VlnPlot(temp.obj.ext, features = "CUX2")
+
+```
+
+
+```{r}
+
+gene <- "CUX2"
+same.cells <- intersect(colnames(temp.obj.orig), colnames(temp.obj.ext))
+counts.orig <- temp.obj.orig@assays$RNA@counts[gene, same.cells]
+counts.ext <- temp.obj.ext@assays$RNA@counts[gene, same.cells]
+
+counts <- data.frame(orig = counts.orig, ext = counts.ext)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

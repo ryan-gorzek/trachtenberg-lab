@@ -331,7 +331,7 @@ plotConfusionMatrix = function(X, row.scale=TRUE, col.scale=FALSE, col.low="whit
   # melted$col = factor(melted$col, levels = unique(c(orig.colnames[match.df.sorted$col], orig.colnames[-match.df.sorted$col])))
   
   # if (!is.null(order)){
-  #   if (order == "Row"){ 
+  #   if (order == "Row"){
       # X$Known = factor(X$Known, levels=rev(factor.levels));
       # X$Predicted = factor(X$Predicted, levels = orig.colnames)
   #   

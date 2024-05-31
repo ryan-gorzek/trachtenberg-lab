@@ -1,0 +1,41 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+bed.path <- "E:/bams/introns/closest.bed"
+closest.bed <- read.table(bed.path, sep = "\t", header = F)
+
+```
+
+
+```{r}
+
+library(ggplot2)
+
+# Plot histogram using ggplot2 with specified settings
+ggplot(closest.bed, aes(x = V13)) +
+  geom_histogram(
+    binwidth = 1000, 
+    fill = "lightblue", 
+    color = "black",
+    aes(y = ..count.. / sum(..count..) * 100)
+  ) +
+  scale_x_continuous(
+    limits = c(-50000, 50000),
+    oob = scales::squish
+  ) +
+  labs(
+    title = "Intergenic Reads",
+    x = "Closest Gene (bp)",
+    y = "Percentage"
+  ) +
+  theme_minimal()
+
+# gene_id:ENSMODG00000042832
+
+```
+

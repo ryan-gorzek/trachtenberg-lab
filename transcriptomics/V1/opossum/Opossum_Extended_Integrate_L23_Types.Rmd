@@ -1,0 +1,347 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+obj.combined <- LoadH5Seurat("E:/Transcriptomics_v1/Opossum/seurat/opossum_v1_all_integrated.h5seurat")
+
+```
+
+
+```{r}
+
+obj.opossum.glutamatergic <- obj.combined.glutamatergic
+
+```
+
+
+```{r}
+
+obj.list.glutamatergic <- SplitObject(obj.opossum.glutamatergic, split.by = "sample")
+for (o in 1:length(obj.list.glutamatergic)) {
+  obj.list.glutamatergic[[o]] <- SCTransform(obj.list.glutamatergic[[o]], vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE)
+}
+features <- SelectIntegrationFeatures(object.list = obj.list.glutamatergic, nfeatures = 5000)
+obj.list.glutamatergic <- PrepSCTIntegration(object.list = obj.list.glutamatergic, assay = "SCT", anchor.features = features)
+anchors <- FindIntegrationAnchors(object.list = obj.list.glutamatergic, normalization.method = "SCT", anchor.features = features)
+features.to.integrate <- Reduce(intersect, lapply(obj.list.glutamatergic, rownames))
+obj.combined.glutamatergic <- IntegrateData(anchorset = anchors, normalization.method = "SCT", features.to.integrate = features.to.integrate)
+
+```
+
+
+```{r}
+
+obj.combined.glutamatergic <- RunPCA(obj.combined.glutamatergic)
+obj.combined.glutamatergic <- FindNeighbors(obj.combined.glutamatergic, dims = 1:30)
+obj.combined.glutamatergic <- FindClusters(obj.combined.glutamatergic, resolution = 1, algorithm = 4, method = "igraph")
+obj.combined.glutamatergic <- RunUMAP(obj.combined.glutamatergic, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+DimPlot(obj.combined.glutamatergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined.glutamatergic, reduction = "umap", group.by = "sample", raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, "nFeature_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, "nCount_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined.glutamatergic, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+VlnPlot(obj.combined.glutamatergic, "nCount_RNA")
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.combined.glutamatergic) <- "RNA"
+
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Snap25"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Gad2"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Pvalb"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Sst"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Sv2b"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Cux2"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Gucy1a1"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Cdh22"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Rorb"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Kank1"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Fam163a"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Foxp2"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Myt1"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Cdh9"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Ust"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Sorcs1"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Cald1"), raster = FALSE, max.cutoff = 2) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+DotPlot(obj.combined.glutamatergic, features = c("Cux2", "Gucy1a1", 
+                                                 "Rorb", "Kank1", "Fam163a", 
+                                                 "Myt1", "Plxna1", 
+                                                 "Trpc4", "Sorcs1", "Gadl1", 
+                                                 "Nxph1", "Ust", 
+                                                 "Cdh9", "Cald1", 
+                                                 "Syt6", "Foxp2", 
+                                                 "Wasf3", "Stk10"), scale = FALSE) + coord_flip()
+
+```
+
+
+```{r}
+
+obj.combined.glutamatergic.pre1 <- obj.combined.glutamatergic
+obj.combined.glutamatergic <- subset(obj.combined.glutamatergic, idents = c(21), invert = TRUE)
+
+```
+
+
+```{r}
+
+obj.list.glutamatergic <- SplitObject(obj.combined.glutamatergic, split.by = "sample")
+for (o in 1:length(obj.list.glutamatergic)) {
+  obj.list.glutamatergic[[o]] <- SCTransform(obj.list.glutamatergic[[o]], vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE)
+}
+features <- SelectIntegrationFeatures(object.list = obj.list.glutamatergic, nfeatures = 5000)
+obj.list.glutamatergic <- PrepSCTIntegration(object.list = obj.list.glutamatergic, assay = "SCT", anchor.features = features)
+anchors <- FindIntegrationAnchors(object.list = obj.list.glutamatergic, normalization.method = "SCT", anchor.features = features)
+features.to.integrate <- Reduce(intersect, lapply(obj.list.glutamatergic, rownames))
+obj.combined.glutamatergic <- IntegrateData(anchorset = anchors, normalization.method = "SCT", features.to.integrate = features.to.integrate)
+
+```
+
+
+```{r}
+
+obj.combined.glutamatergic <- RunPCA(obj.combined.glutamatergic)
+obj.combined.glutamatergic <- FindNeighbors(obj.combined.glutamatergic, dims = 1:30)
+obj.combined.glutamatergic <- FindClusters(obj.combined.glutamatergic, resolution = 1, algorithm = 4, method = "igraph")
+obj.combined.glutamatergic <- RunUMAP(obj.combined.glutamatergic, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+DimPlot(obj.combined.glutamatergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined.glutamatergic, reduction = "umap", group.by = "sample", raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, "nFeature_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, "nCount_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined.glutamatergic, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+VlnPlot(obj.combined.glutamatergic, "nCount_RNA")
+
+```
+
+
+```{r}
+
+library(tidyverse)
+
+cluster.sample <- table(obj.combined.glutamatergic$sample, obj.combined.glutamatergic$integrated_snn_res.1) %>%
+  as.data.frame.matrix() %>%
+  rownames_to_column(var = "sample")
+cluster.sample[-1] <- lapply(cluster.sample[-1], function(x) x/sum(x))
+cluster.sample <- cluster.sample %>%
+  pivot_longer(
+    cols = -c("sample"),
+    names_to = "cluster",
+    values_to = "count"
+  )
+cluster.sample$cluster <- factor(cluster.sample$cluster, levels = unique(cluster.sample$cluster))
+  ggplot(cluster.sample, aes(x=cluster, y=count, fill=sample)) +
+    geom_bar(stat="identity") +
+    theme_minimal()
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.combined.glutamatergic) <- "RNA"
+
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Snap25"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Sv2b"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Cux2"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Gucy1a1"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Cdh22"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Rorb"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Kank1"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Fam163a"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Foxp2"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Plxna1"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Cdh9"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Ust"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Sorcs1"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.combined.glutamatergic, reduction = "umap", features = c("Cald1"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+DotPlot(obj.combined.glutamatergic, features = c("Cux2", "Gucy1a1", 
+                                                 "Rorb", "Kank1", "Fam163a", 
+                                                 "Myt1", "Plxna1", 
+                                                 "Trpc4", "Sorcs1", "Gadl1", 
+                                                 "Nxph1", "Ust", 
+                                                 "Cdh9", "Cald1", 
+                                                 "Syt6", "Foxp2", 
+                                                 "Wasf3", "Stk10"), scale = FALSE) + coord_flip()
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.combined.glutamatergic) <- "integrated"
+
+resolutions = c(0.5, 0.75, 1.25, 1.5, 1.75, 2)
+
+for (res in resolutions) {
+  
+  obj.combined.glutamatergic <- FindClusters(obj.combined.glutamatergic, resolution = res, algorithm = 4, method = "igraph")
+  
+}
+
+```
+
+
+```{r}
+
+library(clustree)
+clustree(obj.combined.glutamatergic, prefix = "integrated_snn_res.")
+
+```
+
+
+```{r}
+
+DimPlot(obj.combined.glutamatergic, reduction = "umap", group.by = "integrated_snn_res.0.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined.glutamatergic, reduction = "umap", group.by = "integrated_snn_res.0.75", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined.glutamatergic, reduction = "umap", group.by = "integrated_snn_res.1", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined.glutamatergic, reduction = "umap", group.by = "integrated_snn_res.1.25", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined.glutamatergic, reduction = "umap", group.by = "integrated_snn_res.1.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.combined.glutamatergic$type <- NA
+obj.combined.glutamatergic$type[obj.combined.glutamatergic$integrated_snn_res.0.75 %in% c(7)] <- "L2/3_A"
+obj.combined.glutamatergic$type[obj.combined.glutamatergic$integrated_snn_res.0.75 %in% c(1, 6, 15, 16)] <- "L2/3_B"
+obj.combined.glutamatergic$type[obj.combined.glutamatergic$integrated_snn_res.0.75 %in% c(8)] <- "L2/3_C"
+
+```
+
+
+```{r}
+
+obj.combined.glutamatergic$type <- "NA"
+
+obj.combined.glutamatergic$type[obj.combined.glutamatergic$integrated_snn_res.0.75 %in% c(7)] <- "L2/3_A"
+obj.combined.glutamatergic$type[obj.combined.glutamatergic$integrated_snn_res.0.75 %in% c(1, 6, 15, 16)] <- "L2/3_B"
+obj.combined.glutamatergic$type[obj.combined.glutamatergic$integrated_snn_res.0.75 %in% c(8)] <- "L2/3_C"
+
+obj.combined.glutamatergic$type[obj.combined.glutamatergic$integrated_snn_res.1 %in% c(5)] <- "L5IT_A"
+obj.combined.glutamatergic$type[obj.combined.glutamatergic$integrated_snn_res.1 %in% c(15)] <- "L5IT_B"
+
+obj.combined.glutamatergic$type[obj.combined.glutamatergic$integrated_snn_res.1 %in% c(20)] <- "L6CT_A"
+obj.combined.glutamatergic$type[obj.combined.glutamatergic$integrated_snn_res.1 %in% c(10)] <- "L6CT_B"
+obj.combined.glutamatergic$type[obj.combined.glutamatergic$integrated_snn_res.1 %in% c(3)] <- "L6CT_C"
+
+```
+
+
+```{r}
+
+Idents(obj.combined.glutamatergic) <- "type"
+L23.markers.A <- FindMarkers(obj.combined.glutamatergic, ident.1 = c("L2/3_A"), ident.2 = c("L2/3_B", "L2/3_C"), only.pos = TRUE)
+L23.markers.B <- FindMarkers(obj.combined.glutamatergic, ident.1 = c("L2/3_B"), ident.2 = c("L2/3_A", "L2/3_C"), only.pos = TRUE)
+L23.markers.C <- FindMarkers(obj.combined.glutamatergic, ident.1 = c("L2/3_C"), ident.2 = c("L2/3_A", "L2/3_B"), only.pos = TRUE)
+obj.combined.glutamatergic.L23 <- subset(obj.combined.glutamatergic, idents = c("L2/3_A", "L2/3_B", "L2/3_C"))
+
+```
+
+
+```{r}
+
+Idents(obj.combined.glutamatergic) <- "type"
+L6CT.markers.opossum.A <- FindMarkers(obj.combined.glutamatergic, ident.1 = c("L6CT_A"), ident.2 = c("L6CT_B", "L6CT_C"), only.pos = TRUE, min.pct = 0.10, logfc.threshold = 0.2)
+L6CT.markers.opossum.B <- FindMarkers(obj.combined.glutamatergic, ident.1 = c("L6CT_B"), ident.2 = c("L6CT_A", "L6CT_C"), only.pos = TRUE, min.pct = 0.10, logfc.threshold = 0.4)
+L6CT.markers.opossum.C <- FindMarkers(obj.combined.glutamatergic, ident.1 = c("L6CT_C"), ident.2 = c("L6CT_A", "L6CT_B"), only.pos = TRUE, min.pct = 0.10, logfc.threshold = 0.4)
+
+```
+
+
+```{r}
+
+Idents(obj.combined.glutamatergic) <- "type"
+L5IT.markers.opossum.A <- FindMarkers(obj.combined.glutamatergic, ident.1 = c("L5IT_A"), ident.2 = c("L5IT_B"), only.pos = TRUE, min.pct = 0.10, logfc.threshold = 0.4)
+L5IT.markers.opossum.B <- FindMarkers(obj.combined.glutamatergic, ident.1 = c("L5IT_B"), ident.2 = c("L5IT_A"), only.pos = TRUE, min.pct = 0.10, logfc.threshold = 0.4)
+
+```
+
+
+```{r}
+
+L6CT.markers.A <- L6CT.markers.mouse.A[rownames(L6CT.markers.mouse.A) %in% rownames(L6CT.markers.opossum.A),]
+L6CT.markers.B <- L6CT.markers.mouse.B[rownames(L6CT.markers.mouse.B) %in% rownames(L6CT.markers.opossum.B),]
+L6CT.markers.C <- L6CT.markers.mouse.C[rownames(L6CT.markers.mouse.C) %in% rownames(L6CT.markers.opossum.C),]
+A.top <- rownames(L6CT.markers.A[order(L6CT.markers.A$avg_log2FC, decreasing = TRUE),])[1:10]
+B.top <- rownames(L6CT.markers.B[order(L6CT.markers.B$avg_log2FC, decreasing = TRUE),])[1:10]
+C.top <- rownames(L6CT.markers.C[order(L6CT.markers.C$avg_log2FC, decreasing = TRUE),])[1:10]
+DoHeatmap(obj.combined.glutamatergic, features = c("Foxp2", A.top, B.top, C.top), group.by = "type", slot = "data") + scale_fill_gradientn(colors = c("white", "red"))
+
+```
+
+
+```{r}
+
+A.top <- rownames(L23.markers.A[order(L23.markers.A$avg_log2FC, decreasing = TRUE),])[1:5]
+B.top <- rownames(L23.markers.B[order(L23.markers.B$avg_log2FC, decreasing = TRUE),])[1:5]
+C.top <- rownames(L23.markers.C[order(L23.markers.C$avg_log2FC, decreasing = TRUE),])[1:5]
+
+```
+
+
+```{r}
+
+DotPlot(obj.combined.glutamatergic.L23, features = rev(c("Cux2", A.top, B.top, C.top)), split.by = "sample", scale = F) + coord_flip()
+
+```
+
+
+
+
+
+
+```{r}
+
+SaveH5Seurat(obj.combined.glutamatergic, "E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_integrated.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
