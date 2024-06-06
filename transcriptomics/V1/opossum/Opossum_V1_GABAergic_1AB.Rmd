@@ -1,0 +1,211 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+
+obj.opossum.gabaergic <- readRDS("E:/Transcriptomics_V1/Opossum/1AB/seurat/opossum_v1_gabaergic_1AB.rds")
+
+```
+
+
+```{r}
+
+obj.opossum.gabaergic <- ClusterSCT(obj.opossum.gabaergic, c(1))
+PlotClusters(obj.opossum.gabaergic, group.id = "SCT_snn_res.1")
+
+```
+
+
+```{r}
+
+canon.markers <- list(
+                    class = c("Gad1", "Gad2"),
+                    Pvalb = c("Pvalb", "Myo5b", "Cemip"), 
+                    Sst = c("Sst", "Chodl"), 
+                    Vip = c("Vip"), 
+                    Lamp5 = c("Lamp5"), 
+                    Other = c("Frem1", "Stac", "Sncg")
+                      )
+
+# look for canonical markers
+DefaultAssay(obj.opossum.gabaergic) <- "RNA"
+Idents(obj.opossum.gabaergic) <- "SCT_snn_res.1"
+PlotFeatures(obj.opossum.gabaergic, canon.markers)
+DotPlot(obj.opossum.gabaergic, features = canon.markers, cols = c("lightgrey", "red"), scale = FALSE) + 
+                         theme(axis.text.x = element_text(angle = 90, vjust = 0.25)) + 
+                         theme(panel.background = element_rect(fill = "white", color = NA), plot.background = element_rect(fill = "white", color = NA)) + NoLegend()
+
+```
+
+
+```{r}
+
+obj.opossum.gabaergic.prefilt <- obj.opossum.gabaergic
+obj.opossum.gabaergic <- subset(obj.opossum.gabaergic, idents = c(4, 10, 12), invert = TRUE)
+
+```
+
+
+```{r}
+
+obj.opossum.gabaergic <- ClusterSCT(obj.opossum.gabaergic, c(1, 1.5, 2))
+PlotClusters(obj.opossum.gabaergic, group.id = "SCT_snn_res.1")
+
+canon.markers <- list(
+                    class = c("Gad1", "Gad2"),
+                    Pvalb = c("Pvalb", "Myo5b", "Cemip"), 
+                    Sst = c("Sst", "Chodl"), 
+                    Vip = c("Vip"), 
+                    Lamp5 = c("Lamp5"), 
+                    Other = c("Frem1", "Stac", "Sncg")
+                      )
+
+# look for canonical markers
+DefaultAssay(obj.opossum.gabaergic) <- "RNA"
+Idents(obj.opossum.gabaergic) <- "SCT_snn_res.1"
+PlotFeatures(obj.opossum.gabaergic, canon.markers)
+DotPlot(obj.opossum.gabaergic, features = canon.markers, cols = c("lightgrey", "red"), scale = FALSE) + 
+                         theme(axis.text.x = element_text(angle = 90, vjust = 0.25)) + 
+                         theme(panel.background = element_rect(fill = "white", color = NA), plot.background = element_rect(fill = "white", color = NA)) + NoLegend()
+
+```
+
+
+```{r}
+
+PlotClusters(obj.opossum.gabaergic, group.id = "SCT_snn_res.1.5")
+
+```
+
+
+```{r}
+
+PlotClusters(obj.opossum.gabaergic, group.id = "SCT_snn_res.2")
+
+```
+
+
+```{r}
+
+clustree(obj.opossum.gabaergic, prefix = "SCT_snn_res.")
+
+```
+
+
+```{r}
+
+# identify subclasses at each clustering resolution
+# do differential expression for clusters within each subclass
+# generate plots of top genes for each
+
+subclass.idx <- list()
+
+subclass.idx$SCT_snn_res.1$Pvalb <- c("1", "2", "6", "9")
+subclass.idx$SCT_snn_res.1.5$Pvalb <- c("3", "4", "5", "8", "9", "12")
+subclass.idx$SCT_snn_res.2$Pvalb <- c("1", "2", "3", "5", "6", "14")
+
+subclass.idx$SCT_snn_res.1$Sst <- c("4", "5")
+subclass.idx$SCT_snn_res.1.5$Sst <- c("2", "6", "11")
+subclass.idx$SCT_snn_res.2$Sst <- c("9", "10", "11", "13")
+
+subclass.idx$SCT_snn_res.1$Vip <- c("3", "8")
+subclass.idx$SCT_snn_res.1.5$Vip <- c("1", "10")
+subclass.idx$SCT_snn_res.2$Vip <- c("4", "8", "12")
+
+subclass.idx$SCT_snn_res.1$Lamp5 <- c("7")
+subclass.idx$SCT_snn_res.1.5$Lamp5 <- c("7")
+subclass.idx$SCT_snn_res.2$Lamp5 <- c("7")
+
+obj.opossum.gabaergic <- SubclassByIdent(obj.opossum.gabaergic, subclass.idx)
+
+```
+
+
+```{r}
+
+subclass.labels <- c("Pvalb", "Sst", "Vip")
+ident.labels <- c("SCT_snn_res.1", "SCT_snn_res.1.5", "SCT_snn_res.2")
+
+markers.opossum.gabaergic <- MarkerDict(obj.opossum.gabaergic, subclass.labels, ident.labels)
+SaveDotPlots(obj.opossum.gabaergic, markers.opossum.gabaergic,
+             subclass.labels, ident.labels,
+             "E:/Transcriptomics_V1/Opossum/1AB/seurat/cell_types/", "ENSMODG")
+SaveFeaturePlots(obj.opossum.gabaergic, markers.opossum.gabaergic,
+                 subclass.labels, ident.labels,
+                 "E:/Transcriptomics_V1/Opossum/1AB/seurat/cell_types/", "ENSMODG")
+
+```
+
+
+```{r}
+
+subclass.labels <- c("Pvalb", "Sst", "Vip")
+ident.labels <- c("SCT_snn_res.1", "SCT_snn_res.1.5", "SCT_snn_res.2")
+
+for (sbcl in subclass.labels) {
+  for (id in ident.labels) {
+    p <- plot_gene_counts(markers.opossum.gabaergic, sbcl, id)
+    p <- p + theme(aspect.ratio = 1) # Make plot square
+    print(p)
+  }
+}
+
+```
+
+
+```{r}
+
+ident = "SCT_snn_res.2"
+gene <- "Cpa6"
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = ident, label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, gene, raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+VlnPlot(obj.opossum.gabaergic, gene, group.by = ident)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

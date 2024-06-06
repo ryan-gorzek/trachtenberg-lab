@@ -14,6 +14,36 @@ closest.bed <- read.table(bed.path, sep = "\t", header = F)
 
 ```{r}
 
+# filter by gene biotype
+get.var <- function(var.col, item) {
+  
+  var.col.spl <- strsplit(variable.col, "; ")
+  var.col.idx <- lapply(var.col.spl, function(x) grepl(item, x, fixed = TRUE))
+  var.col.item <- mapply(function(x, y) x[y], var.col.spl, var.col.idx)
+  missing <- lapply(var.col.item, function(x) identical(x, character(0)))
+  var.col.item[unlist(missing)] <- NA
+  var.col.nona <- lapply(var.col.item[is.na(var.col.item) == F], function(x) strsplit(x, " ")[[1]][2])
+  var.col.nona <- lapply(var.col.nona, function(x) strsplit(x, ";")[[1]])
+  var.col.item[is.na(var.col.item) == F] <- var.col.nona
+  return(unlist(var.col.item))
+  
+}
+
+gtf = read.table("E:/_genomes/Opossum/Monodelphis_domestica.ASM229v1.112.gtf", skip = 5, sep = "\t", header = F)
+
+colnames(gtf) <- c("seqname", "source", "feature", "start", "end", "score", "strand", "frame", "attribute")
+variable.col <- gtf$attribute
+gtf <- gtf[, 1:8]
+
+gtf$gene.id <- get.var(variable.col, "gene_id")
+gtf$gene.name <- get.var(variable.col, "gene_name")
+gtf$gene.biotype <- get.var(variable.col, "gene_biotype")
+
+```
+
+
+```{r}
+
 library(ggplot2)
 
 # Plot histogram using ggplot2 with specified settings
@@ -35,7 +65,63 @@ ggplot(closest.bed, aes(x = V13)) +
   ) +
   theme_minimal()
 
-# gene_id:ENSMODG00000042832
+```
+
+
+```{r}
+
+library(ggplot2)
+
+pc.ids <- gtf$gene.id[gtf$feature == "gene" & gtf$gene.biotype == "protein_coding"]
+closest.bed.pc <- closest.bed[closest.bed$V10 %in% pc.ids,]
+
+# Plot histogram using ggplot2 with specified settings
+ggplot(closest.bed.pc, aes(x = V13)) +
+  geom_histogram(
+    binwidth = 1000, 
+    fill = "lightblue", 
+    color = "black",
+    aes(y = ..count.. / sum(..count..) * 100)
+  ) +
+  scale_x_continuous(
+    limits = c(-50000, 50000),
+    oob = scales::squish
+  ) +
+  labs(
+    title = "Intergenic Reads",
+    x = "Closest protein_coding Gene (bp)",
+    y = "Percentage"
+  ) +
+  theme_minimal()
+
+```
+
+
+```{r}
+
+library(ggplot2)
+
+lnc.ids <- gtf$gene.id[gtf$feature == "gene" & gtf$gene.biotype == "lncRNA"]
+closest.bed.lnc <- closest.bed[closest.bed$V10 %in% lnc.ids,]
+
+# Plot histogram using ggplot2 with specified settings
+ggplot(closest.bed.lnc, aes(x = V13)) +
+  geom_histogram(
+    binwidth = 1000, 
+    fill = "lightblue", 
+    color = "black",
+    aes(y = ..count.. / sum(..count..) * 100)
+  ) +
+  scale_x_continuous(
+    limits = c(-50000, 50000),
+    oob = scales::squish
+  ) +
+  labs(
+    title = "Intergenic Reads",
+    x = "Closest lncRNA Gene (bp)",
+    y = "Percentage"
+  ) +
+  theme_minimal()
 
 ```
 
