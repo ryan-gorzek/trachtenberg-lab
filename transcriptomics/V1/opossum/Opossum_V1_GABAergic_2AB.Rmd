@@ -20,7 +20,7 @@ source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R
 source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
 source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
 
-obj.opossum.gabaergic <- readRDS("E:/Transcriptomics_V1/Opossum/1AB/seurat/opossum_v1_gabaergic_1AB.rds")
+obj.opossum.gabaergic <- readRDS("E:/Transcriptomics_V1/Opossum/2AB/seurat/opossum_v1_gabaergic_2AB.rds")
 
 ```
 
@@ -36,7 +36,7 @@ PlotClusters(obj.opossum.gabaergic, group.id = "SCT_snn_res.2")
 ```{r}
 
 canon.markers <- list(
-                    class = c("Gad1", "Gad2", "Adarb2", "Lhx6"),
+                    class = c("Gad1", "Gad2"),
                     Pvalb = c("Pvalb", "Myo5b", "Cemip"), 
                     Sst = c("Sst", "Chodl"), 
                     Vip = c("Vip"), 
@@ -58,30 +58,7 @@ DotPlot(obj.opossum.gabaergic, features = canon.markers, cols = c("lightgrey", "
 ```{r}
 
 obj.opossum.gabaergic.prefilt <- obj.opossum.gabaergic
-obj.opossum.gabaergic <- subset(obj.opossum.gabaergic, idents = c(2, 13, 18), invert = TRUE)
-
-```
-
-
-```{r}
-
-obj.opossum.gabaergic <- ClusterSCT(obj.opossum.gabaergic, c(1))
-PlotClusters(obj.opossum.gabaergic, group.id = "SCT_snn_res.1")
-
-```
-
-
-```{r}
-
-obj.opossum.gabaergic.sub <- RemoveByUMAP(obj.opossum.gabaergic, c(-10.5, -9.5), c(-6, -4))
-PlotClusters(obj.opossum.gabaergic.sub, group.id = "SCT_snn_res.1")
-
-```
-
-
-```{r}
-
-obj.opossum.gabaergic <- obj.opossum.gabaergic.sub
+obj.opossum.gabaergic <- subset(obj.opossum.gabaergic, idents = c(12, 15), invert = TRUE)
 
 ```
 
@@ -140,21 +117,25 @@ clustree(obj.opossum.gabaergic, prefix = "SCT_snn_res.")
 
 subclass.idx.opossum <- list()
 
-subclass.idx.opossum$SCT_snn_res.1$Pvalb <- c("1", "2", "6", "10")
-subclass.idx.opossum$SCT_snn_res.1.5$Pvalb <- c("3", "4", "5", "7", "9", "13")
-subclass.idx.opossum$SCT_snn_res.2$Pvalb <- c("1", "2", "3", "7", "11", "13", "16")
+subclass.idx.opossum$SCT_snn_res.1$Pvalb <- c("1", "5", "7", "9")
+subclass.idx.opossum$SCT_snn_res.1.5$Pvalb <- c("2", "5", "6", "8", "10")
+subclass.idx.opossum$SCT_snn_res.2$Pvalb <- c("4", "5", "6", "8", "10")
 
-subclass.idx.opossum$SCT_snn_res.1$Sst <- c("3", "5", "9")
-subclass.idx.opossum$SCT_snn_res.1.5$Sst <- c("2", "6", "11", "12")
-subclass.idx.opossum$SCT_snn_res.2$Sst <- c("4", "9", "10", "12", "15")
+subclass.idx.opossum$SCT_snn_res.1$Sst <- c("2", "8", "10")
+subclass.idx.opossum$SCT_snn_res.1.5$Sst <- c("1", "9", "11", "12", "13")
+subclass.idx.opossum$SCT_snn_res.2$Sst <- c("1", "9", "11", "12", "13")
 
-subclass.idx.opossum$SCT_snn_res.1$Vip <- c("4", "8")
-subclass.idx.opossum$SCT_snn_res.1.5$Vip <- c("1", "10")
-subclass.idx.opossum$SCT_snn_res.2$Vip <- c("6", "8", "14")
+subclass.idx.opossum$SCT_snn_res.1$Vip <- c("3")
+subclass.idx.opossum$SCT_snn_res.1.5$Vip <- c("3")
+subclass.idx.opossum$SCT_snn_res.2$Vip <- c("2")
 
-subclass.idx.opossum$SCT_snn_res.1$Lamp5 <- c("7")
-subclass.idx.opossum$SCT_snn_res.1.5$Lamp5 <- c("8")
-subclass.idx.opossum$SCT_snn_res.2$Lamp5 <- c("5")
+subclass.idx.opossum$SCT_snn_res.1$Lamp5 <- c("4")
+subclass.idx.opossum$SCT_snn_res.1.5$Lamp5 <- c("4")
+subclass.idx.opossum$SCT_snn_res.2$Lamp5 <- c("3")
+
+subclass.idx.opossum$SCT_snn_res.1$Frem1 <- c("6")
+subclass.idx.opossum$SCT_snn_res.1.5$Frem1 <- c("7")
+subclass.idx.opossum$SCT_snn_res.2$Frem1 <- c("7")
 
 obj.opossum.gabaergic <- SubclassByIdent(obj.opossum.gabaergic, subclass.idx.opossum)
 
@@ -163,24 +144,24 @@ obj.opossum.gabaergic <- SubclassByIdent(obj.opossum.gabaergic, subclass.idx.opo
 
 ```{r}
 
-subclass.labels <- c("Pvalb", "Sst", "Vip") # 
-ident.labels <- c("SCT_snn_res.1", "SCT_snn_res.1.5", "SCT_snn_res.2") # 
+subclass.labels <- c("Pvalb", "Sst")
+ident.labels <- c("SCT_snn_res.1", "SCT_snn_res.1.5", "SCT_snn_res.2")
 
 markers.opossum.gabaergic <- MarkerDict(obj.opossum.gabaergic, subclass.labels, ident.labels,
-                                        "E:/Transcriptomics_V1/Opossum/1AB/seurat/marker_genes/markerdict_clusters.rds")
+                                        "E:/Transcriptomics_V1/Opossum/2AB/seurat/marker_genes/markerdict_clusters.rds")
 SaveDotPlots(obj.opossum.gabaergic, markers.opossum.gabaergic,
              subclass.labels, ident.labels,
-             "E:/Transcriptomics_V1/Opossum/1AB/seurat/cell_types/", "ENSMODG")
+             "E:/Transcriptomics_V1/Opossum/2AB/seurat/cell_types/", "ENSMODG")
 SaveFeaturePlots(obj.opossum.gabaergic, markers.opossum.gabaergic,
                  subclass.labels, ident.labels,
-                 "E:/Transcriptomics_V1/Opossum/1AB/seurat/cell_types/")
+                 "E:/Transcriptomics_V1/Opossum/2AB/seurat/cell_types/")
 
 ```
 
 
 ```{r}
 
-subclass.labels <- c("Pvalb", "Sst", "Vip")
+subclass.labels <- c("Pvalb", "Sst")
 ident.labels <- c("SCT_snn_res.1", "SCT_snn_res.1.5", "SCT_snn_res.2")
 
 for (sbcl in subclass.labels) {
@@ -198,7 +179,7 @@ for (sbcl in subclass.labels) {
 
 DefaultAssay(obj.opossum.gabaergic) <- "SCT"
 ident = "SCT_snn_res.2"
-gene <- "Cpa6"
+gene <- "Pvalb"
 DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = ident, label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 FeaturePlot(obj.opossum.gabaergic, gene, raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 VlnPlot(obj.opossum.gabaergic, gene, group.by = ident)
@@ -209,11 +190,11 @@ VlnPlot(obj.opossum.gabaergic, gene, group.by = ident)
 ```{r}
 
 # whole-transcriptome cross-validated classification
-subclass.labels <- c("Pvalb", "Sst", "Vip")
+subclass.labels <- c("Pvalb", "Sst")
 ident.labels <- c("SCT_snn_res.1", "SCT_snn_res.1.5", "SCT_snn_res.2")
-DefaultAssay(obj.opossum.gabaergic) <- "SCT"
+
 SaveConfusionMatrices(obj.opossum.gabaergic, subclass.labels, ident.labels, 
-                      "E:/Transcriptomics_V1/Opossum/1AB/seurat/cell_types/")
+                      "E:/Transcriptomics_V1/Opossum/2AB/seurat/cell_types/")
 
 ```
 
@@ -224,7 +205,7 @@ SaveConfusionMatrices(obj.opossum.gabaergic, subclass.labels, ident.labels,
 obj.opossum.gabaergic$subclass <- NA
 obj.opossum.gabaergic$type <- NA
 
-subclass.resolutions <- rev(list(Pvalb = 1, Sst = 2, Vip = 2, Lamp5 = 2))
+subclass.resolutions <- rev(list(Pvalb = 1, Sst = 1.5, Vip = 2, Lamp5 = 2, Frem1 = 2))
 obj.opossum.gabaergic <- LabelCells(obj.opossum.gabaergic, subclass.resolutions)
 
 ```
@@ -242,7 +223,7 @@ DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "type", label = TR
 
 # Plot relative subclass proportions
 Idents(obj.opossum.gabaergic) <- "subclass"
-levels(obj.opossum.gabaergic) <- c("Pvalb", "Sst", "Vip", "Lamp5")
+levels(obj.opossum.gabaergic) <- c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1")
 
 IdentBySample(obj.opossum.gabaergic)
 
@@ -251,19 +232,23 @@ IdentBySample(obj.opossum.gabaergic)
 
 ```{r}
 
-subclass.labels <- c("Pvalb", "Sst", "Vip")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+subclass.labels <- c("Pvalb", "Sst")
 ident.labels <- c("type")
 
 subclass.markers.opossum.gabaergic <- SubclassMarkerDict(obj.opossum.gabaergic, "subclass",
-                                                       "E:/Transcriptomics_V1/Opossum/1AB/seurat/marker_genes/markerdict_subclass.rds")
+                                                       "E:/Transcriptomics_V1/Opossum/2AB/seurat/marker_genes/markerdict_subclass.rds")
 markers.opossum.gabaergic <- IdentMarkerDict(obj.opossum.gabaergic, subclass.labels, ident.labels,
-                                        "E:/Transcriptomics_V1/Opossum/1AB/seurat/marker_genes/markerdict_types.rds")
+                                        "E:/Transcriptomics_V1/Opossum/2AB/seurat/marker_genes/markerdict_types.rds")
 SaveDotPlots(obj.opossum.gabaergic, markers.opossum.gabaergic,
              subclass.labels, ident.labels,
-             "E:/Transcriptomics_V1/Opossum/1AB/seurat/cell_types/", "ENSMODG")
+             "E:/Transcriptomics_V1/Opossum/2AB/seurat/cell_types/", "ENSMODG")
 SaveFeaturePlots(obj.opossum.gabaergic, markers.opossum.gabaergic,
                  subclass.labels, ident.labels,
-                 "E:/Transcriptomics_V1/Opossum/1AB/seurat/cell_types/")
+                 "E:/Transcriptomics_V1/Opossum/2AB/seurat/cell_types/")
 
 PlotSubclassGeneCounts(subclass.markers.opossum.gabaergic, "subclass", 
                        c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")) + theme(aspect.ratio = 1)
@@ -277,16 +262,16 @@ for (sbcl in subclass.labels) {
 
 SaveSubclassConfusionMatrices(obj.opossum.gabaergic, "subclass",
                               c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac"),
-                              "E:/Transcriptomics_V1/Opossum/1AB/seurat/cell_types/")
+                              "E:/Transcriptomics_V1/Opossum/2AB/seurat/cell_types/")
 SaveIdentConfusionMatrices(obj.opossum.gabaergic, subclass.labels, ident.labels,
-                           "E:/Transcriptomics_V1/Opossum/1AB/seurat/cell_types/")
+                           "E:/Transcriptomics_V1/Opossum/2AB/seurat/cell_types/")
 
 ```
 
 
 ```{r}
 
-saveRDS(obj.opossum.gabaergic, "E:/Transcriptomics_V1/Opossum/1AB/seurat/opossum_v1_gabaergic_1AB_processed.rds")
+saveRDS(obj.opossum.gabaergic, "E:/Transcriptomics_V1/Opossum/2AB/seurat/opossum_v1_gabaergic_2AB_processed.rds")
 
 ```
 

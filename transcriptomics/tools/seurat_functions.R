@@ -80,7 +80,6 @@ PreprocessData <- function(sample_IDs, data_path, project_name, mapping_path) {
   
 }
 
-
 PlotQC <- function(data) {
   
   # Create a custom theme for the violin plots
@@ -127,9 +126,9 @@ PlotQC <- function(data) {
 ClusterSCT <- function(obj, resolutions) {
   
   obj <- SCTransform(obj, vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE) %>%
-    RunPCA(npcs = 30, verbose = FALSE) %>%
-    FindNeighbors(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
-    RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
+         RunPCA(npcs = 30, verbose = FALSE) %>%
+         FindNeighbors(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+         RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
   
   for (res in resolutions) {
     obj <- FindClusters(obj, resolution = res, algorithm = 4, method = "igraph")
@@ -189,12 +188,30 @@ PlotFeatures <- function(obj, features) {
   
 }
 
-# LabelCells <- function(obj, column, lst) {
-#   
-#   
-#   
-#   
-# }
+RemoveByUMAP <- function(seurat_obj, umap1_range, umap2_range) {
+  # Check if UMAP reduction exists
+  if (!"umap" %in% names(seurat_obj@reductions)) {
+    stop("UMAP reduction not found in the Seurat object. Please ensure UMAP has been run.")
+  }
+  
+  # Extract UMAP coordinates
+  umap_coords <<- Embeddings(seurat_obj, reduction = "umap")
+  
+  # Find cells within the specified UMAP1 and UMAP2 range
+  cells_to_remove <<- which(
+    umap_coords[, 1] >= umap1_range[1] & umap_coords[, 1] <= umap1_range[2] &
+      umap_coords[, 2] >= umap2_range[1] & umap_coords[, 2] <= umap2_range[2]
+  )
+  
+  # Get cell names to remove
+  cells_to_remove <<- rownames(umap_coords)[cells_to_remove]
+  
+  # Remove cells from Seurat object
+  cell_names <- colnames(seurat_obj)
+  seurat_obj <- subset(seurat_obj, cells = cell_names[!cell_names %in% cells_to_remove])
+  
+  return(seurat_obj)
+}
 
 SubclassByIdent <- function(obj, subclass.idx) {
   
@@ -224,7 +241,7 @@ SubclassByIdent <- function(obj, subclass.idx) {
   
 }
 
-MarkerDict <- function(obj, subclass.labels, ident.labels) {
+IdentMarkerDict <- function(obj, subclass.labels, ident.labels, save.path) {
   
   marker.dict <- list()
   
@@ -255,6 +272,27 @@ MarkerDict <- function(obj, subclass.labels, ident.labels) {
     }
   }
   
+  saveRDS(marker.dict, save.path)
+  return(marker.dict)
+  
+}
+
+SubclassMarkerDict <- function(obj, subclass.labels, save.path) {
+  
+  marker.dict <- list()
+  
+  for (sbcl in subclass.labels) {
+    
+    marker.dict[[sbcl]] <- list()
+    
+    DefaultAssay(obj) <- "SCT"
+    Idents(obj) <- sbcl
+      
+    marker.dict[[sbcl]] <- FindAllMarkers(obj, only.pos = TRUE, logfc.threshold = 0.1)
+
+  }
+  
+  saveRDS(marker.dict, save.path)
   return(marker.dict)
   
 }
@@ -330,7 +368,14 @@ SaveDotPlots <- function(obj, markers, subclass.labels, ident.labels, savepath, 
   
 }
 
-SaveFeaturePlots <- function(obj, markers, subclass.labels, ident.labels, savepath, ens.id) {
+SaveFeaturePlots <- function(obj, markers, subclass.labels, ident.labels, savepath) {
+  
+  get_plot_limits <- function(plot) {
+    gg_build <- ggplot_build(plot)
+    xlims <- gg_build$layout$panel_scales_x[[1]]$range$range
+    ylims <- gg_build$layout$panel_scales_y[[1]]$range$range
+    return(list(xlims = xlims, ylims = ylims))
+  }
   
   for (sbcl in subclass.labels) {
     
@@ -376,28 +421,42 @@ SaveFeaturePlots <- function(obj, markers, subclass.labels, ident.labels, savepa
               all.markers.FC[[type]] <- top_genes_desc(type.markers, "avg_log2FC", set)
               all.markers.PD[[type]] <- top_genes_desc(type.markers, "pct.diff", set)
               
-            }
-            
-            # make feature plots
-            features.FC <- unlist(rev(all.markers.FC))
-            features.PD <- unlist(rev(all.markers.PD))
-            
-            for (feature_set in list(features.FC, features.PD)) {
-              feature_subset <- feature_set[1:min(20, length(feature_set))]
-              feature_labels <- unname(strip_if_contains(feature_subset, ens.id, paste0(ens.id, "000000")))
+              # make feature plots
+              features.FC <- unlist(all.markers.FC[[type]])
+              features.PD <- unlist(all.markers.PD[[type]])
               
-              plots <- FeaturePlot(obj.sbcl.id, features = feature_subset, cols = c("lightgrey", "red"), ncol = 5)
-              
-              for (j in 1:length(plots)) {
-                plots[[j]] <- plots[[j]] + 
-                  ggtitle(feature_labels[j]) +
-                  coord_equal()
+              for (feature_set in list(features.FC, features.PD)) {
+                feature_subset <- feature_set[1:min(20, length(feature_set))]
+                
+                plots <- FeaturePlot(obj.sbcl.id, features = feature_subset, cols = c("lightgrey", "red"), ncol = 5)
+                
+                # Extract plot limits
+                plot_limits <- get_plot_limits(plots[[1]])
+                xlims <- plot_limits$xlims
+                ylims <- plot_limits$ylims
+                
+                x.range <- diff(xlims)
+                y.range <- diff(ylims)
+                
+                max.range <- max(x.range, y.range)
+                
+                if (x.range < max.range) {
+                  xlims <- mean(xlims) + c(-1, 1) * (max.range / 2)
+                }
+                
+                if (y.range < max.range) {
+                  ylims <- mean(ylims) + c(-1, 1) * (max.range / 2)
+                }
+                
+                # Adjust the plots with new limits and coord_equal
+                for (i in 1:20) {
+                  plots[[i]] <- plots[[i]] + coord_equal(xlim = xlims, ylim = ylims)
+                }
+                
+                file_prefix <- ifelse(identical(feature_set, features.FC), "FeaturePlot_FC", "FeaturePlot_PD")
+                ggsave(paste0(id.path, sbcl.col, "_", file_prefix, "_id-", type, ".png"), plot = plots, width = 24, height = 16, dpi = 300)
               }
-              
-              file_prefix <- ifelse(identical(feature_set, features.FC), "FeaturePlot_FC", "FeaturePlot_PD")
-              ggsave(paste0(id.path, sbcl.col, "_", file_prefix, "_id-", type, ".png"), plot = plots, width = 24, height = 16, dpi = 300)
             }
-            
           }
         }
       }
@@ -459,86 +518,289 @@ strip_if_contains <- function(vector, search, strip) {
   return(result_vector)
 }
 
-# Function to generate the plot
-plot_gene_counts <- function(nested_list, subclass, clustering_res) {
-  # Extract dataframe
-  df <- nested_list[[subclass]][[clustering_res]]
+sort_idents <- function(vec) {
+  suffixes <<- sub(".*_", "", vec)
   
-  # Calculate the maximum avg_log2FC value
-  max_log2FC <- max(df$avg_log2FC, na.rm = TRUE)
+  # Determine if suffixes are numeric or alphabetic
+  if (all(grepl("^[0-9]+$", suffixes))) {
+    sorted_vec <<- vec[order(as.numeric(suffixes))]
+  } else {
+    sorted_vec <<- vec[order(suffixes)]
+  }
   
-  # Create a sequence of avg_log2FC values from 0.2 to the maximum or 2 (whichever is smaller)
-  log2FC_grid <- seq(0.2, min(max_log2FC, 2), length.out = 100)
-  
-  # Calculate the number of genes for each cluster as avg_log2FC varies
-  gene_counts <- df %>%
-    group_by(cluster) %>%
-    do(data.frame(avg_log2FC = log2FC_grid,
-                  count = sapply(log2FC_grid, function(x) sum(.$avg_log2FC > x, na.rm = TRUE)))) %>%
-    ungroup()
-  
-  # Plot the number of genes
-  ggplot(gene_counts, aes(x = avg_log2FC, y = count, color = cluster, group = cluster)) +
-    geom_line(size = 1) + # Thicker lines
-    labs(title = paste("Number of DE Genes for", subclass, "at", clustering_res),
-         x = "avg_log2FC",
-         y = "Number of Genes",
-         color = "Cluster") +
-    theme_minimal() +
-    scale_x_continuous(limits = c(0.2, 2)) + # Set x-axis limits
-    geom_vline(xintercept = 0.2, linetype = "dotted", color = "black") +
-    annotate("text", x = 0.2, y = max(gene_counts$count) * 0.9, label = "0.2", hjust = -0.2, vjust = -0.5) +
-    geom_vline(xintercept = 0.5, linetype = "dotted", color = "black") +
-    annotate("text", x = 0.5, y = max(gene_counts$count) * 0.9, label = "0.5", hjust = -0.2, vjust = -0.5) +
-    theme(
-      axis.title.x = element_text(size = 14), # Increase x-axis label size
-      axis.title.y = element_text(size = 14), # Increase y-axis label size
-      axis.text.x = element_text(size = 12),  # Increase x-axis tick label size
-      axis.text.y = element_text(size = 12)   # Increase y-axis tick label size
-    )
+  return(factor(rev(sorted_vec), levels = rev(sorted_vec)))
 }
 
-# Function to generate heatmap
-plot_intersection_heatmap <- function(list1, list2, subclass1, subclass2, ident1, ident2) {
-  # Extract dataframes
-  df1 <- list1[[subclass1]][[ident1]]
-  df2 <- list2[[subclass2]][[ident2]]
+sort_by_reference <- function(vec, ref) {
+  # Find the intersection of vec and ref
+  common_elements <- intersect(ref, vec)
   
-  # Find intersecting genes
-  intersecting_genes <<- intersect(df1$gene, df2$gene)
+  # Order vec according to the position of common elements in ref
+  sorted_vec <- vec[order(match(vec, common_elements, nomatch = Inf))]
   
-  # Filter dataframes to only include intersecting genes
-  df1_filtered <<- df1 %>% filter(gene %in% intersecting_genes)
-  df2_filtered <<- df2 %>% filter(gene %in% intersecting_genes)
+  # Remove elements that are not in common_elements
+  sorted_vec <- sorted_vec[sorted_vec %in% common_elements]
   
-  # Create grid
-  cluster_combinations <- expand.grid(
-    Cluster1 = unique(df1$cluster), 
-    Cluster2 = unique(df2$cluster)
-  )
+  return(factor(rev(sorted_vec), levels = rev(sorted_vec)))
+}
+
+SaveIdentConfusionMatrices <- function(obj, subclass.labels, ident.labels, savepath) {
   
-  # Count intersections for each combo
-  intersection_counts <- cluster_combinations %>%
-    rowwise() %>%
-    mutate(Count = sum(df1_filtered$cluster == Cluster1 & df2_filtered$cluster == Cluster2)) %>%
-    ungroup()
+  DefaultAssay(obj) <- "SCT"
   
-  # Plot heatmap
-  ggplot(intersection_counts, aes(x = Cluster1, y = Cluster2, fill = Count)) +
-    geom_tile(color = "white", size = 0.5) +
-    geom_text(aes(label = Count), color = "black") +
-    scale_fill_gradient(low = "white", high = "red") +
-    scale_y_discrete(limits = rev(levels(intersection_counts$Cluster2))) + # Reverse y-axis order
-    labs(title = "", # paste("", subclass, "at", clustering_res)
-         x = "",
-         y = "",
-         fill = "# DE Genes") +
+  for (sbcl in subclass.labels) {
+    
+    folder_path <- paste0(savepath, sbcl, "/")
+    make_folder(folder_path)
+    
+    for (id in ident.labels) {
+      
+      id.num <- strsplit(id, ".", fixed = TRUE)[[1]]
+      if (length(id.num) == 2) { sbcl.col <- paste0("subclass.", id.num[2]) }
+      else if (length(id.num) == 3) { sbcl.col <- paste0("subclass.", id.num[2], ".", id.num[3]) }
+      else { sbcl.col <- paste0("subclass.", id.num[1]) }
+      
+      Idents(obj) <- sbcl.col
+      if (sbcl %in% levels(obj)) {
+        
+        obj.sbcl.id <- subset(obj, idents = sbcl)
+        
+        DefaultAssay(obj.sbcl.id) <- "SCT"
+        Idents(obj.sbcl.id) <- id
+        levels(obj.sbcl.id) <- sort_idents(levels(obj.sbcl.id))
+        if (length(levels(obj.sbcl.id)) > 1) {
+          
+          id.path <- paste0(folder_path, id, "/")
+          make_folder(id.path)
+
+          mdl <- TrainModel(obj.sbcl.id, training_genes = VariableFeatures(obj))
+          
+          if (!is.null(mdl$confusion)) {
+            confusion_plot <- mdl$confusion +
+              coord_equal() + 
+              theme(axis.text.x = element_text(angle = 90),
+                    panel.background = element_rect(fill = "white", color = NA), 
+                    plot.background = element_rect(fill = "white", color = NA))
+            
+            ggsave(paste0(id.path, sbcl.col, "_XGBoost.png"), plot = confusion_plot, width = 5, height = 5, dpi = 300)
+          }
+        }
+      }
+    }
+  }
+}
+
+SaveSubclassConfusionMatrices <- function(obj, subclass.cols, subclass.order, savepath) {
+  
+  DefaultAssay(obj) <- "SCT"
+  
+  for (sbcl in subclass.cols) {
+    
+    folder_path <- paste0(savepath)
+    make_folder(folder_path)
+      
+    DefaultAssay(obj) <- "SCT"
+    Idents(obj) <- sbcl
+    levels(obj) <- sort_by_reference(levels(obj), subclass.order)
+    
+    mdl <- TrainModel(obj, training_genes = VariableFeatures(obj))
+          
+    if (!is.null(mdl$confusion)) {
+      confusion_plot <- mdl$confusion +
+                        coord_equal() + 
+                        theme(axis.text.x = element_text(angle = 90),
+                              panel.background = element_rect(fill = "white", color = NA), 
+                              plot.background = element_rect(fill = "white", color = NA))
+            
+      ggsave(paste0(folder_path, sbcl, "_XGBoost.png"), plot = confusion_plot, width = 5, height = 5, dpi = 300)
+
+    }
+  }
+}
+
+LabelCells <- function(obj, subclass_resolution) {
+
+  # Iterate over each subclass and resolution
+  for (subclass in names(subclass_resolution)) {
+    resolution <- subclass_resolution[[subclass]]
+    
+    # Extract the subclass and cluster columns based on the resolution
+    subclass_col <- paste0("subclass.", resolution)
+    cluster_col <- paste0("SCT_snn_res.", resolution)
+    
+    # Get the cells belonging to the current subclass
+    cells <- obj@meta.data[[subclass_col]] == subclass
+    
+    # Assign the subclass label to the 'subclass' column
+    obj@meta.data$subclass[cells] <- subclass
+    
+    # Extract the cluster labels for these cells
+    clusters <- obj@meta.data[[cluster_col]][cells]
+    
+    # Get the cluster sizes in decreasing order
+    cluster_sizes <- sort(table(clusters), decreasing = TRUE)
+    
+    # Create a mapping from original cluster labels to new type labels
+    cluster_to_type <- setNames(paste0(subclass, "_", seq_along(cluster_sizes)), names(cluster_sizes))
+    
+    # Assign the new type labels based on the cluster sizes
+    obj@meta.data$type[cells] <- cluster_to_type[as.character(clusters)]
+    obj@meta.data$subclass.type[cells] <- subclass
+  }
+  
+  return(obj)
+
+}
+
+IdentBySample <- function(obj) {
+  
+  # Assuming your dataframe is named df with columns 'subclass' and 'sample'
+  df <- obj[[]]
+  df$active.ident <- obj@active.ident
+  specified_order <- levels(obj)
+  
+  # Check for NAs and warn the user
+  na_samples <- df %>% filter(is.na(active.ident)) %>% count(sample)
+  if(nrow(na_samples) > 0) {
+    warning("The following samples contained NAs and were dropped: ", 
+            paste(na_samples$sample, " (", na_samples$n, ")", collapse = "\n"))
+  }
+  
+  # Drop NAs
+  df <- df %>% drop_na(active.ident)
+  
+  # Calculate the relative proportions of each active.ident by sample
+  relative_proportions <- df %>%
+    group_by(sample, active.ident) %>%
+    summarize(count = n(), .groups = 'drop') %>%
+    ungroup() %>%
+    group_by(sample) %>%
+    mutate(Proportion = count / sum(count))
+  
+  # Calculate the median proportions across samples
+  median_proportions <- relative_proportions %>%
+    group_by(active.ident) %>%
+    summarize(MedianProportion = median(Proportion))
+  
+  # Rename the columns for clarity
+  colnames(median_proportions) <- c("active.ident", "MedianProportion")
+  
+  # Convert active.ident to a factor and specify the order
+  median_proportions$active.ident <- factor(median_proportions$active.ident, levels = specified_order)
+  relative_proportions$active.ident <- factor(relative_proportions$active.ident, levels = specified_order)
+  
+  # Set y-axis limits
+  y_limits <- c(0, 0.5) # Modify these values as needed
+  
+  # Calculate the maximum proportion for each active.ident
+  max_proportions <- relative_proportions %>%
+    group_by(active.ident) %>%
+    summarize(MaxProportion = max(Proportion))
+  
+  # Merge the max proportions with the median proportions
+  plot_data <- merge(median_proportions, max_proportions, by = "active.ident")
+  
+  # Create the barplot
+  p <- ggplot(plot_data, aes(x = active.ident, y = MedianProportion, fill = active.ident)) +
+    geom_bar(stat = "identity") +
+    geom_text(aes(label = scales::percent(MedianProportion, accuracy = 0.1), 
+                  y = MaxProportion + 0.01), # Place text labels slightly above the highest scatter point
+              vjust = -0.5) + # Adjust the position of the text
+    geom_point(data = relative_proportions, aes(x = active.ident, y = Proportion), 
+               color = "black") + # Scatter the different samples
     theme_minimal() +
-    theme(
-      aspect.ratio = 1,
-      # axis.title.x = element_text(size = 14), # Increase x-axis label size
-      # axis.title.y = element_text(size = 14), # Increase y-axis label size
-      axis.text.x = element_text(size = 12),  # Increase x-axis tick label size
-      axis.text.y = element_text(size = 12)   # Increase y-axis tick label size
-    ) # Make cells square
+    theme(legend.position = "none", 
+          aspect.ratio = 1) + # Remove the legend and make the plot square
+    xlab("") +
+    ylab("Relative Proportion") +
+    ggtitle("") +
+    scale_y_continuous(labels = scales::percent, limits = y_limits) +
+    scale_x_discrete(limits = specified_order) + 
+    theme(axis.text.x = element_text(size=12), 
+          axis.text.y = element_text(size=12), 
+          axis.title.x = element_text(size=12), 
+          axis.title.y = element_text(size=12))
+  
+  print(p)
+  
+}
+
+PlotIdentGeneCounts <- function(nested_list, subclass, clustering_res) {
+
+  # Extract dataframe
+  df <- nested_list[[subclass]][[clustering_res]]
+  if (!is.null(df)) {
+    # Calculate the maximum avg_log2FC value
+    max_log2FC <- max(df$avg_log2FC, na.rm = TRUE)
+    
+    # Create a sequence of avg_log2FC values from 0.2 to the maximum or 2 (whichever is smaller)
+    log2FC_grid <- seq(0.2, min(max_log2FC, 2), length.out = 100)
+    
+    # Calculate the number of genes for each cluster as avg_log2FC varies
+    gene_counts <- df %>%
+      group_by(cluster) %>%
+      do(data.frame(avg_log2FC = log2FC_grid,
+                    count = sapply(log2FC_grid, function(x) sum(.$avg_log2FC > x, na.rm = TRUE)))) %>%
+      ungroup()
+    levels(gene_counts$cluster) <- rev(sort_idents(levels(gene_counts$cluster)))
+    # Plot the number of genes
+    ggplot(gene_counts, aes(x = avg_log2FC, y = count, color = cluster, group = cluster)) +
+      geom_line(size = 1) + # Thicker lines
+      labs(title = paste("Number of DE Genes for", subclass, "by", clustering_res),
+           x = "avg_log2FC",
+           y = "Number of Genes",
+           color = "Cluster") +
+      theme_minimal() +
+      scale_x_continuous(limits = c(0.2, 2)) + # Set x-axis limits
+      geom_vline(xintercept = 0.2, linetype = "dotted", color = "black") +
+      annotate("text", x = 0.2, y = max(gene_counts$count) * 0.9, label = "0.2", hjust = -0.2, vjust = -0.5) +
+      geom_vline(xintercept = 0.5, linetype = "dotted", color = "black") +
+      annotate("text", x = 0.5, y = max(gene_counts$count) * 0.9, label = "0.5", hjust = -0.2, vjust = -0.5) +
+      theme(
+        axis.title.x = element_text(size = 14), # Increase x-axis label size
+        axis.title.y = element_text(size = 14), # Increase y-axis label size
+        axis.text.x = element_text(size = 12),  # Increase x-axis tick label size
+        axis.text.y = element_text(size = 12)   # Increase y-axis tick label size
+      )
+  }
+}
+
+PlotSubclassGeneCounts <- function(nested_list, subclass.col, subclass.order) {
+  
+  # Extract dataframe
+  df <- nested_list[[subclass.col]]
+  if (!is.null(df)) {
+    # Calculate the maximum avg_log2FC value
+    max_log2FC <- max(df$avg_log2FC, na.rm = TRUE)
+    
+    # Create a sequence of avg_log2FC values from 0.2 to the maximum or 2 (whichever is smaller)
+    log2FC_grid <- seq(0.2, min(max_log2FC, 2), length.out = 100)
+    
+    # Calculate the number of genes for each cluster as avg_log2FC varies
+    gene_counts <- df %>%
+      group_by(cluster) %>%
+      do(data.frame(avg_log2FC = log2FC_grid,
+                    count = sapply(log2FC_grid, function(x) sum(.$avg_log2FC > x, na.rm = TRUE)))) %>%
+      ungroup()
+    levels(gene_counts$cluster) <- rev(sort_by_reference(levels(gene_counts$cluster), subclass.order))
+    # Plot the number of genes
+    ggplot(gene_counts, aes(x = avg_log2FC, y = count, color = cluster, group = cluster)) +
+      geom_line(size = 1) + # Thicker lines
+      labs(title = paste("Number of DE Genes for Subclasses"),
+           x = "avg_log2FC",
+           y = "Number of Genes",
+           color = "Subclass") +
+      theme_minimal() +
+      scale_x_continuous(limits = c(0.2, 2)) + # Set x-axis limits
+      geom_vline(xintercept = 0.2, linetype = "dotted", color = "black") +
+      annotate("text", x = 0.2, y = max(gene_counts$count) * 0.9, label = "0.2", hjust = -0.2, vjust = -0.5) +
+      geom_vline(xintercept = 0.5, linetype = "dotted", color = "black") +
+      annotate("text", x = 0.5, y = max(gene_counts$count) * 0.9, label = "0.5", hjust = -0.2, vjust = -0.5) +
+      theme(
+        axis.title.x = element_text(size = 14), # Increase x-axis label size
+        axis.title.y = element_text(size = 14), # Increase y-axis label size
+        axis.text.x = element_text(size = 12),  # Increase x-axis tick label size
+        axis.text.y = element_text(size = 12)   # Increase y-axis tick label size
+      )
+  }
 }

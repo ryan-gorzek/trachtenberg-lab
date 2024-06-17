@@ -256,11 +256,181 @@ new_dotplot = function(object,genes.use=NULL, ident.use = "NOG",
 #' @param stagger.threshold The threshold (in percentage) for which to sort the top matches. A match over this number will be considered a top match, but below this number will not be considered a top match. 
 #' 
 #' @return A ggplot object of the confusion matrix
-plotConfusionMatrix = function(X, row.scale=TRUE, col.scale=FALSE, col.low="white", 
-                               col.high="black", max.size=5, ylab.use=NULL, 
-                               xlab.use=NULL, order=NULL, x.lab.rot=FALSE, 
-                               plot.return=TRUE, max.perc=100, stagger.threshold = 5){
+# plotConfusionMatrix = function(X, row.scale=TRUE, col.scale=FALSE, col.low="white", 
+#                                col.high="black", max.size=5, ylab.use=NULL, 
+#                                xlab.use=NULL, order=NULL, x.lab.rot=FALSE, 
+#                                plot.return=TRUE, max.perc=100, stagger.threshold = 5){
+#   library(reshape2)
+#   if (!col.scale & row.scale){ X = t(scale(t(X), center=FALSE, scale=rowSums(X)));  X=X*100 }
+#   if (col.scale & !row.scale){ X = scale(X, center=FALSE, scale=colSums(X)); X = X*100 }
+#   if(col.scale & row.scale){
+#     print("Only one of row.scale or col.scale should be true. performing row scaling by default")
+#     X = t(scale(t(X), center=FALSE, scale=rowSums(X)))
+#     X=X*100
+#   }
+#   X[is.na(X)] = 0
+#   if (max(X) > 100){
+#     X = X/max(X) * 100
+#   }
+#   
+#   orig.rownames = rownames(X)
+#   orig.colnames = colnames(X)
+#   
+#   # Diagonalization
+#   row.max = apply(X, 1, which.max)
+#   match.df = data.frame(row = 1:length(row.max), 
+#                         col = as.integer(row.max))
+#   match.df$value = X[as.matrix(match.df)]
+#   match.df.sorted = match.df %>% arrange(-value)
+#   
+#   # We actually make it in order of 
+#   # match.df[order(match.df$row, levels = match.df.sorted$row),]
+#   
+# 
+#   # if (!is.null(order)){
+#   #   if (order == "Row"){  
+#   #     factor.levels = c()
+#   #     for (i1 in colnames(X)){
+#   #       if (max(X[,i1]) < 50) next
+#   #       ind.sort = rownames(X)[order(X[,i1], decreasing=TRUE)]
+#   #       ind.sort = ind.sort[!(ind.sort %in% factor.levels)]
+#   #       factor.levels = c(factor.levels, ind.sort[1])
+#   #     }
+#   #     factor.levels = c(factor.levels, setdiff(rownames(X), factor.levels))
+#   #     factor.levels = factor.levels[!is.na(factor.levels)]
+#   #   } 
+#   #   
+#   #   if (order == "Col") {
+#   #     factor.levels = c()
+#   #     for (i1 in rownames(X)){
+#   #       if (max(X[i1,]) < 50) next
+#   #       ind.sort = rownames(X)[order(X[i1,], decreasing=TRUE)]
+#   #       ind.sort = ind.sort[!(ind.sort %in% factor.levels)]
+#   #       factor.levels = c(factor.levels, ind.sort[1])
+#   #     }
+#   #     factor.levels = c(factor.levels, setdiff(rownames(t(X)), factor.levels))
+#   #     factor.levels = factor.levels[!is.na(factor.levels)]
+#   #   } 
+#   # } else {
+#   #   factor.levels = rownames(t(X))
+#   # }
+#   
+#   # factor.levels = c(factor.levels, setdiff(rownames(X), factor.levels))
+#   melted = reshape2::melt(X)
+#   colnames(melted) = c("row", "col", "Percentage")
+#   # melted.sorted = melted[order(melted$row, levels = match.df.sorted$row),]
+#   melted.sorted = melted %>% arrange(factor(row, levels = unique(orig.rownames[match.df.sorted$row])), 
+#                                      factor(col, levels = unique(orig.colnames[match.df.sorted$col])))
+#   melted.sorted.nolow = subset(melted.sorted, Percentage > stagger.threshold)
+#   
+#   melted$row = factor(melted$row, levels = rev(unique(c(as.character(melted.sorted.nolow$row), setdiff(orig.rownames, melted.sorted.nolow$row)))))
+#   # print(melted$row)
+#   melted$col = factor(melted$col, levels = unique(c(as.character(melted.sorted.nolow$col), setdiff(orig.colnames, melted.sorted.nolow$col))))
+#   # print(melted$col)
+#   # melted$row = factor(melted$row, levels = rev(unique(orig.rownames[match.df.sorted$row])));
+#   # melted$col = factor(melted$col, levels = unique(c(orig.colnames[match.df.sorted$col], orig.colnames[-match.df.sorted$col])))
+#   
+#   # if (!is.null(order)){
+#   #   if (order == "Row"){
+#       # X$Known = factor(X$Known, levels=rev(factor.levels));
+#       # X$Predicted = factor(X$Predicted, levels = orig.colnames)
+#   #   
+#   #   }
+#   #   if (order == "Col"){
+#   #     X$Predicted = factor(X$Predicted, levels = factor.levels);
+#   #     X$Known = factor(X$Known, levels=rev(orig.rownames));
+#   #   }
+#   # } else {
+#   #   X$Known = factor(X$Known, levels=rev(unique(X$Known)));
+#   #   X$Predicted = factor(X$Predicted, levels=unique(X$Predicted));
+#   # }
+#   
+#   #print(sum(is.na(X$Known)))
+#   
+#   p = ggplot(melted, aes(y = row,  x = col)) + 
+#     geom_point(aes(colour = Percentage,  size =Percentage)) + 
+#     scale_color_gradient(low=col.low,   high = col.high, limits=c(0, 100 ))+
+#     scale_size(range = c(1, max.size), limits = c(0,max.perc))+   
+#     theme_bw() #+nogrid
+#   p = p + xlab(xlab.use) + ylab(ylab.use) + 
+#     theme(axis.text.x=element_text(size=12, face="italic", hjust=1)) + 
+#     theme(axis.text.y=element_text(size=12, face="italic"), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))  
+#   
+#   if (x.lab.rot) {
+#     p <- p + theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+#   }
+#   # print(p)
+#   
+#   if(plot.return) return(p)
+# }
+
+# plotConfusionMatrix <- function(X, row.scale=TRUE, col.scale=FALSE, col.low="white", 
+#                                 col.high="red", max.size=5, ylab.use=NULL, 
+#                                 xlab.use=NULL, order=NULL, x.lab.rot=TRUE, 
+#                                 plot.return=TRUE, max.perc=100, stagger.threshold = 5, 
+#                                 row.levels = NULL, col.levels = NULL){
+#   library(reshape2)
+#   library(ggplot2)
+#   library(dplyr)
+#   
+#   if (!col.scale & row.scale){ X = t(scale(t(X), center=FALSE, scale=rowSums(X)));  X=X*100 }
+#   if (col.scale & !row.scale){ X = scale(X, center=FALSE, scale=colSums(X)); X = X*100 }
+#   if(col.scale & row.scale){
+#     print("Only one of row.scale or col.scale should be true. performing row scaling by default")
+#     X = t(scale(t(X), center=FALSE, scale=rowSums(X)))
+#     X=X*100
+#   }
+#   X[is.na(X)] = 0
+#   if (max(X) > 100){
+#     X = X/max(X) * 100
+#   }
+#   
+#   orig.rownames <<- rownames(X)
+#   orig.colnames <<- colnames(X)
+#   
+#   melted = reshape2::melt(X)
+#   colnames(melted) = c("row", "col", "Percentage")
+#   
+#   if (is.null(row.levels) & is.null(col.levels)) {
+#     melted$row = factor(melted$row, levels = orig.rownames)
+#     melted$col = factor(melted$col, levels = rev(orig.colnames))
+#   }
+#   else {
+#     melted$row = factor(melted$row, levels = row.levels)
+#     melted$col = factor(melted$col, levels = rev(col.levels))
+#   }
+#   
+#   p = ggplot(melted, aes(y = row, x = col)) + 
+#     geom_tile(aes(fill = Percentage)) + 
+#     scale_fill_gradient(low = col.low, high = col.high, limits = c(0, 100)) + 
+#     geom_text(aes(label = sprintf("%.1f", Percentage)), size = 5) +
+#     theme_bw() + 
+#     xlab(xlab.use) + 
+#     ylab(ylab.use) + 
+#     theme(axis.text.x = element_text(size=16, face="italic", hjust=1, angle = ifelse(x.lab.rot, 90, 0)), 
+#           axis.text.y = element_text(size=16, face="italic"), 
+#           axis.title.x = element_text(size=16), 
+#           axis.title.y = element_text(size=16))
+#   
+#   # Ensure correct rotation
+#   if (x.lab.rot) {
+#     p <- p + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+#   } else {
+#     p <- p + theme(axis.text.x = element_text(angle = 0, vjust = 0.5, hjust=0.5))
+#   }
+#   
+#   if (plot.return) return(p)
+# }
+
+plotConfusionMatrix <- function(X, row.scale=TRUE, col.scale=FALSE, col.low="white", 
+                                col.high="red", max.size=5, ylab.use=NULL, 
+                                xlab.use=NULL, order=NULL, x.lab.rot=TRUE, 
+                                plot.return=TRUE, max.perc=100, stagger.threshold = 5, 
+                                row.levels = NULL, col.levels = NULL){
   library(reshape2)
+  library(ggplot2)
+  library(dplyr)
+  
   if (!col.scale & row.scale){ X = t(scale(t(X), center=FALSE, scale=rowSums(X)));  X=X*100 }
   if (col.scale & !row.scale){ X = scale(X, center=FALSE, scale=colSums(X)); X = X*100 }
   if(col.scale & row.scale){
@@ -273,97 +443,42 @@ plotConfusionMatrix = function(X, row.scale=TRUE, col.scale=FALSE, col.low="whit
     X = X/max(X) * 100
   }
   
-  orig.rownames = rownames(X)
-  orig.colnames = colnames(X)
+  orig.rownames <<- rownames(X)
+  orig.colnames <<- colnames(X)
   
-  # Diagonalization
-  row.max = apply(X, 1, which.max)
-  match.df = data.frame(row = 1:length(row.max), 
-                        col = as.integer(row.max))
-  match.df$value = X[as.matrix(match.df)]
-  match.df.sorted = match.df %>% arrange(-value)
-  
-  # We actually make it in order of 
-  # match.df[order(match.df$row, levels = match.df.sorted$row),]
-  
-
-  # if (!is.null(order)){
-  #   if (order == "Row"){  
-  #     factor.levels = c()
-  #     for (i1 in colnames(X)){
-  #       if (max(X[,i1]) < 50) next
-  #       ind.sort = rownames(X)[order(X[,i1], decreasing=TRUE)]
-  #       ind.sort = ind.sort[!(ind.sort %in% factor.levels)]
-  #       factor.levels = c(factor.levels, ind.sort[1])
-  #     }
-  #     factor.levels = c(factor.levels, setdiff(rownames(X), factor.levels))
-  #     factor.levels = factor.levels[!is.na(factor.levels)]
-  #   } 
-  #   
-  #   if (order == "Col") {
-  #     factor.levels = c()
-  #     for (i1 in rownames(X)){
-  #       if (max(X[i1,]) < 50) next
-  #       ind.sort = rownames(X)[order(X[i1,], decreasing=TRUE)]
-  #       ind.sort = ind.sort[!(ind.sort %in% factor.levels)]
-  #       factor.levels = c(factor.levels, ind.sort[1])
-  #     }
-  #     factor.levels = c(factor.levels, setdiff(rownames(t(X)), factor.levels))
-  #     factor.levels = factor.levels[!is.na(factor.levels)]
-  #   } 
-  # } else {
-  #   factor.levels = rownames(t(X))
-  # }
-  
-  # factor.levels = c(factor.levels, setdiff(rownames(X), factor.levels))
   melted = reshape2::melt(X)
   colnames(melted) = c("row", "col", "Percentage")
-  # melted.sorted = melted[order(melted$row, levels = match.df.sorted$row),]
-  melted.sorted = melted %>% arrange(factor(row, levels = unique(orig.rownames[match.df.sorted$row])), 
-                                     factor(col, levels = unique(orig.colnames[match.df.sorted$col])))
-  melted.sorted.nolow = subset(melted.sorted, Percentage > stagger.threshold)
   
-  melted$row = factor(melted$row, levels = rev(unique(c(as.character(melted.sorted.nolow$row), setdiff(orig.rownames, melted.sorted.nolow$row)))))
-  # print(melted$row)
-  melted$col = factor(melted$col, levels = unique(c(as.character(melted.sorted.nolow$col), setdiff(orig.colnames, melted.sorted.nolow$col))))
-  # print(melted$col)
-  # melted$row = factor(melted$row, levels = rev(unique(orig.rownames[match.df.sorted$row])));
-  # melted$col = factor(melted$col, levels = unique(c(orig.colnames[match.df.sorted$col], orig.colnames[-match.df.sorted$col])))
-  
-  # if (!is.null(order)){
-  #   if (order == "Row"){
-      # X$Known = factor(X$Known, levels=rev(factor.levels));
-      # X$Predicted = factor(X$Predicted, levels = orig.colnames)
-  #   
-  #   }
-  #   if (order == "Col"){
-  #     X$Predicted = factor(X$Predicted, levels = factor.levels);
-  #     X$Known = factor(X$Known, levels=rev(orig.rownames));
-  #   }
-  # } else {
-  #   X$Known = factor(X$Known, levels=rev(unique(X$Known)));
-  #   X$Predicted = factor(X$Predicted, levels=unique(X$Predicted));
-  # }
-  
-  #print(sum(is.na(X$Known)))
-  
-  p = ggplot(melted, aes(y = row,  x = col)) + 
-    geom_point(aes(colour = Percentage,  size =Percentage)) + 
-    scale_color_gradient(low=col.low,   high = col.high, limits=c(0, 100 ))+
-    scale_size(range = c(1, max.size), limits = c(0,max.perc))+   
-    theme_bw() #+nogrid
-  p = p + xlab(xlab.use) + ylab(ylab.use) + 
-    theme(axis.text.x=element_text(size=12, face="italic", hjust=1)) + 
-    theme(axis.text.y=element_text(size=12, face="italic"), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))  
-  
-  if (x.lab.rot) {
-    p <- p + theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+  if (is.null(row.levels) & is.null(col.levels)) {
+    melted$row = factor(melted$row, levels = orig.rownames)
+    melted$col = factor(melted$col, levels = rev(orig.colnames))
   }
-  # print(p)
+  else {
+    melted$row = factor(melted$row, levels = row.levels)
+    melted$col = factor(melted$col, levels = rev(col.levels))
+  }
   
-  if(plot.return) return(p)
+  p = ggplot(melted, aes(y = row, x = col)) + 
+    geom_tile(aes(fill = Percentage)) + 
+    scale_fill_gradient(low = col.low, high = col.high, limits = c(0, 100)) + 
+    geom_text(aes(label = sprintf("%.1f", Percentage)), size = 5) +
+    theme_bw() + 
+    xlab(xlab.use) + 
+    ylab(ylab.use) + 
+    theme(axis.text.x = element_text(size=16, face="italic", hjust=1, angle = ifelse(x.lab.rot, 90, 0)), 
+          axis.text.y = element_text(size=16, face="italic"), 
+          axis.title.x = element_text(size=16), 
+          axis.title.y = element_text(size=16))
+  
+  # Ensure correct rotation
+  if (x.lab.rot) {
+    p <- p + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  } else {
+    p <- p + theme(axis.text.x = element_text(angle = 0, vjust = 0.5, hjust=0.5))
+  }
+  
+  if (plot.return) return(p)
 }
-
 
 #' Generates a diagonlized confusion matrix plot
 #'
@@ -475,8 +590,6 @@ TopMarkers = function(markers, num_markers = 1, assay = "RNA"){
   }
   return(unique(plot_markers))
 }
-
-
 
 ClassBarPlot = function(df, levels, fill ){
   df <- df[levels,]

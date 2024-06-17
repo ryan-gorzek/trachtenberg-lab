@@ -5,7 +5,84 @@
 #' var.genes = features to use for learning
 #' do.scale = whether we want to z-score the features
 #' train.frac = fraction of cells in each ident we want to use for training
-XGBoost_train = function(train_Data, train_labels = NULL,var.genes=NULL, do.scale=FALSE,scale.mean = NULL, scale.var = NULL,max.cells.per.ident = 400, train.frac = 0.6, nround = 200){
+# XGBoost_train = function(train_Data, train_labels = NULL,var.genes=NULL, do.scale=FALSE,scale.mean = NULL, scale.var = NULL,max.cells.per.ident = 400, train.frac = 0.6, nround = 200){
+#   library(xgboost)
+#   if (!is.factor(train_labels)){
+#     train_labels = factor(train_labels)
+#   }
+#   
+#   if (length(train_labels) != ncol(train_Data)) stop("Error: There must be as many training IDs as there are cells (columns)")
+#   
+#   # Subsetting and Scaling
+#   train_Data = as.matrix(train_Data[var.genes,])
+#   if (do.scale){
+#     if (is.null(scale.mean) & is.null(scale.var)){
+#       scale.mean = rowMeans(train_Data)
+#       scale.var = apply(train_Data, 1, sd)
+#       train_Data = t(scale(t(train_Data), center=scale.mean, scale=scale.var))
+#     } else {
+#       train_Data = t(scale(t(train_Data), center=scale.mean, scale=scale.var))
+#     }
+#   }
+#   
+#   # Training set vs. validation set
+#   training.set = c(); validation.set=c()
+#   training.label = c(); validation.label=c();
+#   # print(paste0("Using either ", train.frac*100, " percent cells or ", max.cells.per.ident, " cells per cluster for training, whichever is smaller"))
+# 
+#   for (cc in c(1:length(levels(train_labels)))){
+#     i = levels(train_labels)[cc]
+#     
+#     cells.in.clust = names(train_labels)[train_labels == i];
+#     n = min(c(max.cells.per.ident, round(length(cells.in.clust)*train.frac)))
+#     train.temp = cells.in.clust[sample(length(cells.in.clust))][1:n]
+#     validation.temp = setdiff(cells.in.clust, train.temp)
+#     training.set = c(training.set,train.temp); validation.set=c(validation.set,validation.temp)
+#     training.label = c(training.label, rep(cc-1,length(train.temp)))
+#     validation.label = c(validation.label, rep(cc-1, length(validation.temp)))
+#     # Consider upsampling
+#   }
+#   
+#   training.label <- training.label
+#   validation.label <- validation.label
+#   train_matrix <- xgb.DMatrix(data = t(train_Data[,training.set]), label=training.label)
+#   validation_matrix <<- xgb.DMatrix(data = t(train_Data[,validation.set]), label=validation.label)
+#   
+#   numberOfClasses <- length(unique(training.label))
+#   xgb_params <- list("objective" = "multi:softprob",
+#                      "eval_metric" = "mlogloss",
+#                      "num_class" = numberOfClasses,
+#                      "eta" = 0.2,"max_depth"=6, subsample = 0.6)
+#   nround    <- nround # number of XGBoost rounds
+# 
+#   bst_model <- xgb.train(params = xgb_params,
+#                          data = train_matrix,
+#                          nrounds = nround)
+# 
+#   # Predict hold-out validation set
+#   validation_pred <- predict(bst_model, newdata = validation_matrix)
+#   validation_prediction <<- matrix(validation_pred, nrow = numberOfClasses,
+#                                   ncol=length(validation_pred)/numberOfClasses)
+# 
+#   valid_predlabels <- apply(validation_prediction,2,which.max)-1
+#   A = table(validation.label, valid_predlabels)
+#   A <- A
+#   TL <- levels(train_labels)
+#   colnames(A) = levels(train_labels); rownames(A) = levels(train_labels)
+#   confusion <- plotConfusionMatrix(A, order="Row", xlab.use = "True",
+#                                    ylab.use = "Predicted", plot.return = TRUE,
+#                                    stagger.threshold = 20)
+# 
+#   to.return = list()
+#   to.return$bst_model = bst_model
+#   to.return$scale_mean = scale.mean
+#   to.return$scale_var = scale.var
+#   to.return$test_mat = A
+#   to.return$confusion <- confusion
+#   return(to.return)
+# }
+
+XGBoost_train = function(train_Data, train_labels = NULL, var.genes = NULL, do.scale = FALSE, scale.mean = NULL, scale.var = NULL, max.cells.per.ident = 400, train.frac = 0.6, nround = 200, upsample = FALSE, downsample = FALSE){
   library(xgboost)
   if (!is.factor(train_labels)){
     train_labels = factor(train_labels)
@@ -19,68 +96,78 @@ XGBoost_train = function(train_Data, train_labels = NULL,var.genes=NULL, do.scal
     if (is.null(scale.mean) & is.null(scale.var)){
       scale.mean = rowMeans(train_Data)
       scale.var = apply(train_Data, 1, sd)
-      train_Data = t(scale(t(train_Data), center=scale.mean, scale=scale.var))
+      train_Data = t(scale(t(train_Data), center = scale.mean, scale = scale.var))
     } else {
-      train_Data = t(scale(t(train_Data), center=scale.mean, scale=scale.var))
+      train_Data = t(scale(t(train_Data), center = scale.mean, scale = scale.var))
     }
   }
   
   # Training set vs. validation set
-  training.set = c(); validation.set=c()
-  training.label = c(); validation.label=c();
-  print(paste0("Using either ", train.frac*100, " percent cells or ", max.cells.per.ident, " cells per cluster for training, whichever is smaller"))
+  training.set = c(); validation.set = c()
+  training.label = c(); validation.label = c();
   
+  # Determine the target class size if upsampling or downsampling
+  if (upsample) {
+    target_class_size <- max(table(train_labels))
+  } else if (downsample) {
+    target_class_size <- min(table(train_labels))
+  } else {
+    target_class_size <- NULL
+  }
   
   for (cc in c(1:length(levels(train_labels)))){
     i = levels(train_labels)[cc]
+    cells.in.clust = names(train_labels)[train_labels == i]
     
-    cells.in.clust = names(train_labels)[train_labels == i];
-    n = min(c(max.cells.per.ident, round(length(cells.in.clust)*train.frac)))
-    train.temp = cells.in.clust[sample(length(cells.in.clust))][1:n]
-    validation.temp = setdiff(cells.in.clust, train.temp)
-    training.set = c(training.set,train.temp); validation.set=c(validation.set,validation.temp)
-    training.label = c(training.label, rep(cc-1,length(train.temp)))
-    validation.label = c(validation.label, rep(cc-1, length(validation.temp)))
-    # Consider upsampling
+    if (upsample){
+      sampled_cells.in.clust <- make.unique(sample(cells.in.clust, target_class_size, replace = TRUE))
+    } else if (downsample) {
+      sampled_cells.in.clust <- sample(cells.in.clust, target_class_size, replace = FALSE)
+    } else {
+      sampled_cells.in.clust <- cells.in.clust
+    }
+    
+    n = min(c(max.cells.per.ident, round(length(sampled_cells.in.clust) * train.frac)))
+    train.temp = sampled_cells.in.clust[sample(length(sampled_cells.in.clust))][1:n]
+    validation.temp = setdiff(sampled_cells.in.clust, train.temp)
+    train.temp = sub("\\..*", "", train.temp); validation.temp = sub("\\..*", "", validation.temp)
+    training.set = c(training.set, train.temp); validation.set = c(validation.set, validation.temp)
+    training.label = c(training.label, rep(cc - 1, length(train.temp)))
+    validation.label = c(validation.label, rep(cc - 1, length(validation.temp)))
   }
   
-  training.label <<- training.label
-  validation.label <<- validation.label
-  train_matrix <<- xgb.DMatrix(data = t(train_Data[,training.set]), label=training.label)
-  validation_matrix <<- xgb.DMatrix(data = t(train_Data[,validation.set]), label=validation.label)
+  train_matrix <- xgb.DMatrix(data = t(train_Data[, training.set]), label = training.label)
+  validation_matrix <- xgb.DMatrix(data = t(train_Data[, validation.set]), label = validation.label)
   
-  numberOfClasses <<- length(unique(training.label))
+  numberOfClasses <- length(unique(training.label))
   xgb_params <- list("objective" = "multi:softprob",
                      "eval_metric" = "mlogloss",
                      "num_class" = numberOfClasses,
-                     "eta" = 0.2,"max_depth"=6, subsample = 0.6)
-  nround    <- nround # number of XGBoost rounds
-  print(1)
-
-  bst_model <<- xgb.train(params = xgb_params,
+                     "eta" = 0.2, "max_depth" = 6, subsample = 0.6)
+  nround <- nround # number of XGBoost rounds
+  
+  bst_model <- xgb.train(params = xgb_params,
                          data = train_matrix,
                          nrounds = nround)
   
-  print(2)
   # Predict hold-out validation set
-  validation_pred <<- predict(bst_model, newdata = validation_matrix)
-  validation_prediction <<- matrix(validation_pred, nrow = numberOfClasses,
-                                  ncol=length(validation_pred)/numberOfClasses)
-
-  valid_predlabels <<- apply(validation_prediction,2,which.max)-1
+  validation_pred <- predict(bst_model, newdata = validation_matrix)
+  validation_prediction <- matrix(validation_pred, nrow = numberOfClasses,
+                                   ncol = length(validation_pred) / numberOfClasses)
+  valid_predlabels <- apply(validation_prediction, 2, which.max) - 1
   A = table(validation.label, valid_predlabels)
-  A <<- A
-  TL <<- levels(train_labels)
+  TL <- levels(train_labels)
   colnames(A) = levels(train_labels); rownames(A) = levels(train_labels)
-  print(plotConfusionMatrix(A, order="Row", xlab.use = "True",
-                            ylab.use = "Predicted", plot.return = TRUE,
-                            stagger.threshold = 20))
-
+  confusion <- plotConfusionMatrix(A, order = "Row", xlab.use = "True",
+                                   ylab.use = "Predicted", plot.return = TRUE,
+                                   stagger.threshold = 20)
+  
   to.return = list()
   to.return$bst_model = bst_model
   to.return$scale_mean = scale.mean
   to.return$scale_var = scale.var
   to.return$test_mat = A
+  to.return$confusion <- confusion
   return(to.return)
 }
 
@@ -92,7 +179,7 @@ XGBoost_train = function(train_Data, train_labels = NULL,var.genes=NULL, do.scal
 #' @param do.scale Boolean value indicating whether to scale the data or not.
 #'
 #' @return An xgboost model
-TrainModel = function(object, training_genes, train_ident = NULL, do.scale = TRUE, assay = "integrated", slot = "data", train.frac = 0.6){
+TrainModel = function(object, training_genes, train_ident = NULL, do.scale = TRUE, assay = "SCT", slot = "data", train.frac = 0.6, upsample = FALSE, downsample = FALSE){
   library(reshape2)
   # train_data = slot(object@assays[[assay]], slot)[training_genes,]
   train_data = object@assays[[assay]]@data[training_genes,]
@@ -104,7 +191,8 @@ TrainModel = function(object, training_genes, train_ident = NULL, do.scale = TRU
   
   bst_model = XGBoost_train(train_data, train_labels = train_id, 
                             var.genes = training_genes, 
-                            do.scale = do.scale)
+                            do.scale = do.scale, 
+                            upsample = upsample, downsample = downsample)
   return(bst_model)
 }
 
@@ -120,7 +208,7 @@ TrainModel = function(object, training_genes, train_ident = NULL, do.scale = TRU
 #'
 #' @examples
 #' adult_to_larva <- BuildConfusionMatrix(larva, adult, model = larva.model)
-BuildConfusionMatrix = function(test, train, model, test_ident = NULL, scale = FALSE, scale.by.model = FALSE, assay = "integrated", slot = "data"){
+BuildConfusionMatrix = function(test, train, model, test_ident = NULL, scale = FALSE, scale.by.model = FALSE, assay = "SCT", slot = "data"){
   
   genes.use <- model$bst_model$feature_names
   train_id <<- factor(colnames(model$test_mat), levels=unique(colnames(model$test_mat)))
@@ -170,7 +258,7 @@ BuildConfusionMatrix = function(test, train, model, test_ident = NULL, scale = F
 #'
 #' @examples
 #' adult_to_larva <- BuildConfusionMatrix(larva, adult, model = larva.model)
-PredictLabels = function(test, model, test_ident = NULL, scale = FALSE, scale.by.model = FALSE, assay = "integrated", slot = "data"){
+PredictLabels = function(test, model, test_ident = NULL, scale = FALSE, scale.by.model = FALSE, assay = "SCT", slot = "data"){
   genes.use <- model$bst_model$feature_names
   train_id = factor(colnames(model$test_mat), levels = unique(colnames(model$test_mat)))
   
