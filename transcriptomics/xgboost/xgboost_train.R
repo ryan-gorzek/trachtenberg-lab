@@ -136,6 +136,10 @@ XGBoost_train = function(train_Data, train_labels = NULL, var.genes = NULL, do.s
     validation.label = c(validation.label, rep(cc - 1, length(validation.temp)))
   }
   
+  training.label <- training.label[is.na(training.set) == FALSE]
+  training.set <- training.set[is.na(training.set) == FALSE]
+  validation.label <- validation.label[is.na(validation.set) == FALSE]
+  validation.set <- validation.set[is.na(validation.set) == FALSE]
   train_matrix <- xgb.DMatrix(data = t(train_Data[, training.set]), label = training.label)
   validation_matrix <- xgb.DMatrix(data = t(train_Data[, validation.set]), label = validation.label)
   

@@ -1,0 +1,127 @@
+---
+title: "Opossum M1 Object"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+
+data_path <- "E:/Transcriptomics_V1/Opossum/output/Extended_lt10kb_ex5kb/"
+sample_IDs <- c('OpossumV1-3A', 'OpossumV1-3B')
+mapping_path <- "E:/_genomes/Opossum_Mouse_Genes.txt"
+
+data <- PreprocessData(sample_IDs, data_path, "Opossum_V1_3AB", mapping_path)
+
+obj.opossum <- data$obj
+obj.opossum$species <- "Opossum"
+
+```
+
+
+```{r, fig.height=3, fig.width=4}
+
+# Plot nFeature and nCount
+PlotQC(data)
+
+```
+
+
+```{r}
+
+# initial clustering
+obj.opossum <- ClusterSCT(obj.opossum, c(1))
+PlotClusters(obj.opossum)
+
+```
+
+
+```{r, fig.}
+
+# remove obvious doublets, cluster again
+obj.opossum <- subset(obj.opossum, idents = c(25), invert = TRUE)
+obj.opossum <- ClusterSCT(obj.opossum, c(1))
+PlotClusters(obj.opossum)
+
+```
+
+
+```{r, fig.width=12, fig.height=6}
+
+canon.markers <- list(
+                    class = c("Snap25", "Sv2b", "Gad2"),
+                    L23 = c("Cux2", "Ccbe1", "Mdga1", "Stard8"),
+                    L4 = c("Whrn", "Rorb"),
+                    L5IT = c("Bcl11b"),
+                    L5NP = c("Nxph1", "Tshz2", "Trhr", "Slc17a8"),
+                    L5PT = c("Bcl6", "Erg", "Reln"),
+                    L6CT = c("Foxp2", "Syt6"),
+                    L6IT = c("Zfp804b", "Cdh9"),
+                    L6b = c("Ctgf", "Inpp4b", "Svil"),
+                    Pvalb = c("Pvalb", "Myo5b"), 
+                    Sst = c("Sst"),
+                    Vip = c("Vip"),
+                    Lamp5 = c("Lamp5", "Sv2c"),
+                    Astro = c("Aldh1l1", "Grin2c", "Phkg1"),
+                    Endo = c("Pecam1", "Mecom", "Flt1"),
+                    Micro = c("Cx3cr1", "Arhgap45", "Inpp5d"),
+                    OD = c("Enpp6", "Mog", "St18"),
+                    OPC = c("Pdgfra", "Cacng4"),
+                    VLMC = c("Slc6a13", "Slc47a1", "Bnc2")
+                      )
+
+# look for canonical markers
+DefaultAssay(obj.opossum) <- "RNA"
+# PlotFeatures(obj.opossum, canon.markers)
+DotPlot(obj.opossum, features = canon.markers, cols = c("lightgrey", "red"), scale = FALSE) + 
+                         theme(axis.text.x = element_text(angle = 90, vjust = 0.25)) + 
+                         theme(panel.background = element_rect(fill = "white", color = NA), plot.background = element_rect(fill = "white", color = NA)) + NoLegend()
+
+```
+
+
+```{r}
+
+cells.glutamatergic <- WhichCells(obj.opossum, ident = c(1, 4, 5, 6, 8, 11, 13, 14, 15, 19, 20, 21, 24, 25))
+obj.opossum$class <- ifelse(colnames(obj.opossum) %in% cells.glutamatergic, "glutamatergic", "ambiguous")
+
+cells.gabaergic <- WhichCells(obj.opossum, ident = c(7, 12, 16, 18, 23))
+obj.opossum$class[cells.gabaergic] <- "gabaergic"
+
+cells.nonneuronal <- WhichCells(obj.opossum, ident = c(2, 3, 9, 10, 17, 22, 26, 27))
+obj.opossum$class[cells.nonneuronal] <- "nonneuronal"
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum, reduction = "umap", group.by = "class", label = FALSE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.opossum$all_SCT_snn_res.1 <- obj.opossum$SCT_snn_res.1
+Idents(obj.opossum) <- "class"
+
+obj.opossum.glutamatergic <- subset(obj.opossum, idents = "glutamatergic")
+saveRDS(obj.opossum.glutamatergic, "E:/Transcriptomics_V1/Opossum/3AB/seurat/opossum_v1_glutamatergic_3AB.rds")
+
+obj.opossum.gabaergic <- subset(obj.opossum, idents = "gabaergic")
+saveRDS(obj.opossum.gabaergic, "E:/Transcriptomics_V1/Opossum/3AB/seurat/opossum_v1_gabaergic_3AB.rds")
+
+obj.opossum.nonneuronal <- subset(obj.opossum, idents = "nonneuronal")
+saveRDS(obj.opossum.nonneuronal, "E:/Transcriptomics_V1/Opossum/3AB/seurat/opossum_v1_nonneuronal_3AB.rds")
+
+```
+

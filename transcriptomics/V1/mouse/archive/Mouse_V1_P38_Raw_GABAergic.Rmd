@@ -1,0 +1,295 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(tidyverse)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.mouse.gabaergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_raw_gabaergic.rds")
+
+```
+
+
+```{r}
+
+obj.mouse.gabaergic <- ClusterSCT(obj.mouse.gabaergic, c(1))
+PlotClusters(obj.mouse.gabaergic, group.id = "SCT_snn_res.1")
+
+```
+
+
+```{r}
+
+canon.markers <- list(
+                    class = c("Gad1", "Gad2", "Adarb2", "Lhx6"),
+                    Pvalb = c("Pvalb", "Myo5b", "Cemip", "Vipr2"), 
+                    Sst = c("Sst", "Chodl"), 
+                    Vip = c("Vip"), 
+                    Lamp5 = c("Lamp5"), 
+                    Other = c("Frem1", "Stac", "Sncg")
+                      )
+
+# look for canonical markers
+DefaultAssay(obj.mouse.gabaergic) <- "RNA"
+Idents(obj.mouse.gabaergic) <- "SCT_snn_res.1"
+PlotFeatures(obj.mouse.gabaergic, canon.markers)
+DotPlot(obj.mouse.gabaergic, features = canon.markers, cols = c("lightgrey", "red"), scale = FALSE) + 
+                         theme(axis.text.x = element_text(angle = 90, vjust = 0.25)) + 
+                         theme(panel.background = element_rect(fill = "white", color = NA), plot.background = element_rect(fill = "white", color = NA)) + NoLegend()
+
+```
+
+
+```{r}
+
+obj.mouse.gabaergic.prefilt <- obj.mouse.gabaergic
+obj.mouse.gabaergic <- subset(obj.mouse.gabaergic, idents = c(5, 7), invert = TRUE)
+
+```
+
+
+```{r}
+
+obj.mouse.gabaergic <- ClusterSCT(obj.mouse.gabaergic, c(1, 1.5, 2))
+PlotClusters(obj.mouse.gabaergic, group.id = "SCT_snn_res.1")
+
+canon.markers <- list(
+                    class = c("Gad1", "Gad2", "Adarb2", "Lhx6"),
+                    Pvalb = c("Pvalb", "Myo5b", "Cemip", "Vipr2"), 
+                    Sst = c("Sst", "Chodl"), 
+                    Vip = c("Vip"), 
+                    Lamp5 = c("Lamp5"), 
+                    Other = c("Frem1", "Stac", "Sncg")
+                      )
+
+# look for canonical markers
+DefaultAssay(obj.mouse.gabaergic) <- "RNA"
+Idents(obj.mouse.gabaergic) <- "SCT_snn_res.1"
+PlotFeatures(obj.mouse.gabaergic, canon.markers)
+DotPlot(obj.mouse.gabaergic, features = canon.markers, cols = c("lightgrey", "red"), scale = FALSE) + 
+                         theme(axis.text.x = element_text(angle = 90, vjust = 0.25)) + 
+                         theme(panel.background = element_rect(fill = "white", color = NA), plot.background = element_rect(fill = "white", color = NA)) + NoLegend()
+
+```
+
+
+```{r}
+
+PlotClusters(obj.mouse.gabaergic, group.id = "SCT_snn_res.1.5")
+
+```
+
+
+```{r}
+
+PlotClusters(obj.mouse.gabaergic, group.id = "SCT_snn_res.2")
+
+```
+
+
+```{r}
+
+clustree(obj.mouse.gabaergic, prefix = "SCT_snn_res.")
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.mouse.gabaergic) <- "SCT"
+Idents(obj.mouse.gabaergic) <- "SCT_snn_res.1"
+markers.7 <- FindMarkers(obj.mouse.gabaergic, ident.1 = 7)
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.mouse.gabaergic) <- "SCT"
+ident = "SCT_snn_res.1"
+gene <- "Cck"
+DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by = ident, label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, gene, raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+VlnPlot(obj.mouse.gabaergic, gene, group.by = ident)
+
+```
+
+
+```{r}
+
+# identify subclasses at each clustering resolution
+# do differential expression for clusters within each subclass
+# generate plots of top genes for each
+
+subclass.idx.mouse <- list()
+
+subclass.idx.mouse$SCT_snn_res.1$Pvalb <- c("1", "3", "4", "8", "11")
+subclass.idx.mouse$SCT_snn_res.1.5$Pvalb <- c("1", "4", "7", "9", "10", "12", "14", "16")
+subclass.idx.mouse$SCT_snn_res.2$Pvalb <- c("1", "3", "7", "8", "9", "11", "14", "16")
+
+subclass.idx.mouse$SCT_snn_res.1$Sst <- c("6", "9", "10", "12")
+subclass.idx.mouse$SCT_snn_res.1.5$Sst <- c("3", "8", "11", "15")
+subclass.idx.mouse$SCT_snn_res.2$Sst <- c("2", "6", "10", "15")
+
+subclass.idx.mouse$SCT_snn_res.1$Vip <- c("2")
+subclass.idx.mouse$SCT_snn_res.1.5$Vip <- c("6", "13")
+subclass.idx.mouse$SCT_snn_res.2$Vip <- c("5", "13")
+
+subclass.idx.mouse$SCT_snn_res.1$Lamp5 <- c("5")
+subclass.idx.mouse$SCT_snn_res.1.5$Lamp5 <- c("2")
+subclass.idx.mouse$SCT_snn_res.2$Lamp5 <- c("12", "17")
+
+subclass.idx.mouse$SCT_snn_res.1$Frem1 <- c("7")
+subclass.idx.mouse$SCT_snn_res.1.5$Frem1 <- c("5")
+subclass.idx.mouse$SCT_snn_res.2$Frem1 <- c("4")
+
+obj.mouse.gabaergic <- SubclassByIdent(obj.mouse.gabaergic, subclass.idx.mouse)
+
+```
+
+
+```{r}
+
+subclass.labels <- c("Pvalb", "Sst", "Vip", "Lamp5")
+ident.labels <- c("SCT_snn_res.1", "SCT_snn_res.1.5", "SCT_snn_res.2")
+
+markers.mouse.gabaergic <- IdentMarkerDict(obj.mouse.gabaergic, subclass.labels, ident.labels,
+                                        "E:/Transcriptomics_V1/mouse/seurat/marker_genes/markerdict_clusters.rds")
+SaveDotPlots(obj.mouse.gabaergic, markers.mouse.gabaergic,
+             subclass.labels, ident.labels,
+             "E:/Transcriptomics_V1/mouse/seurat/cell_types/", "ENSMODG")
+SaveFeaturePlots(obj.mouse.gabaergic, markers.mouse.gabaergic,
+                 subclass.labels, ident.labels,
+                 "E:/Transcriptomics_V1/mouse/seurat/cell_types/")
+
+```
+
+
+```{r}
+
+subclass.labels <- c("Pvalb", "Sst", "Vip", "Lamp5")
+ident.labels <- c("SCT_snn_res.1", "SCT_snn_res.1.5", "SCT_snn_res.2")
+
+for (sbcl in subclass.labels) {
+  for (id in ident.labels) {
+    p <- PlotIdentGeneCounts(markers.mouse.gabaergic, sbcl, id)
+    p <- p + theme(aspect.ratio = 1) # Make plot square
+    print(p)
+  }
+}
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.mouse.gabaergic) <- "SCT"
+ident = "SCT_snn_res.2"
+gene <- "Cck"
+DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by = ident, label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, gene, raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+VlnPlot(obj.mouse.gabaergic, gene, group.by = ident)
+
+```
+
+
+```{r}
+
+# whole-transcriptome cross-validated classification
+subclass.labels <- c("Pvalb", "Sst", "Vip", "Lamp5")
+ident.labels <- c("SCT_snn_res.1", "SCT_snn_res.1.5", "SCT_snn_res.2")
+
+SaveIdentConfusionMatrices(obj.mouse.gabaergic, subclass.labels, ident.labels, 
+                      "E:/Transcriptomics_V1/mouse/seurat/cell_types/")
+
+```
+
+
+```{r}
+
+# label subclasses and types
+obj.mouse.gabaergic$subclass <- NA
+obj.mouse.gabaergic$type <- NA
+
+subclass.resolutions <- rev(list(Pvalb = 1, Sst = 1, Vip = 1.5, Lamp5 = 2, Frem1 = 2))
+obj.mouse.gabaergic <- LabelCells(obj.mouse.gabaergic, subclass.resolutions)
+
+```
+
+
+```{r}
+
+DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by = "type", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+# Plot relative subclass proportions
+Idents(obj.mouse.gabaergic) <- "subclass"
+levels(obj.mouse.gabaergic) <- c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1")
+
+IdentBySample(obj.mouse.gabaergic, y_limits = c(0, 0.60))
+
+```
+
+
+```{r}
+
+subclass.labels <- c("Pvalb", "Sst", "Vip", "Lamp5")
+ident.labels <- c("type")
+
+subclass.markers.mouse.gabaergic <- SubclassMarkerDict(obj.mouse.gabaergic, "subclass",
+                                                       "E:/Transcriptomics_V1/mouse/seurat/marker_genes/markerdict_subclass.rds")
+markers.mouse.gabaergic <- IdentMarkerDict(obj.mouse.gabaergic, subclass.labels, ident.labels,
+                                        "E:/Transcriptomics_V1/mouse/seurat/marker_genes/markerdict_types.rds")
+SaveDotPlots(obj.mouse.gabaergic, markers.mouse.gabaergic,
+             subclass.labels, ident.labels,
+             "E:/Transcriptomics_V1/mouse/seurat/cell_types/", "ENSMODG")
+SaveFeaturePlots(obj.mouse.gabaergic, markers.mouse.gabaergic,
+                 subclass.labels, ident.labels,
+                 "E:/Transcriptomics_V1/mouse/seurat/cell_types/")
+
+PlotSubclassGeneCounts(subclass.markers.mouse.gabaergic, "subclass", 
+                       c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")) + theme(aspect.ratio = 1)
+for (sbcl in subclass.labels) {
+  for (id in ident.labels) {
+    p <- PlotIdentGeneCounts(markers.mouse.gabaergic, sbcl, id)
+    p <- p + theme(aspect.ratio = 1) # Make plot square
+    print(p)
+  }
+}
+
+SaveSubclassConfusionMatrices(obj.mouse.gabaergic, "subclass",
+                              c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac"),
+                              "E:/Transcriptomics_V1/mouse/seurat/cell_types/")
+SaveIdentConfusionMatrices(obj.mouse.gabaergic, subclass.labels, ident.labels,
+                           "E:/Transcriptomics_V1/mouse/seurat/cell_types/")
+
+```
+
+
+```{r}
+
+saveRDS(obj.mouse.gabaergic, "E:/Transcriptomics_V1/mouse/seurat/mouse_v1_gabaergic_processed.rds")
+
+```
+

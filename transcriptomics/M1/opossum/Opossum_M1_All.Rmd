@@ -1,86 +1,129 @@
 ---
-title: "Opossum M1 All"
+title: "Opossum M1 Object"
 output: html_notebook
 ---
 
 ```{r}
 
 library(Seurat)
-library(reticulate)
-library(arrow)
-library(ggplot2)
-library(dplyr)
 library(SeuratDisk)
-obj.opossum <- LoadH5Seurat("E:/Transcriptomics_M1/Opossum/seurat/opossum_m1_all.h5Seurat")
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(tidyverse)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+
+data_path <- "E:/Transcriptomics_M1/Opossum/output/Extended_lt10kb_ex5kb/"
+sample_IDs <- c('NW_TX0055-4', 'NW_TX0055-5', 'NW_TX0055-6', 'NW_TX0064-3', 'NW_TX0064-4', 'NW_TX0064-5',
+                'NW_TX0077-7', 'NW_TX0077-8', 'NW_TX0078-1', 'NW_TX0092-7', 'NW_TX0092-8')
+mapping_path <- "E:/_genomes/Opossum_Mouse_Genes.txt"
+
+data <- PreprocessData(sample_IDs, data_path, "Opossum_M1", mapping_path)
+
+obj.opossum <- data$obj
+obj.opossum$species <- "Opossum"
+
+```
+
+
+```{r, fig.height=3, fig.width=4}
+
+# Plot nFeature and nCount
+PlotQC(data)
 
 ```
 
 
 ```{r}
 
-DimPlot(obj.opossum, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-DimPlot(obj.opossum, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
-DimPlot(obj.opossum, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+# initial clustering
+obj.opossum <- ClusterSCT(obj.opossum, c(1))
+PlotClusters(obj.opossum)
+
+```
+
+
+```{r, fig.}
+
+# remove obvious doublets, cluster again
+obj.opossum <- subset(obj.opossum, idents = c(NA), invert = TRUE)
+obj.opossum <- ClusterSCT(obj.opossum, c(1))
+PlotClusters(obj.opossum)
+
+```
+
+
+```{r, fig.width=12, fig.height=6}
+
+canon.markers <- list(
+                    class = c("Snap25", "Sv2b", "Gad2"),
+                    L23 = c("Cux2", "Ccbe1", "Mdga1", "Stard8"),
+                    L4 = c("Whrn", "Rorb"),
+                    L5IT = c("Bcl11b"),
+                    L5NP = c("Nxph1", "Tshz2", "Trhr", "Slc17a8"),
+                    L5PT = c("Bcl6", "Erg", "Reln"),
+                    L6CT = c("Foxp2", "Syt6"),
+                    L6IT = c("Zfp804b", "Cdh9"),
+                    L6b = c("Ctgf", "Inpp4b", "Svil"),
+                    Pvalb = c("Pvalb", "Myo5b"), 
+                    Sst = c("Sst"),
+                    Vip = c("Vip"),
+                    Lamp5 = c("Lamp5", "Sv2c"),
+                    Astro = c("Aldh1l1", "Grin2c", "Phkg1"),
+                    Endo = c("Pecam1", "Mecom", "Flt1"),
+                    Micro = c("Cx3cr1", "Arhgap45", "Inpp5d"),
+                    OD = c("Enpp6", "Mog", "St18"),
+                    OPC = c("Pdgfra", "Cacng4"),
+                    VLMC = c("Slc6a13", "Slc47a1", "Bnc2")
+                      )
+
+# look for canonical markers
+DefaultAssay(obj.opossum) <- "RNA"
+# PlotFeatures(obj.opossum, canon.markers)
+DotPlot(obj.opossum, features = canon.markers, cols = c("lightgrey", "red"), scale = FALSE) + 
+                         theme(axis.text.x = element_text(angle = 90, vjust = 0.25)) + 
+                         theme(panel.background = element_rect(fill = "white", color = NA), plot.background = element_rect(fill = "white", color = NA)) + NoLegend()
 
 ```
 
 
 ```{r}
 
-FeaturePlot(obj.opossum, reduction = "umap", features = c("Snap25"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-FeaturePlot(obj.opossum, reduction = "umap", features = c("Gad2"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-FeaturePlot(obj.opossum, reduction = "umap", features = c("Csf1r"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-FeaturePlot(obj.opossum, reduction = "umap", features = c("Mog"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-FeaturePlot(obj.opossum, reduction = "umap", features = c("Pdgfra"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-FeaturePlot(obj.opossum, reduction = "umap", features = c("Aldh1l1"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-FeaturePlot(obj.opossum, reduction = "umap", features = c("Col1a1"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-
-FeaturePlot(obj.opossum, reduction = "umap", features = c("Slc17a6"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-FeaturePlot(obj.opossum, reduction = "umap", features = c("Slc17a7"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-FeaturePlot(obj.opossum, reduction = "umap", features = c("Gad1"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-FeaturePlot(obj.opossum, reduction = "umap", features = c("Lhx6"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-FeaturePlot(obj.opossum, reduction = "umap", features = c("Htr3a"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-
-FeaturePlot(obj.opossum, reduction = "umap", features = c("Pvalb"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-FeaturePlot(obj.opossum, reduction = "umap", features = c("Sst"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-FeaturePlot(obj.opossum, reduction = "umap", features = c("Vip"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-FeaturePlot(obj.opossum, reduction = "umap", features = c("Lamp5"), raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-
-```
-
-
-```{r}
-
-cells.glutamatergic <- WhichCells(obj.opossum, ident = c(1))
+cells.glutamatergic <- WhichCells(obj.opossum, ident = c(1, 2, 3, 4, 5, 6, 9, 10, 11, 14, 15, 18, 19, 20, 26, 27, 29))
 obj.opossum$class <- ifelse(colnames(obj.opossum) %in% cells.glutamatergic, "glutamatergic", "ambiguous")
 
-cells.gabaergic <- WhichCells(obj.opossum, ident = c(7, 13, 17, 20, 25, 29, 30))
+cells.gabaergic <- WhichCells(obj.opossum, ident = c(7, 13, 16, 22))
 obj.opossum$class[cells.gabaergic] <- "gabaergic"
 
-# cells.nonneuronal <- WhichCells(obj.opossum, ident = c(8, 10, 21, 23, 25, 26, 27, 29))
-# obj.opossum$class[cells.nonneuronal] <- "nonneuronal"
+cells.nonneuronal <- WhichCells(obj.opossum, ident = c(8, 12, 17, 21, 23, 24, 25, 28))
+obj.opossum$class[cells.nonneuronal] <- "nonneuronal"
 
 ```
 
 
 ```{r}
 
-DimPlot(obj.opossum, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
-DimPlot(obj.opossum, reduction = "umap", group.by = "subclass", raster = FALSE) + xlim(-15, 12) + ylim(-15, 12) + coord_equal()
+DimPlot(obj.opossum, reduction = "umap", group.by = "class", label = FALSE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
 
 ```
 
 
 ```{r}
 
-# obj.opossum.glutamatergic <- subset(obj.opossum, subset = class == "glutamatergic")
-# SaveH5Seurat(obj.opossum.glutamatergic, "E:/Opossum_M1/seurat/opossum_m1_glutamatergic_raw.h5seurat", overwrite = TRUE, verbose = TRUE)
+obj.opossum$all_SCT_snn_res.1 <- obj.opossum$SCT_snn_res.1
+Idents(obj.opossum) <- "class"
 
-obj.opossum.gabaergic <- subset(obj.opossum, subset = class == "gabaergic")
-SaveH5Seurat(obj.opossum.gabaergic, "E:/Opossum_M1/seurat/opossum_m1_gabaergic_raw_ext.h5seurat", overwrite = TRUE, verbose = TRUE)
+obj.opossum.glutamatergic <- subset(obj.opossum, idents = "glutamatergic")
+saveRDS(obj.opossum.glutamatergic, "E:/Transcriptomics_M1/Opossum/seurat/opossum_m1_glutamatergic.rds")
 
-# obj.opossum.nonneuronal <- subset(obj.opossum, subset = class == "nonneuronal")
-# SaveH5Seurat(obj.opossum.nonneuronal, "E:/Opossum_M1/seurat/opossum_m1_nonneuronal_raw.h5seurat", overwrite = TRUE, verbose = TRUE)
+obj.opossum.gabaergic <- subset(obj.opossum, idents = "gabaergic")
+saveRDS(obj.opossum.gabaergic, "E:/Transcriptomics_M1/Opossum/seurat/opossum_m1_gabaergic.rds")
+
+obj.opossum.nonneuronal <- subset(obj.opossum, idents = "nonneuronal")
+saveRDS(obj.opossum.nonneuronal, "E:/Transcriptomics_M1/Opossum/seurat/opossum_m1_nonneuronal.rds")
 
 ```
 

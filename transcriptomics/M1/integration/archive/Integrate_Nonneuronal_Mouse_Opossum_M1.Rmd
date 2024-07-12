@@ -1,0 +1,88 @@
+---
+title: "Integrate Non-neuronal Mouse Opossum"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(cowplot)
+library(dplyr)
+library(SeuratDisk)
+
+obj.mouse <- LoadH5Seurat("E:/Mouse_M1/seurat/mouse_m1_nonneuronal.h5seurat")
+obj.mouse[["dataset"]] <- "Mouse_M1"
+
+obj.opossum <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_nonneuronal.h5seurat")
+obj.opossum[["dataset"]] <- "Opossum_M1"
+
+obj.mouse <- obj.mouse[, sample(colnames(obj.mouse), size = ncol(obj.opossum), replace = FALSE)]
+
+```
+
+
+```{r}
+
+common.features <- intersect(rownames(obj.mouse), rownames(obj.opossum))
+obj.combined <- merge(obj.mouse[common.features,], y = obj.opossum[common.features,])
+obj.list <- SplitObject(obj.combined, split.by = "dataset")
+
+```
+
+
+```{r}
+
+obj.list[["Mouse_M1"]] <- SCTransform(obj.list[["Mouse_M1"]], vst.flavor = "v2", verbose = FALSE) %>%
+               RunPCA(npcs = 30, verbose = FALSE) %>%
+               RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+               FindNeighbors(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+               FindClusters(resolution = 1, algorithm = 4, method = "igraph")
+
+DimPlot(obj.list[["Mouse_M1"]], label = TRUE, repel = TRUE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+obj.list[["Opossum_M1"]] <- SCTransform(obj.list[["Opossum_M1"]], vst.flavor = "v2", verbose = FALSE) %>%
+               RunPCA(npcs = 30, verbose = FALSE) %>%
+               RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+               FindNeighbors(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+               FindClusters(resolution = 1, algorithm = 4, method = "igraph")
+
+DimPlot(obj.list[["Opossum_M1"]], label = TRUE, repel = TRUE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+features <- SelectIntegrationFeatures(object.list = obj.list, nfeatures = 5000)
+obj.list <- PrepSCTIntegration(object.list = obj.list, anchor.features = features)
+anchors <- FindIntegrationAnchors(object.list = obj.list, normalization.method = "SCT", anchor.features = features)
+obj.combined.sct <- IntegrateData(anchorset = anchors, normalization.method = "SCT")
+
+```
+
+
+```{r}
+
+obj.combined.sct <- RunPCA(obj.combined.sct, verbose = FALSE)
+obj.combined.sct <- RunUMAP(obj.combined.sct, reduction = "pca", dims = 1:30, verbose = FALSE)
+obj.combined.sct <- FindNeighbors(obj.combined.sct, reduction = "pca", dims = 1:30)
+obj.combined.sct <- FindClusters(obj.combined.sct, resolution = 1, algorithm = 4, method = "igraph")
+
+```
+
+
+```{r}
+
+DimPlot(obj.combined.sct, reduction = "umap", group.by = "integrated_snn_res.1", label = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+dataset_plot <- DimPlot(obj.combined.sct, reduction = "umap", group.by = "dataset") + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Mouse_Opossum_M1_Nonneuronal_Dataset.svg", plot=dataset_plot, width=6, height=4)
+DimPlot(obj.combined.sct, reduction = "umap", group.by = "cluster_label", label = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+# DimPlot(obj.combined.sct, reduction = "umap", split.by = "dataset", group.by = "RNA_snn_res.1.5", label = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+subclass_plot <- DimPlot(obj.combined.sct, reduction = "umap", split.by = "dataset", group.by = "subclass_label", label = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Mouse_Opossum_M1_Nonneuronal_Subclass.svg", plot=subclass_plot, width=8.5, height=4.5)
+
+```
+

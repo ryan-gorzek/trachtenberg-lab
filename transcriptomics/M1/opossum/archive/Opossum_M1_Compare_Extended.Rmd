@@ -1,0 +1,133 @@
+---
+title: "Opossum M1 Compare Extended"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+obj.opossum.gabaergic.nrm <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic_raw.h5Seurat")
+obj.opossum.gabaergic.ext <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic_raw_ext.h5Seurat")
+
+```
+
+
+```{r}
+
+obj.opossum.gabaergic.nrm <- FindVariableFeatures(obj.opossum.gabaergic.nrm, selection.method = "vst", nfeatures = 3000)
+obj.opossum.gabaergic.ext <- FindVariableFeatures(obj.opossum.gabaergic.ext, selection.method = "vst", nfeatures = 3000)
+all.genes.nrm <- rownames(obj.opossum.gabaergic.nrm)
+all.genes.ext <- rownames(obj.opossum.gabaergic.ext)
+obj.opossum.gabaergic.nrm <- ScaleData(obj.opossum.gabaergic.nrm, features = all.genes.nrm)
+obj.opossum.gabaergic.ext <- ScaleData(obj.opossum.gabaergic.ext, features = all.genes.ext)
+obj.opossum.gabaergic.nrm <- RunPCA(obj.opossum.gabaergic.nrm, features = VariableFeatures(object = obj.opossum.gabaergic.nrm))
+obj.opossum.gabaergic.ext <- RunPCA(obj.opossum.gabaergic.ext, features = VariableFeatures(object = obj.opossum.gabaergic.ext))
+ElbowPlot(obj.opossum.gabaergic.nrm, ndims = 50)
+ElbowPlot(obj.opossum.gabaergic.ext, ndims = 50)
+
+```
+
+
+```{r}
+
+obj.opossum.gabaergic.nrm <- FindNeighbors(obj.opossum.gabaergic.nrm, dims = 1:30)
+obj.opossum.gabaergic.ext <- FindNeighbors(obj.opossum.gabaergic.ext, dims = 1:30)
+obj.opossum.gabaergic.nrm <- FindClusters(obj.opossum.gabaergic.nrm, resolution = 1, algorithm = 4, method = "igraph")
+obj.opossum.gabaergic.ext <- FindClusters(obj.opossum.gabaergic.ext, resolution = 1, algorithm = 4, method = "igraph")
+obj.opossum.gabaergic.nrm <- RunUMAP(obj.opossum.gabaergic.nrm, dims = 1:30, method="umap-learn")
+obj.opossum.gabaergic.ext <- RunUMAP(obj.opossum.gabaergic.ext, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+obj.opossum.gabaergic.ext[["percent.mt"]] <- PercentageFeatureSet(obj.opossum.gabaergic.ext, pattern = "mt-")
+obj.opossum.gabaergic.ext[["percent.rp"]] <- PercentageFeatureSet(obj.opossum.gabaergic.ext, pattern = "^Rp[ls]")
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.gabaergic.nrm, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.gabaergic.nrm, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-15, 12) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.gabaergic.nrm, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+VlnPlot(obj.opossum.gabaergic.nrm, c("nCount_RNA"))
+
+DimPlot(obj.opossum.gabaergic.ext, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.gabaergic.ext, reduction = "umap", group.by = "sample", raster = FALSE) + xlim(-15, 12) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.gabaergic.ext, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+VlnPlot(obj.opossum.gabaergic.ext, c("nCount_RNA"))
+VlnPlot(obj.opossum.gabaergic.ext, c("percent.mt"))
+VlnPlot(obj.opossum.gabaergic.ext, c("percent.rp"))
+
+```
+
+
+```{r}
+
+obj.opossum.gabaergic.ext.sst <- subset(obj.opossum.gabaergic.ext, idents = c("3", "6", "12", "14", "19"))
+all.markers.ext.sst <- FindAllMarkers(obj.opossum.gabaergic.ext.sst, only.pos = TRUE)
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.gabaergic.ext.sst, reduction = "umap", group.by = "RNA_snn_res.1", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.gabaergic.ext.sst, reduction = "umap", group.by = "sample", label.size = 4, raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.ext.sst, c("nFeature_RNA"), min.cutoff = 0)  + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.ext.sst, c("nCount_RNA"), min.cutoff = 0)  + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.ext.sst, c("Gad2"))  + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.ext.sst, c("Moxd1"))  + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+VlnPlot(obj.opossum.gabaergic.ext.sst, "nFeature_RNA", group.by = "RNA_snn_res.1")
+VlnPlot(obj.opossum.gabaergic.ext.sst, "nCount_RNA", group.by = "RNA_snn_res.1")
+VlnPlot(obj.opossum.gabaergic.ext.sst, "Moxd1", group.by = "RNA_snn_res.1")
+
+```
+
+
+```{r}
+
+obj.opossum.gabaergic.ext.pvalb <- subset(obj.opossum.gabaergic.ext, idents = c("1", "4", "5", "7", "8", "9", "15"))
+all.markers.ext.pvalb <- FindAllMarkers(obj.opossum.gabaergic.ext.pvalb, only.pos = TRUE)
+
+```
+
+
+```{r}
+
+library(stringr)
+library(GOfuncR)
+
+cd_gene_ids <- all.markers.ext.pvalb.1$gene[!str_detect(all.markers.ext.pvalb.1$gene, "ENSMODG")]
+bg_gene_ids <- setdiff(rownames(obj.opossum.gabaergic.ext)[!str_detect(rownames(obj.opossum.gabaergic.ext), "ENSMODG")], cd_gene_ids)
+
+is_candidate <- c(rep(1,length(cd_gene_ids)), rep(0,length(bg_gene_ids)))
+input_hyper_bg <- data.frame(gene_ids = c(cd_gene_ids, bg_gene_ids), is_candidate)
+
+res_hyper_mouse.1 <- go_enrich(input_hyper_bg, organismDb='Mus.musculus')
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

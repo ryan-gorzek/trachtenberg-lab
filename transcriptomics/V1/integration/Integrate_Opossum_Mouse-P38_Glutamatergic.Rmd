@@ -1,0 +1,203 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
+obj.opossum.glutamatergic$species <- "Opossum"
+subclass.markers.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/Glutamatergic/markerdict_subclass.rds")
+markers.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/Glutamatergic/markerdict_types.rds")
+obj.mouse.glutamatergic.P38 <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+obj.mouse.glutamatergic.P38$species <- "Mouse"
+subclass.markers.mouse.glutamatergic.P38 <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Glutamatergic/P38/markerdict_subclass.rds")
+markers.mouse.glutamatergic.P38 <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Glutamatergic/P38/markerdict_types.rds")
+
+objs <- list(obj.opossum.glutamatergic, obj.mouse.glutamatergic.P38)
+subclass.markers <- list(subclass.markers.opossum.glutamatergic, subclass.markers.mouse.glutamatergic.P38)
+type.markers <- list(markers.opossum.glutamatergic, markers.mouse.glutamatergic.P38)
+sample.names <- list("OpossumV1", "MouseV1-P38")
+
+```
+
+
+```{r}
+
+subclasses <- c("L2/3", "L4", "L5IT", "IT", "L5NP", "L5PT", "L6IT", "L6CT", "L6b")
+
+# pre-integration subclass comparison (DE genes)
+for (pc in c(T, F)) {
+  p <- PlotSubclassDEIntersection(subclass.markers[[1]], subclass.markers[[2]], 
+                                  rownames(objs[[1]]), rownames(objs[[2]]),
+                                  sample.names[[1]], sample.names[[2]],
+                                  subclasses, 0.2, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/subclass_markers/Glutamatergic/", percentage = pc)
+  print(p)
+}
+
+# pre-integration type comparison (DE genes)
+for (pc in c(T, F)) {
+  for (sbcl in subclasses) {
+    if (sbcl %in% names(type.markers[[1]]) & sbcl %in% names(type.markers[[2]])) {
+      p <- PlotIdentDEIntersection(type.markers[[1]], type.markers[[2]],
+                                   rownames(objs[[1]]), rownames(objs[[2]]),
+                                   sample.names[[1]], sample.names[[2]],
+                                   sbcl, sbcl, "type", "type", 0.2, percentage = pc)
+      print(p)
+    }
+  }
+}
+
+```
+
+
+```{r, fig.width=15, fig.height=6}
+
+sbcl_conf_plots <- PlotSubclassCrossConfusionMatrices(objs[[1]], objs[[2]], 
+                                                      sample.names[[1]], sample.names[[2]], 
+                                                      assay = "SCT",
+                                                      subclasses, n_iters = 10, all.genes = FALSE, upsample = TRUE)
+
+```
+
+
+```{r}
+
+print(sbcl_conf_plots[[1]])
+print(sbcl_conf_plots[[2]])
+
+```
+
+
+```{r, fig.width=15, fig.height=6}
+
+subclass.labels <- c("Pvalb", "Sst", "Vip")
+ident.labels <- c("type")
+
+idnt_conf_plots <- PlotIdentCrossConfusionMatrices(objs[[1]], objs[[2]], 
+                                                   sample.names[[1]], sample.names[[2]], 
+                                                   assay = "SCT",
+                                                   subclass.labels, ident.labels, n_iters = 10, 
+                                                   ident.genes = TRUE, all.genes = FALSE, upsample = TRUE)
+
+```
+
+
+```{r}
+
+for (sbcl in subclass.labels) {
+  for (id in ident.labels) {
+    print(idnt_conf_plots[[sbcl]][[id]][["avg1"]])
+    print(idnt_conf_plots[[sbcl]][[id]][["avg2"]])
+  }
+}
+
+```
+
+
+```{r}
+
+obj.integrated <- IntegrateObjects(objs[[1]], objs[[2]], resolutions = c(1, 2), nfeatures = 3000, subsample = TRUE)
+
+```
+
+
+```{r}
+
+PlotIntegration(obj.integrated, "species", c("integrated_snn_res.1", "integrated_snn_res.2"), subclasses)
+
+```
+
+
+```{r}
+
+objs.i <- SplitObject(obj.integrated, split.by = "species")
+
+```
+
+
+```{r, fig.width=15, fig.height=6}
+
+sbcl_conf_plots_i <- PlotSubclassCrossConfusionMatrices(objs.i[[1]], objs.i[[2]], 
+                                                        sample.names[[1]], sample.names[[2]], 
+                                                        assay = "integrated",
+                                                        subclasses, n_iters = 10, all.genes = FALSE, upsample = TRUE)
+
+```
+
+
+```{r}
+
+print(sbcl_conf_plots_i[[1]])
+print(sbcl_conf_plots_i[[2]])
+
+```
+
+
+```{r, fig.width=15, fig.height=6}
+
+subclass.labels <- c("Pvalb", "Sst", "Vip")
+ident.labels <- c("type")
+
+idnt_conf_plots_i <- PlotIdentCrossConfusionMatrices(objs.i[[1]], objs.i[[2]], 
+                                                     sample.names[[1]], sample.names[[2]], 
+                                                     assay = "integrated",
+                                                     subclass.labels, ident.labels, n_iters = 10, 
+                                                     ident.genes = TRUE, all.genes = FALSE, upsample = TRUE)
+
+```
+
+
+```{r}
+
+for (sbcl in subclass.labels) {
+  for (id in ident.labels) {
+    print(idnt_conf_plots_i[[sbcl]][[id]][["avg1"]])
+    print(idnt_conf_plots_i[[sbcl]][[id]][["avg2"]])
+  }
+}
+
+```
+
+
+```{r}
+
+objs.m <- MapObjects(objs.i[[1]], objs.i[[2]], c("subclass", "type"), assay = "integrated")
+
+```
+
+
+```{r}
+
+PlotMapping(objs.m, ident.order = subclasses)
+
+```
+
+
+```{r}
+
+VlnPlot(objs.m[[2]], "predicted.subclass.score", group.by = "subclass")
+VlnPlot(objs.m[[2]], "predicted.subclass.score", group.by = "predicted.subclass")
+
+```
+

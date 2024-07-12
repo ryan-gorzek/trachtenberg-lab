@@ -1,0 +1,204 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.mouse.glutamatergic <- LoadH5Seurat("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic.h5seurat")
+
+```
+
+
+```{r}
+
+obj.mouse.glutamatergic <- ClusterSCT(obj.mouse.glutamatergic, c(1, 1.5, 2))
+
+```
+
+
+```{r}
+
+DimPlot(obj.mouse.glutamatergic, reduction = "umap", group.by = "sample", label = FALSE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.mouse.glutamatergic, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.mouse.glutamatergic, reduction = "umap", group.by = "type", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.mouse.glutamatergic, reduction = "umap", group.by = "SCT_snn_res.1", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.mouse.glutamatergic, reduction = "umap", group.by = "SCT_snn_res.1.5", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.mouse.glutamatergic, reduction = "umap", group.by = "SCT_snn_res.2", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+canon.markers <- list(
+                    class = c("Slc17a6", "Slc17a7", "Sv2b"),
+                    L23 = c("Cux2", "Ccbe1", "Mdga1", "Stard8"),
+                    L4 = c("Whrn", "Rorb"),
+                    L5IT = c("Deptor", "Foxo1", "Ptprm"),
+                    L5NP = c("Nxph1", "Tshz2", "Trhr", "Slc17a8"),
+                    L5PT = c("Bcl6", "Erg", "Reln"),
+                    L6CT = c("Foxp2", "Syt6"),
+                    L6IT = c("Zfp804b", "Cdh9"),
+                    L6b = c("Ctgf", "Inpp4b", "Svil")
+                      )
+
+# look for canonical markers
+DefaultAssay(obj.mouse.glutamatergic) <- "RNA"
+Idents(obj.mouse.glutamatergic) <- "type"
+PlotFeatures(obj.mouse.glutamatergic, canon.markers)
+DotPlot(obj.mouse.glutamatergic, features = canon.markers, cols = c("lightgrey", "red"), scale = FALSE) + 
+                         theme(axis.text.x = element_text(angle = 90, vjust = 0.25)) + 
+                         theme(panel.background = element_rect(fill = "white", color = NA), plot.background = element_rect(fill = "white", color = NA)) + NoLegend()
+
+```
+
+
+```{r}
+
+clustree(obj.mouse.glutamatergic, prefix = "SCT_snn_res.")
+
+```
+
+
+```{r}
+
+# identify subclasses at each clustering resolution
+# do differential expression for clusters within each subclass
+# generate plots of top genes for each
+
+subclass.idx.mouse <- list()
+
+subclass.idx.mouse$type$`L2/3` <- c("L2/3_A", "L2/3_B", "L2/3_C")
+
+subclass.idx.mouse$type$L4 <- c("L4_A", "L4_B", "L4_C")
+
+subclass.idx.mouse$type$L5IT <- c("L5IT")
+
+subclass.idx.mouse$type$L5NP <- c("L5NP")
+
+subclass.idx.mouse$type$L5PT <- c("L5PT_A", "L5PT_B")
+
+subclass.idx.mouse$type$L6CT <- c("L6CT_A", "L6CT_B", "L6CT_C")
+
+subclass.idx.mouse$type$L6IT <- c("L6IT_A", "L6IT_B")
+
+subclass.idx.mouse$type$L6b <- c("L6b")
+
+obj.mouse.glutamatergic <- SubclassByIdent(obj.mouse.glutamatergic, subclass.idx.mouse)
+
+```
+
+
+```{r}
+
+subclass.labels <- c("Pvalb", "Sst", "Vip", "Lamp5")
+ident.labels <- c("SCT_snn_res.1", "SCT_snn_res.1.5", "SCT_snn_res.2")
+
+markers.mouse.glutamatergic <- IdentMarkerDict(obj.mouse.glutamatergic, subclass.labels, ident.labels, 
+                                      "E:/Transcriptomics_V1/Mouse/seurat/marker_genes/markerdict_clusters.rds")
+SaveDotPlots(obj.mouse.glutamatergic, markers.mouse.glutamatergic,
+             subclass.labels, ident.labels,
+             "E:/Transcriptomics_V1/Mouse/seurat/cell_types/", "ENSMUSG")
+SaveFeaturePlots(obj.mouse.glutamatergic, markers.mouse.glutamatergic,
+                 subclass.labels, ident.labels,
+                 "E:/Transcriptomics_V1/Mouse/seurat/cell_types/")
+
+```
+
+
+```{r}
+
+subclass.labels <- c("Pvalb", "Sst", "Vip", "Lamp5")
+ident.labels <- c("SCT_snn_res.1", "SCT_snn_res.1.5", "SCT_snn_res.2")
+
+for (sbcl in subclass.labels) {
+  for (id in ident.labels) {
+    p <- plot_gene_counts(markers.mouse.glutamatergic, sbcl, id)
+    p <- p + theme(aspect.ratio = 1) # Make plot square
+    print(p)
+  }
+}
+
+```
+
+
+```{r}
+
+# whole-transcriptome cross-validated classification
+subclass.labels <- c("Pvalb", "Sst", "Vip", "Lamp5")
+ident.labels <- c("SCT_snn_res.1", "SCT_snn_res.1.5", "SCT_snn_res.2")
+
+SaveIdentConfusionMatrices(obj.mouse.glutamatergic, subclass.labels, ident.labels, 
+                      "E:/Transcriptomics_V1/Mouse/seurat/cell_types/")
+
+```
+
+
+```{r}
+
+# Plot relative subclass proportions
+Idents(obj.mouse.glutamatergic) <- "subclass"
+levels(obj.mouse.glutamatergic) <- c("L2/3", "L4", "L5IT", "L5NP", "L5PT", "L6CT", "L6IT", "L6b")
+
+IdentBySample(obj.mouse.glutamatergic)
+
+```
+
+
+```{r}
+
+subclass.labels <- c("L2/3", "L4", "L5IT", "L5NP", "L5PT", "L6CT", "L6IT", "L6b")
+ident.labels <- c("type")
+
+subclass.markers.mouse.glutamatergic <- SubclassMarkerDict(obj.mouse.glutamatergic, "subclass",
+                                                       "E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Glutamatergic/P38/markerdict_subclass.rds")
+markers.mouse.glutamatergic <- IdentMarkerDict(obj.mouse.glutamatergic, subclass.labels, ident.labels,
+                                        "E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Glutamatergic/P38/markerdict_types.rds")
+SaveDotPlots(obj.mouse.glutamatergic, markers.mouse.glutamatergic,
+             subclass.labels, ident.labels,
+             "E:/Transcriptomics_V1/Mouse/seurat/cell_types/Glutamatergic/P38/", "ENSMUSG")
+SaveFeaturePlots(obj.mouse.glutamatergic, markers.mouse.glutamatergic,
+                 subclass.labels, ident.labels,
+                 "E:/Transcriptomics_V1/Mouse/seurat/cell_types/Glutamatergic/P38/")
+
+PlotSubclassGeneCounts(subclass.markers.mouse.glutamatergic, "subclass", 
+                       c("L2/3", "L4", "L5IT", "L5NP", "L5PT", "L6CT", "L6IT", "L6b")) + theme(aspect.ratio = 1)
+for (sbcl in subclass.labels) {
+  for (id in ident.labels) {
+    p <- PlotIdentGeneCounts(markers.mouse.glutamatergic, sbcl, id)
+    p <- p + theme(aspect.ratio = 1) # Make plot square
+    print(p)
+  }
+}
+
+SaveSubclassConfusionMatrices(obj.mouse.glutamatergic, "subclass",
+                              c("L2/3", "L4", "L5IT", "L5NP", "L5PT", "L6CT", "L6IT", "L6b"),
+                              "E:/Transcriptomics_V1/Mouse/seurat/cell_types/Glutamatergic/P38/")
+SaveIdentConfusionMatrices(obj.mouse.glutamatergic, subclass.labels, ident.labels,
+                           "E:/Transcriptomics_V1/Mouse/seurat/cell_types/Glutamatergic/P38/")
+
+```
+
+
+```{r}
+
+saveRDS(obj.mouse.glutamatergic, "E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+
+```
+

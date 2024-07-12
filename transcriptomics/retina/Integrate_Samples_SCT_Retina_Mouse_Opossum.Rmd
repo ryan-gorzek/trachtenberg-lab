@@ -1,0 +1,305 @@
+---
+title: "Integrate Retina Mouse Opossum"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(cowplot)
+library(dplyr)
+library(SeuratDisk)
+library(lisi)
+
+obj.opossum <- readRDS("E:/Transcriptomics_Retina/Opossum/opossum_retina_rgc_raw.rds")
+obj.opossum$species <- "Opossum"
+obj.opossum$animal <- obj.opossum$orig.file
+
+obj.mouse <- readRDS("E:/Transcriptomics_Retina/Mouse/mouse_retina_rgc_raw.rds")
+obj.mouse$species <- "Mouse"
+obj.mouse$type <- paste0("RGC_", obj.mouse$type)
+
+# obj.mouse <- obj.mouse[, sample(colnames(obj.mouse), size = ncol(obj.opossum), replace = FALSE)]
+
+```
+
+
+```{r}
+
+#### Downsample each cluster to a maximum of 200 cells
+# Opossum
+obj.opossum.list <- SplitObject(obj.opossum, split.by = "type")
+
+for (ty in 1:length(obj.opossum.list)) {
+    if (length(colnames(obj.opossum.list[[ty]])) > 200) {
+    obj.opossum.list[[ty]] <- obj.opossum.list[[ty]][, sample(colnames(obj.opossum.list[[ty]]), size = 200, replace = FALSE)]
+    }
+}
+
+obj.opossum <- merge(obj.opossum.list[[1]], obj.opossum.list[2:length(obj.opossum.list)])
+
+# Mouse
+obj.mouse.list <- SplitObject(obj.mouse, split.by = "type")
+
+for (ty in 1:length(obj.mouse.list)) {
+    if (length(colnames(obj.mouse.list[[ty]])) > 200) {
+    obj.mouse.list[[ty]] <- obj.mouse.list[[ty]][, sample(colnames(obj.mouse.list[[ty]]), size = 200, replace = FALSE)]
+    }
+}
+
+obj.mouse <- merge(obj.mouse.list[[1]], obj.mouse.list[2:length(obj.mouse.list)])
+
+```
+
+
+```{r}
+
+common.features <- intersect(rownames(obj.mouse), rownames(obj.opossum))
+obj.combined <- merge(obj.mouse[common.features,], y = obj.opossum[common.features,])
+obj.combined <- merge(obj.mouse, y = obj.opossum)
+obj.list <- SplitObject(obj.combined, split.by = "animal")
+
+```
+
+
+```{r}
+
+for (o in 1:length(obj.list)) {
+  obj.list[[o]] <- SCTransform(obj.list[[o]], vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE)
+}
+
+```
+
+
+```{r}
+
+# obj.list[["Mouse"]] <- SCTransform(obj.list[["Mouse"]], assay = "integrated", vst.flavor = "v2", return.only.var.genes = FALSE) %>%
+#                        RunPCA(npcs = 30, verbose = FALSE) %>%
+#                        RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+#                        FindNeighbors(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+#                        FindClusters(resolution = 1, algorithm = 4, method = "igraph")
+# 
+# DimPlot(obj.list[["Mouse"]], label = FALSE, shuffle = TRUE, group.by = "orig.file") + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+# DimPlot(obj.list[["Mouse"]], label = TRUE, group.by = "type") + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+# 
+# obj.list[["Opossum"]] <- SCTransform(obj.list[["Opossum"]], vst.flavor = "v2", verbose = FALSE) %>%
+#                          RunPCA(npcs = 30, verbose = FALSE) %>%
+#                          RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+#                          FindNeighbors(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+#                          FindClusters(resolution = 1, algorithm = 4, method = "igraph")
+# 
+# DimPlot(obj.list[["Opossum"]], label = FALSE, shuffle = TRUE, group.by = "orig.file") + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+# DimPlot(obj.list[["Opossum"]], label = TRUE, group.by = "type") + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+features <- SelectIntegrationFeatures(object.list = obj.list, nfeatures = 3000)
+obj.list <- PrepSCTIntegration(object.list = obj.list, assay = "SCT", anchor.features = features)
+anchors <- FindIntegrationAnchors(object.list = obj.list, normalization.method = "SCT", anchor.features = features)
+features.to.integrate <- Reduce(intersect, lapply(obj.list, rownames))
+obj.combined <- IntegrateData(anchorset = anchors, normalization.method = "SCT", features.to.integrate = features.to.integrate)
+
+```
+
+
+```{r}
+
+obj.combined <- RunPCA(obj.combined)
+obj.combined <- FindNeighbors(obj.combined, reduction = "pca", dims = 1:30)
+obj.combined <- FindClusters(obj.combined, resolution = 1, algorithm = 4, method = "igraph")
+obj.combined <- RunUMAP(obj.combined, reduction = "pca", dims = 1:30)
+
+```
+
+
+```{r}
+
+saveRDS(obj.combined, "E:/Transcriptomics_Retina/Mouse/mouse_opossum_retina_integrated_200_cells.rds")
+
+```
+
+
+```{r}
+
+DimPlot(obj.combined, reduction = "umap", group.by = "species", raster = FALSE, shuffle = TRUE, cols = c("#909090", "#c692b8")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", split.by = "species", group.by = "animal", raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", split.by = "species", group.by = "type", raster = FALSE, shuffle = TRUE, label = TRUE, label.size = 2) + xlim(-18, 18) + ylim(-18, 18) + coord_equal() + NoLegend()
+
+```
+
+
+```{r}
+
+obj.combined.list <- SplitObject(obj.combined, split.by = "species")
+
+```
+
+
+```{r}
+
+# Source scripts with functions
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+Idents(obj.combined.list[["Opossum"]]) <- "type"
+Idents(obj.combined.list[["Mouse"]]) <- "type"
+
+# Define a wrapper function to train model on common highly variable genes
+TrainXGBoost = function(train, test, train.clusters = "", test.clusters = "", features = c()){
+  
+  Idents(train) = train.clusters
+  Idents(test) = test.clusters
+  
+  AC_model <- TrainModel(train, training_genes = features)
+  
+  return(AC_model)
+}
+
+# Train model
+MO_model <- TrainXGBoost(obj.combined.list[["Mouse"]], 
+                         obj.combined.list[["Opossum"]], 
+                         train.clusters = "type", 
+                         test.clusters = "type", 
+                         features = rownames(obj.combined.list[["Mouse"]]@assays[["integrated"]]@data))
+
+```
+
+
+```{r}
+
+saveRDS(MO_model, "E:/Transcriptomics_Retina/Mouse/mouse_opossum_retina_MO_Model_200_cells.rds")
+
+```
+
+
+```{r}
+
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+Idents(obj.combined.list[["Opossum"]]) <- "type"
+Idents(obj.combined.list[["Mouse"]]) <- "type"
+confusion_matrix <- BuildConfusionMatrix(obj.combined.list[["Opossum"]], obj.combined.list[["Mouse"]], model = MO_model)
+plotConfusionMatrix(confusion_matrix, plot.return = TRUE, stagger.threshold = 15)
+
+```
+
+
+```{r}
+
+# Source scripts with functions
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+Idents(obj.combined.list[["Opossum"]]) <- "type"
+Idents(obj.combined.list[["Mouse"]]) <- "type"
+
+# Define a wrapper function to train model on common highly variable genes
+TrainXGBoost = function(train, test, train.clusters = "", test.clusters = "", features = c()){
+  
+  Idents(train) = train.clusters
+  Idents(test) = test.clusters
+  
+  AC_model <- TrainModel(train, training_genes = features)
+  
+  return(AC_model)
+}
+
+# Train model
+OM_model <- TrainXGBoost(obj.combined.list[["Opossum"]], 
+                         obj.combined.list[["Mouse"]], 
+                         train.clusters = "type", 
+                         test.clusters = "type", 
+                         features = rownames(obj.combined.list[["Mouse"]]@assays[["integrated"]]@data))
+
+```
+
+
+```{r}
+
+saveRDS(OM_model, "E:/Transcriptomics_Retina/Mouse/mouse_opossum_retina_OM_Model_200_cells.rds")
+
+```
+
+
+```{r, fig.height=8}
+
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+Idents(obj.combined.list[["Opossum"]]) <- "type"
+Idents(obj.combined.list[["Mouse"]]) <- "type"
+confusion_matrix <- BuildConfusionMatrix(obj.combined.list[["Mouse"]], obj.combined.list[["Opossum"]], model = OM_model)
+plotConfusionMatrix(confusion_matrix, plot.return = TRUE, stagger.threshold = 15)
+
+```
+
+
+```{r}
+
+DimPlot(obj.combined, reduction = "umap", group.by = "species", raster = FALSE, shuffle = TRUE, cols = c("#909090", "#c692b8")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", split.by = "species", group.by = "animal", raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.combined, reduction = "umap", split.by = "species", group.by = "type", raster = FALSE, shuffle = TRUE, label = TRUE, label.size = 2) + xlim(-18, 18) + ylim(-18, 18) + coord_equal() + NoLegend()
+DimPlot(obj.combined, reduction = "umap", raster = FALSE, label = TRUE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal() + NoLegend()
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.combined) <- "RNA"
+conserved.markers <- FindConservedMarkers(obj.combined, ident.1 = 39, grouping.var = "species", verbose = FALSE)
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.combined) <- "RNA"
+FeaturePlot(obj.combined, "ETV1", reduction = "umap", split.by = "species", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r, fig.width=10, fig.height=3}
+
+genes <- rev(c("TBR1", "FOXP2", "TUSC5", "PENK", "NEUROD2", "SATB2", "OPN4", "EOMES", "SPP1", "IRX3", "CARTPT", "CALB1", "IL1RAPL2", "KIT", "FES"))
+
+levels(obj.combined.list[["Opossum"]]) <- paste0("RGC_", c("21", "31", "11", "18", "10", "8", "16", "3", "19", "14", "4", "1", "6", "27", "24", "13", "22", "20", "15", "29", "2", "30", "9", "5", "17", "7", "23", "28", "12", "25", "26"))
+DotPlot(obj.combined.list[["Opossum"]], "RNA", genes) + coord_flip() + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4, size = 10))
+levels(obj.combined.list[["Mouse"]]) <- paste0("RGC_", c("15", "17", "5", "9", "21", "13", "11", "38", "28", "4", "3", "6", "1", "2", "32", "26", "19", "20", "29", "35", "12", "25", "39", "44", "33", "40", "22", "31", "7", "8", "43", "42", "45", "41", "27", "18", "37", "36", "14", "16", "24", "10", "34", "30", "23"))
+DotPlot(obj.combined.list[["Mouse"]], "RNA", genes) + coord_flip() + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4, size = 10))
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

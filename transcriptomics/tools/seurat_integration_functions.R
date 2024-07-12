@@ -6,7 +6,10 @@ IntegrateObjects <- function(seurat_obj1, seurat_obj2, resolutions = 1, nfeature
   seurat_obj2 <- subset(seurat_obj2, features = common_features)
   
   # If subsample is TRUE, randomly subsample the larger object to match the smaller one
-  if (subsample) {
+  if (!is.logical(subsample)) {
+    seurat_obj1 <- seurat_obj1[, sample(colnames(seurat_obj1), subsample)]
+    seurat_obj2 <- seurat_obj2[, sample(colnames(seurat_obj2), subsample)]
+  } else if (subsample) {
     if (ncol(seurat_obj1) > ncol(seurat_obj2)) {
       seurat_obj1 <- seurat_obj1[, sample(colnames(seurat_obj1), ncol(seurat_obj2))]
     } else if (ncol(seurat_obj2) > ncol(seurat_obj1)) {
@@ -56,23 +59,81 @@ PlotIntegration <- function(obj, integvar, integclust, subclass.order) {
   
   for (icl in integclust) {
     
-    dimplot2 <- DimPlot(obj, reduction = "umap", split.by = integvar, group.by = icl, label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
-    dimplot3 <- DimPlot(obj, reduction = "umap", split.by = integvar, group.by = "subclass", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
-    heatmap1 <- IntegratedClusterHeatmap(obj, integvar, "subclass", icl, subclass.order)
-    dimplot4 <- DimPlot(obj, reduction = "umap", split.by = integvar, group.by = "type", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+    dimplot1 <- DimPlot(obj, reduction = "umap", split.by = integvar, group.by = icl, label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+    dimplot2 <- DimPlot(obj, reduction = "umap", split.by = integvar, group.by = "subclass", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+    heatmap1 <- IntegratedClusterOverlapHeatmap(obj, integvar, "subclass", icl, subclass.order)
+    dimplot3 <- DimPlot(obj, reduction = "umap", split.by = integvar, group.by = "type", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
     heatmap2 <- IntegratedClusterOverlapHeatmap(obj, integvar, "type", icl, subclass.order)
     heatmaps3 <- IntegratedClusterMakeupHeatmap(obj, integvar, "type", icl, subclass.order)
     heatmaps4 <- IdentToIntegratedClusterHeatmap(obj, integvar, "type", icl, subclass.order)
     
+    print(dimplot1)
     print(dimplot2)
-    print(dimplot3)
     print(heatmap1)
-    print(dimplot4)
+    print(dimplot3)
     print(heatmap2)
     grid.arrange(grobs = heatmaps3, ncol = 2)
     grid.arrange(grobs = heatmaps4, ncol = 2)
   
   }
+}
+
+MapObjects <- function(seurat_obj1, seurat_obj2, idents, assay = "SCT") {
+  
+  objs <- list(seurat_obj1, seurat_obj2)
+  # Perform SCTransform v2 on each object
+  objs <- lapply(objs, function(x) {
+    x <- SCTransform(x, vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE) %>%
+         RunPCA(npcs = 30, verbose = FALSE) %>%
+         RunUMAP(reduction = "pca", dims = 1:30, return.model = TRUE, verbose = FALSE)
+    return(x)
+  })
+  objs.idx <- list(ref = c(1, 2), qry = c(2, 1))
+  objs.mapped <- list()
+  
+  refdata <- list()
+  for (id in idents) { refdata[[id]] <- id }
+  
+  for (idx in c(1, 2)) {
+
+    # Transfer data from reference to query
+    reference <- objs[[objs.idx$ref[idx]]]
+    query <- objs[[objs.idx$qry[idx]]]
+    anchors.query <- FindTransferAnchors(reference = reference, query = query, reference.reduction = "pca", dims = 1:30)
+    objs.mapped[[idx]] <- MapQuery(anchorset = anchors.query, 
+                                   reference = reference, query = query, 
+                                   refdata = refdata, 
+                                   reference.reduction = "pca", 
+                                   reduction.model = "umap")
+  
+  }
+  return(objs.mapped)
+}
+
+PlotMapping <- function(objs, idents = c("subclass", "type"), ident.order = NULL, title.key = "species") {
+  
+  for (obj.idx in c(1, 2)) {
+    obj <- objs[[obj.idx]]
+    for (id in idents) {
+      id.levels <- as.character(unlist(unique(objs[[setdiff(c(1, 2), obj.idx)]][[id]])))
+      for (red in c("umap", "ref.umap")) {
+        for (cl in c("%s", "predicted.%s", "predicted.%s.score")) {
+          if (cl == "predicted.%s.score") {
+            plot <- FeaturePlot(obj, sprintf(cl, id), reduction = red) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+          }
+          else {
+            plot <- DimPlot(obj, reduction = red, group.by = sprintf(cl, id), label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+          }
+          print(plot + ggtitle(paste(obj[[title.key]][1,], sprintf(cl, id), "on", red)))
+        }
+      }
+      plot <- PlotMappedLabelsHeatmap(obj, id, id.levels, normalize = "row", ident.order = ident.order)
+      print(plot)
+      plot <- PlotMappingQualityHeatmap(obj, id, id.levels, sprintf("predicted.%s.score", id), ident.order = ident.order)
+      print(plot)
+    }
+  }
+  
 }
 
 IntegratedClusterOverlapHeatmap <- function(integrated.obj, integvar.col, ident.col, cluster.col, primary_order,
@@ -397,7 +458,7 @@ PlotIdentDEIntersection <- function(list1, list2, all_genes1, all_genes2, sample
   ggplot(intersection_counts, aes(x = Cluster1, y = Cluster2, fill = Value)) +
     geom_tile(color = "white", size = 0.5) +
     geom_text(aes(label = round(Value, 2)), color = "black") +
-    scale_fill_gradient(low = "white", high = "red") +
+    scale_fill_gradient(low = "white", high = "red", limits = c(0, max(intersection_counts$Value))) +
     scale_y_discrete(limits = rev(levels(factor(intersection_counts$Cluster2)))) + # Reverse y-axis order
     labs(
       title = paste0("Shared DE Genes (log2FC > ", log2FC_threshold, ")"), 
@@ -413,7 +474,7 @@ PlotIdentDEIntersection <- function(list1, list2, all_genes1, all_genes2, sample
     ) # Make cells square
 }
 
-PlotSubclassDEIntersection <- function(list1, list2, all_genes1, all_genes2, sample.name1, sample.name2, subclass.order, log2FC_threshold, percentage = FALSE) {
+PlotSubclassDEIntersection <- function(list1, list2, all_genes1, all_genes2, sample.name1, sample.name2, subclass.order, log2FC_threshold, output_path, percentage = FALSE) {
   # Extract dataframes
   df1 <- list1$subclass
   df2 <- list2$subclass
@@ -451,7 +512,6 @@ PlotSubclassDEIntersection <- function(list1, list2, all_genes1, all_genes2, sam
     
     if (percentage) {
       # Calculate total intersecting DE genes for percentage calculation
-      # total_intersecting_genes <<- length(intersect(df1_filtered$gene, intersecting_genes)) + length(intersect(df2_filtered$gene, intersecting_genes))
       total_intersecting_genes <- length(union(intersect(df1_filtered$gene, intersecting_genes), intersect(df2_filtered$gene, intersecting_genes)))
       # Calculate percentage
       percent <- (count / total_intersecting_genes) * 100
@@ -459,6 +519,10 @@ PlotSubclassDEIntersection <- function(list1, list2, all_genes1, all_genes2, sam
     } else {
       intersection_counts <- rbind(intersection_counts, data.frame(Cluster1 = cluster1, Cluster2 = cluster2, Value = count))
     }
+    
+    # Save intersecting genes to a text file
+    filename <- paste0(output_path, "/", gsub("/", "", cluster1), "_vs_", gsub("/", "", cluster2), "_intersecting_genes.txt")
+    write.table(intersecting_de_genes, file = filename, quote = FALSE, row.names = FALSE, col.names = FALSE)
   }
   
   fill_label <- if (percentage) "Percentage of DE Genes" else "# DE Genes"
@@ -470,7 +534,7 @@ PlotSubclassDEIntersection <- function(list1, list2, all_genes1, all_genes2, sam
   ggplot(intersection_counts, aes(x = Cluster1, y = Cluster2, fill = Value)) +
     geom_tile(color = "white", size = 0.5) +
     geom_text(aes(label = round(Value, 2)), color = "black") +
-    scale_fill_gradient(low = "white", high = "red") +
+    scale_fill_gradient(low = "white", high = "red", limits = c(0, max(intersection_counts$Value))) +
     scale_y_discrete(limits = rev(levels(factor(intersection_counts$Cluster2)))) + # Reverse y-axis order
     labs(
       title = paste0("Shared DE Genes (log2FC > ", log2FC_threshold, ")"), 
@@ -842,4 +906,216 @@ plot_individual_confusion_matrices <- function(confusion_matrices, n_iters, samp
   
   grid_plot <- grid.arrange(grobs = plot_list, ncol = 5)
   return(grid_plot)
+}
+
+PlotMappedLabelsHeatmap <- function(data, column_name, column_levels, normalize = NULL, ident.order = NULL, col.low = "white", col.high = "red", x.lab.rot = TRUE) {
+  
+  # Create confusion matrix
+  confusion_matrix <- table(as.character(unlist(data[[column_name]])), as.character(unlist(data[[paste0("predicted.", column_name)]])))
+  confusion_matrix <- as.matrix(confusion_matrix)
+  
+  add_zeros_to_table <- function(tbl, new_row_names, new_col_names) {
+    # Add new rows of zeros
+    for (row_name in new_row_names) {
+      if (!any(row_name %in% rownames(tbl))) {
+        tbl <- rbind(tbl, setNames(t(rep(0, ncol(tbl))), row_name))
+        orig_names <- rownames(tbl)[rownames(tbl) != ""]
+        rownames(tbl) <- c(orig_names, row_name)
+      }
+    }
+    
+    # Add new columns of zeros
+    for (col_name in new_col_names) {
+      if (!any(col_name %in% colnames(tbl))) {
+        tbl <- cbind(tbl, setNames(rep(0, nrow(tbl)), col_name))
+        orig_names <- colnames(tbl)[colnames(tbl) != ""]
+        colnames(tbl) <- c(orig_names, col_name)
+      }
+    }
+    
+    return(tbl)
+  }
+
+  # Ensure all possible levels are present in the confusion matrix
+  row_levels <- as.character(unlist(unique(data[[column_name]])))
+  col_levels <- column_levels
+  rows_to_add <- row_levels[row_levels %in% rownames(confusion_matrix) == FALSE]
+  cols_to_add <- col_levels[col_levels %in% colnames(confusion_matrix) == FALSE]
+  confusion_matrix <- add_zeros_to_table(confusion_matrix, rows_to_add, cols_to_add)
+  
+  confusion_df <- as.data.frame(confusion_matrix)
+  
+  # Melt the dataframe for ggplot2
+  melted <- melt(confusion_matrix)
+  colnames(melted) <- c("row", "col", "Count")
+  melted$Count <- as.numeric(melted$Count)
+  
+  # Normalize if needed
+  if (!is.null(normalize)) {
+    if (normalize == "row") {
+      melted <- ddply(melted, .(row), transform, Percentage = Count / sum(Count) * 100)
+    } else if (normalize == "col") {
+      melted <- ddply(melted, .(col), transform, Percentage = Count / sum(Count) * 100)
+    }
+  } else {
+    melted$Percentage <- melted$Count
+  }
+  
+  # Sorting function
+  sort_ident <- function(ident, primary_order) {
+    primary <- sapply(ident, function(x) str_extract(x, paste(primary_order, collapse = "|")))
+    suffix <- sapply(ident, function(x) str_extract(x, "(?<=_)[A-Za-z0-9]+$"))
+    suffix_numeric <- suppressWarnings(as.numeric(suffix))
+    suffix[is.na(suffix_numeric)] <- paste0("Z", suffix[is.na(suffix_numeric)])  # Add "Z" prefix to non-numeric suffixes to sort them correctly
+    suffix_numeric[is.na(suffix_numeric)] <- Inf
+    df <- data.frame(ident = ident, primary = primary, suffix = suffix, suffix_numeric = suffix_numeric)
+    df <- df %>% arrange(match(primary, primary_order), suffix_numeric, suffix)
+    return(unlist(df$ident))
+  }
+  
+  # Get unique levels
+  row_levels <- unique(melted$row)
+  col_levels <- unique(melted$col)
+  
+  # Sort and factorize identifiers
+  if (is.null(ident.order)) {
+    row_levels <- sort_ident(row_levels, unique(melted$row))
+    col_levels <- sort_ident(col_levels, unique(melted$col))
+  } else {
+    row_levels <- sort_ident(row_levels, ident.order)
+    col_levels <- sort_ident(col_levels, ident.order)
+  }
+  
+  melted$row <- factor(melted$row, levels = row_levels)
+  melted$col <- factor(melted$col, levels = col_levels)
+  
+  if (nrow(confusion_matrix) < 10) { fontsize = 5 }
+  else { fontsize = 4 }
+  
+  # Plot heatmap
+  p <- ggplot(melted, aes(y = factor(row, levels = rev(row_levels)), x = factor(col, levels = col_levels))) + 
+    geom_tile(aes(fill = Percentage)) + 
+    scale_fill_gradient(low = col.low, high = col.high, limits = c(0, max(melted$Percentage))) + 
+    geom_text(aes(label = sprintf("%.0f", Percentage)), size = fontsize) +
+    theme_bw() + 
+    ylab(column_name) + 
+    xlab(paste0("predicted_", column_name)) + 
+    theme(
+      axis.text.x = element_text(size = 16, face = "italic", hjust = 0, angle = ifelse(x.lab.rot, 90, 0)),
+      axis.text.y = element_text(size = 16, face = "italic"),
+      axis.title.x = element_text(size = 16),
+      axis.title.y = element_text(size = 16)
+    ) +
+    coord_fixed()
+
+  # Ensure correct rotation
+  if (x.lab.rot) {
+    p <- p + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  } else {
+    p <- p + theme(axis.text.x = element_text(angle = 0, vjust = 0.5, hjust=0.5))
+  }
+  
+  return(p)
+}
+
+PlotMappingQualityHeatmap <- function(data, column_name, column_levels, value_column, ident.order = NULL, col.low = "white", col.high = "red", x.lab.rot = TRUE) {
+
+  # Create average matrix
+  average_matrix <<- with(data, tapply(as.numeric(unlist(data[[value_column]])), 
+                                       list(as.character(unlist(data[[column_name]])), 
+                                       as.character(unlist(data[[paste0("predicted.", column_name)]]))), mean, na.rm = TRUE))
+  average_matrix[is.na(average_matrix)] <- 0
+  average_matrix <- average_matrix * 100
+
+  add_zeros_to_table <- function(tbl, new_row_names, new_col_names) {
+    # Add new rows of zeros
+    for (row_name in new_row_names) {
+      if (!any(row_name %in% rownames(tbl))) {
+        tbl <- rbind(tbl, setNames(t(rep(0, ncol(tbl))), row_name))
+        orig_names <- rownames(tbl)[rownames(tbl) != ""]
+        rownames(tbl) <- c(orig_names, row_name)
+      }
+    }
+
+    # Add new columns of zeros
+    for (col_name in new_col_names) {
+      if (!any(col_name %in% colnames(tbl))) {
+        tbl <- cbind(tbl, setNames(rep(0, nrow(tbl)), col_name))
+        orig_names <- colnames(tbl)[colnames(tbl) != ""]
+        colnames(tbl) <- c(orig_names, col_name)
+      }
+    }
+
+    return(tbl)
+  }
+
+  # Ensure all possible levels are present in the average matrix
+  row_levels <<- as.character(unlist(unique(data[[column_name]])))
+  col_levels <<- column_levels
+  rows_to_add <<- row_levels[row_levels %in% rownames(average_matrix) == FALSE]
+  cols_to_add <<- col_levels[col_levels %in% colnames(average_matrix) == FALSE]
+  average_matrix <- add_zeros_to_table(average_matrix, rows_to_add, cols_to_add)
+
+  # average_df <- as.data.frame(average_matrix)
+
+  # Melt the dataframe for ggplot2
+  melted <- melt(average_matrix)
+  colnames(melted) <- c("row", "col", "Value")
+  melted$Value <- as.numeric(melted$Value)
+
+  # Sorting function
+  sort_ident <- function(ident, primary_order) {
+    primary <- sapply(ident, function(x) str_extract(x, paste(primary_order, collapse = "|")))
+    suffix <- sapply(ident, function(x) str_extract(x, "(?<=_)[A-Za-z0-9]+$"))
+    suffix_numeric <- suppressWarnings(as.numeric(suffix))
+    suffix[is.na(suffix_numeric)] <- paste0("Z", suffix[is.na(suffix_numeric)])  # Add "Z" prefix to non-numeric suffixes to sort them correctly
+    suffix_numeric[is.na(suffix_numeric)] <- Inf
+    df <- data.frame(ident = ident, primary = primary, suffix = suffix, suffix_numeric = suffix_numeric)
+    df <- df %>% arrange(match(primary, primary_order), suffix_numeric, suffix)
+    return(unlist(df$ident))
+  }
+
+  # Get unique levels
+  row_levels <- unique(melted$row)
+  col_levels <- unique(melted$col)
+
+  # Sort and factorize identifiers
+  if (is.null(ident.order)) {
+    row_levels <- sort_ident(row_levels, unique(melted$row))
+    col_levels <- sort_ident(col_levels, unique(melted$col))
+  } else {
+    row_levels <- sort_ident(row_levels, ident.order)
+    col_levels <- sort_ident(col_levels, ident.order)
+  }
+
+  melted$row <- factor(melted$row, levels = row_levels)
+  melted$col <- factor(melted$col, levels = col_levels)
+
+  if (nrow(average_matrix) < 10) { fontsize = 5 }
+  else { fontsize = 4 }
+
+  # Plot heatmap
+  p <- ggplot(melted, aes(y = factor(row, levels = rev(row_levels)), x = factor(col, levels = col_levels))) +
+    geom_tile(aes(fill = Value)) +
+    scale_fill_gradient(low = col.low, high = col.high, limits = c(0, max(melted$Value, na.rm = TRUE))) +
+    geom_text(aes(label = ifelse(Value == 0, "NA", sprintf("%.0f", Value))), size = fontsize) +
+    theme_bw() +
+    ylab(column_name) +
+    xlab(paste0("predicted_", column_name)) +
+    theme(
+      axis.text.x = element_text(size = 16, face = "italic", hjust = 0, angle = ifelse(x.lab.rot, 90, 0)),
+      axis.text.y = element_text(size = 16, face = "italic"),
+      axis.title.x = element_text(size = 16),
+      axis.title.y = element_text(size = 16)
+    ) +
+    coord_fixed()
+
+  # Ensure correct rotation
+  if (x.lab.rot) {
+    p <- p + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  } else {
+    p <- p + theme(axis.text.x = element_text(angle = 0, vjust = 0.5, hjust=0.5))
+  }
+
+  return(p)
 }

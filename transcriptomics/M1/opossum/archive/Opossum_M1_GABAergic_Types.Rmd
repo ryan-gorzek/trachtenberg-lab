@@ -1,0 +1,326 @@
+---
+title: "Opossum M1 GABAergic Types"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+obj.opossum.gabaergic <- LoadH5Seurat("E:/Opossum_M1/seurat/opossum_m1_gabaergic.h5Seurat")
+
+```
+
+
+```{r}
+
+obj.opossum.gabaergic <- FindVariableFeatures(obj.opossum.gabaergic, selection.method = "vst", nfeatures = 5000)
+all.genes <- rownames(obj.opossum.gabaergic)
+obj.opossum.gabaergic <- ScaleData(obj.opossum.gabaergic, features = all.genes)
+obj.opossum.gabaergic <- RunPCA(obj.opossum.gabaergic, features = VariableFeatures(object = obj.opossum.gabaergic))
+ElbowPlot(obj.opossum.gabaergic, ndims = 50)
+
+```
+
+
+```{r}
+
+obj.opossum.gabaergic <- FindNeighbors(obj.opossum.gabaergic, dims = 1:30)
+obj.opossum.gabaergic <- FindClusters(obj.opossum.gabaergic, resolution = 1, algorithm = 4, method = "igraph")
+obj.opossum.gabaergic <- RunUMAP(obj.opossum.gabaergic, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+obj.opossum.gabaergic <- FindClusters(obj.opossum.gabaergic, resolution = 0.5, algorithm = 4, method = "igraph")
+obj.opossum.gabaergic <- FindClusters(obj.opossum.gabaergic, resolution = 0.6, algorithm = 4, method = "igraph")
+obj.opossum.gabaergic <- FindClusters(obj.opossum.gabaergic, resolution = 0.7, algorithm = 4, method = "igraph")
+obj.opossum.gabaergic <- FindClusters(obj.opossum.gabaergic, resolution = 0.8, algorithm = 4, method = "igraph")
+obj.opossum.gabaergic <- FindClusters(obj.opossum.gabaergic, resolution = 1.5, algorithm = 4, method = "igraph")
+obj.opossum.gabaergic <- FindClusters(obj.opossum.gabaergic, resolution = 2, algorithm = 4, method = "igraph")
+obj.opossum.gabaergic <- FindClusters(obj.opossum.gabaergic, resolution = 2.5, algorithm = 4, method = "igraph")
+obj.opossum.gabaergic <- FindClusters(obj.opossum.gabaergic, resolution = 3, algorithm = 4, method = "igraph")
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "subclass", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "RNA_snn_res.0.5", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "RNA_snn_res.0.6", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "RNA_snn_res.0.7", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "RNA_snn_res.0.8", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "RNA_snn_res.1", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "RNA_snn_res.1.5", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "RNA_snn_res.2", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "RNA_snn_res.3", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.gabaergic) <- "subclass"
+obj.opossum.gabaergic.sst <- subset(obj.opossum.gabaergic, idents = "Sst")
+Idents(obj.opossum.gabaergic.sst) <- "RNA_snn_res.1"
+all.markers.sst <- FindAllMarkers(obj.opossum.gabaergic.sst, only.pos = TRUE)
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.gabaergic.sst, reduction = "umap", group.by = "type", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-4, 12) + ylim(-12, 4) + coord_equal()
+DimPlot(obj.opossum.gabaergic.sst, reduction = "umap", group.by = "RNA_snn_res.1", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-4, 12) + ylim(-12, 4) + coord_equal()
+DimPlot(obj.opossum.gabaergic.sst, reduction = "umap", group.by = "sample", label.size = 4, raster = FALSE) + xlim(-4, 12) + ylim(-12, 4) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.sst, c("nFeature_RNA"), min.cutoff = 0)  + xlim(-4, 12) + ylim(-12, 4) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.sst, c("nCount_RNA"), min.cutoff = 0)  + xlim(-4, 12) + ylim(-12, 4) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.sst, c("Ptpn7"))  + xlim(-4, 12) + ylim(-12, 4) + coord_equal()
+VlnPlot(obj.opossum.gabaergic.sst, "nFeature_RNA", group.by = "RNA_snn_res.1") 
+VlnPlot(obj.opossum.gabaergic.sst, "nCount_RNA", group.by = "RNA_snn_res.1") + ylim(c(0, 10000))
+VlnPlot(obj.opossum.gabaergic.sst, "Ptpn7", group.by = "RNA_snn_res.1")
+
+```
+
+
+```{r}
+
+# 4 -> Col8a1
+# 6 -> Ptpn7
+# 11 -> Vcan
+# 12 -> Plpp4
+# 16 -> Htr2a
+# 17 -> Nr2f2
+# 19 -> Chodl
+
+DimPlot(obj.opossum.gabaergic.sst, reduction = "umap", group.by = "RNA_snn_res.1.5", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-4, 12) + ylim(-12, 4) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.sst, c("Col8a1"))  + xlim(-4, 12) + ylim(-12, 4) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.sst, c("Ptpn7"))  + xlim(-4, 12) + ylim(-12, 4) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.sst, c("Vcan"))  + xlim(-4, 12) + ylim(-12, 4) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.sst, c("Plpp4"))  + xlim(-4, 12) + ylim(-12, 4) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.sst, c("Htr2a"))  + xlim(-4, 12) + ylim(-12, 4) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.sst, c("Nr2f2"))  + xlim(-4, 12) + ylim(-12, 4) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.sst, c("Chodl"))  + xlim(-4, 12) + ylim(-12, 4) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.gabaergic) <- "RNA_snn_res.1.5"
+obj.opossum.gabaergic$subclass[obj.opossum.gabaergic$RNA_snn_res.1.5 == 4] <- "Sst"
+obj.opossum.gabaergic$type[obj.opossum.gabaergic$RNA_snn_res.1.5 == 4] <- "Sst Col8a1"
+obj.opossum.gabaergic$subclass[obj.opossum.gabaergic$RNA_snn_res.1.5 == 6] <- "Sst"
+obj.opossum.gabaergic$type[obj.opossum.gabaergic$RNA_snn_res.1.5 == 6] <- "Sst Ptpn7"
+obj.opossum.gabaergic$subclass[obj.opossum.gabaergic$RNA_snn_res.1.5 == 11] <- "Sst"
+obj.opossum.gabaergic$type[obj.opossum.gabaergic$RNA_snn_res.1.5 == 11] <- "Sst Vcan"
+obj.opossum.gabaergic$subclass[obj.opossum.gabaergic$RNA_snn_res.1.5 == 12] <- "Sst"
+obj.opossum.gabaergic$type[obj.opossum.gabaergic$RNA_snn_res.1.5 == 12] <- "Sst Plpp4"
+obj.opossum.gabaergic$subclass[obj.opossum.gabaergic$RNA_snn_res.1.5 == 16] <- "Sst"
+obj.opossum.gabaergic$type[obj.opossum.gabaergic$RNA_snn_res.1.5 == 16] <- "Sst Htr2a"
+obj.opossum.gabaergic$subclass[obj.opossum.gabaergic$RNA_snn_res.1.5 == 17] <- "Sst"
+obj.opossum.gabaergic$type[obj.opossum.gabaergic$RNA_snn_res.1.5 == 17] <- "Sst Nr2f2"
+obj.opossum.gabaergic$subclass[obj.opossum.gabaergic$RNA_snn_res.1.5 == 19] <- "Sst"
+obj.opossum.gabaergic$type[obj.opossum.gabaergic$RNA_snn_res.1.5 == 19] <- "Sst Chodl"
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.gabaergic) <- "subclass"
+obj.opossum.gabaergic.pvalb <- subset(obj.opossum.gabaergic, idents = "Pvalb")
+Idents(obj.opossum.gabaergic.pvalb) <- "RNA_snn_res.1"
+all.markers.pvalb <- FindAllMarkers(obj.opossum.gabaergic.pvalb, only.pos = TRUE)
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.gabaergic.pvalb, reduction = "umap", group.by = "type", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-12, 5) + ylim(-5, 12) + coord_equal()
+DimPlot(obj.opossum.gabaergic.pvalb, reduction = "umap", group.by = "RNA_snn_res.1", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-12, 5) + ylim(-5, 12) + coord_equal()
+DimPlot(obj.opossum.gabaergic.pvalb, reduction = "umap", group.by = "sample", label.size = 4, raster = FALSE) + xlim(-12, 5) + ylim(-5, 12) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.pvalb, c("nFeature_RNA"), min.cutoff = 0)  + xlim(-12, 5) + ylim(-5, 12) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.pvalb, c("nCount_RNA"), min.cutoff = 0)  + xlim(-12, 5) + ylim(-5, 12) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.pvalb, c("Ptpn7"))  + xlim(-12, 5) + ylim(-5, 12) + coord_equal()
+VlnPlot(obj.opossum.gabaergic.pvalb, "nFeature_RNA", group.by = "RNA_snn_res.1")
+VlnPlot(obj.opossum.gabaergic.pvalb, "nCount_RNA", group.by = "RNA_snn_res.1") + ylim(c(0, 10000))
+VlnPlot(obj.opossum.gabaergic.pvalb, "Ptpn7", group.by = "RNA_snn_res.1")
+
+```
+
+
+```{r}
+
+## res 1
+# 1 -> Ptpn7
+# 3 -> Col25a1
+# 5 -> Angpt1
+# 7 -> Ltbp1
+# 8 -> Plod2
+# 10 -> Trpc6
+# 13 -> Cemip
+
+DimPlot(obj.opossum.gabaergic.pvalb, reduction = "umap", group.by = "RNA_snn_res.1", label = TRUE, label.size = 4, raster = FALSE) + NoLegend() + xlim(-12, 5) + ylim(-5, 12) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.pvalb, c("Ptpn7"))  + xlim(-12, 5) + ylim(-5, 12) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.pvalb, c("Col25a1"))  + xlim(-12, 5) + ylim(-5, 12) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.pvalb, c("Crhbp"))  + xlim(-12, 5) + ylim(-5, 12) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.pvalb, c("Plod2"))  + xlim(-12, 5) + ylim(-5, 12) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.pvalb, c("Ltbp1"))  + xlim(-12, 5) + ylim(-5, 12) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.pvalb, c("Trpc6"))  + xlim(-12, 5) + ylim(-5, 12) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.pvalb, c("Cemip"))  + xlim(-12, 5) + ylim(-5, 12) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.gabaergic) <- "RNA_snn_res.1"
+obj.opossum.gabaergic$subclass[obj.opossum.gabaergic$RNA_snn_res.1 == 1] <- "Pvalb"
+obj.opossum.gabaergic$type[obj.opossum.gabaergic$RNA_snn_res.1 == 1] <- "Pvalb Ptpn7"
+obj.opossum.gabaergic$subclass[obj.opossum.gabaergic$RNA_snn_res.1 == 3] <- "Pvalb"
+obj.opossum.gabaergic$type[obj.opossum.gabaergic$RNA_snn_res.1 == 3] <- "Pvalb Col25a1"
+obj.opossum.gabaergic$subclass[obj.opossum.gabaergic$RNA_snn_res.1 == 5] <- "Pvalb"
+obj.opossum.gabaergic$type[obj.opossum.gabaergic$RNA_snn_res.1 == 5] <- "Pvalb Crhbp"
+obj.opossum.gabaergic$subclass[obj.opossum.gabaergic$RNA_snn_res.1 == 7] <- "Pvalb"
+obj.opossum.gabaergic$type[obj.opossum.gabaergic$RNA_snn_res.1 == 7] <- "Pvalb Ltbp1"
+obj.opossum.gabaergic$subclass[obj.opossum.gabaergic$RNA_snn_res.1 == 8] <- "Pvalb"
+obj.opossum.gabaergic$type[obj.opossum.gabaergic$RNA_snn_res.1 == 8] <- "Pvalb Plod2"
+obj.opossum.gabaergic$subclass[obj.opossum.gabaergic$RNA_snn_res.1 == 10] <- "Pvalb"
+obj.opossum.gabaergic$type[obj.opossum.gabaergic$RNA_snn_res.1 == 10] <- "Pvalb Trpc6"
+obj.opossum.gabaergic$subclass[obj.opossum.gabaergic$RNA_snn_res.1 == 13] <- "Pvalb"
+obj.opossum.gabaergic$type[obj.opossum.gabaergic$RNA_snn_res.1 == 13] <- "Pvalb Cemip"
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.gabaergic) <- "subclass"
+obj.opossum.gabaergic.vip <- subset(obj.opossum.gabaergic, idents = "Vip")
+Idents(obj.opossum.gabaergic.vip) <- "RNA_snn_res.1.5"
+all.markers.vip <- FindAllMarkers(obj.opossum.gabaergic.vip, only.pos = TRUE)
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.gabaergic.vip, reduction = "umap", group.by = "RNA_snn_res.1.5", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.vip, "Mid1")  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+# 3 -> Mid1
+# 14 -> Rxfp1
+# 18 -> Abi3bp
+
+DimPlot(obj.opossum.gabaergic.vip, reduction = "umap", group.by = "RNA_snn_res.1.5", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.vip, c("Mid1"))  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.vip, c("Rxfp1"))  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.vip, c("Abi3bp"))  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.gabaergic) <- "RNA_snn_res.1.5"
+obj.opossum.gabaergic$subclass[obj.opossum.gabaergic$RNA_snn_res.1.5 == 3] <- "Vip"
+obj.opossum.gabaergic$type[obj.opossum.gabaergic$RNA_snn_res.1.5 == 3] <- "Vip Mid1"
+obj.opossum.gabaergic$subclass[obj.opossum.gabaergic$RNA_snn_res.1.5 == 14] <- "Vip"
+obj.opossum.gabaergic$type[obj.opossum.gabaergic$RNA_snn_res.1.5 == 14] <- "Vip Rxfp1"
+obj.opossum.gabaergic$subclass[obj.opossum.gabaergic$RNA_snn_res.1.5 == 18] <- "Vip"
+obj.opossum.gabaergic$type[obj.opossum.gabaergic$RNA_snn_res.1.5 == 18] <- "Vip Abi3bp"
+
+```
+
+
+```{r}
+
+obj.opossum.gabaergic$subclass[obj.opossum.gabaergic$RNA_snn_res.2 == 25] <- "Lamp5"
+Idents(obj.opossum.gabaergic) <- "subclass"
+obj.opossum.gabaergic.lamp5 <- subset(obj.opossum.gabaergic, idents = "Lamp5")
+Idents(obj.opossum.gabaergic.lamp5) <- "RNA_snn_res.2"
+all.markers.lamp5 <- FindAllMarkers(obj.opossum.gabaergic.lamp5, only.pos = TRUE)
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.gabaergic.lamp5, reduction = "umap", group.by = "RNA_snn_res.2", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.lamp5, "Htr1f")  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+# 4 -> Kit
+# 25 -> Lhx6
+
+DimPlot(obj.opossum.gabaergic.lamp5, reduction = "umap", group.by = "RNA_snn_res.2", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.lamp5, c("Kit"))  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic.lamp5, c("Lhx6"))  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.gabaergic) <- "RNA_snn_res.2"
+obj.opossum.gabaergic$subclass[obj.opossum.gabaergic$RNA_snn_res.2 == 4] <- "Lamp5"
+obj.opossum.gabaergic$type[obj.opossum.gabaergic$RNA_snn_res.2 == 4] <- "Lamp5 Kit"
+obj.opossum.gabaergic$subclass[obj.opossum.gabaergic$RNA_snn_res.2 == 25] <- "Lamp5"
+obj.opossum.gabaergic$type[obj.opossum.gabaergic$RNA_snn_res.2 == 25] <- "Lamp5 Lhx6"
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "subclass", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "type", label = TRUE, label.size = 3, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+pvalb.palette <- colorRampPalette(c("#ffffdd", "#468fba"))(8)[2:8]
+sst.palette <- colorRampPalette(c("#ffffdd", "#ba1851"))(8)[2:8]
+vip.palette <- colorRampPalette(c("#ffffdd", "#a85d96"))(6)[c(2, 4, 6)]
+lamp5.palette <- colorRampPalette(c("#ffffdd", "#a2bc8c"))(6)[c(3, 6)]
+
+Idents(obj.opossum.gabaergic) <- "type"
+levels(obj.opossum.gabaergic) <- c("Pvalb Plod2", "Pvalb Cemip", "Pvalb Trpc6", "Pvalb Ltbp1", "Pvalb Crhbp", "Pvalb Col25a1", "Pvalb Ptpn7", 
+                                   "Sst Nr2f2", "Sst Ptpn7", "Sst Chodl", "Sst Plpp4", "Sst Vcan", "Sst Htr2a", "Sst Col8a1", 
+                                   "Vip Mid1", "Vip Abi3bp", "Vip Rxfp1", 
+                                   "Lamp5 Lhx6", "Lamp5 Kit")
+
+dim_plot <- DimPlot(obj.opossum.gabaergic, reduction = "umap", cols = c(pvalb.palette, sst.palette, vip.palette, lamp5.palette), label = TRUE, label.size = 2, raster = FALSE) + NoLegend()  + xlim(-13, 15) + ylim(-16, 12) + coord_equal()
+
+ggsave("G:/Shared drives/Opossum transcriptomics/figures/Opossum_UMAP_GABAergic.png", dim_plot, width=4, height=4, dpi=500)
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.gabaergic) <- "subclass"
+SaveH5Seurat(obj.opossum.gabaergic, "E:/Opossum_M1/seurat/opossum_m1_gabaergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

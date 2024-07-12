@@ -1,0 +1,92 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(CellChat)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+options(stringsAsFactors = FALSE)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.mouse.glutamatergic <- LoadH5Seurat("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic.h5seurat")
+obj.mouse.gabaergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_gabaergic_processed.rds")
+obj.mouse <- merge(obj.mouse.glutamatergic, y = obj.mouse.gabaergic)
+
+Idents(obj.mouse) <- "subclass"
+obj.cellChat <- subset(obj.mouse, idents = c("L2/3", "L4", "L5IT", "L6IT", "Pvalb", "Sst", "Vip"))
+
+```
+
+
+```{r}
+
+cellChat <- createCellChat(object = obj.cellChat, group.by = "subclass", assay = "RNA")
+CellChatDB <- CellChatDB.mouse
+showDatabaseCategory(CellChatDB)
+CellChatDB.use <- subsetDB(CellChatDB, search = "Cell-Cell Contact", key = "annotation")
+cellChat@DB <- CellChatDB.use
+
+```
+
+
+```{r}
+
+cellChat <- subsetData(cellChat) # This step is necessary even if using the whole database
+future::plan("multisession", workers = 4) # do parallel
+cellChat <- identifyOverExpressedGenes(cellChat)
+cellChat <- identifyOverExpressedInteractions(cellChat)
+cellChat <- computeCommunProb(cellChat, type = "triMean")
+cellChat <- filterCommunication(cellChat, min.cells = 10)
+cellChat <- computeCommunProbPathway(cellChat)
+cellChat <- aggregateNet(cellChat)
+
+```
+
+
+```{r}
+
+mat <- cellChat@net$weight
+groupSize <- as.numeric(table(cellChat@idents))
+par(mfrow = c(2, 3), xpd=TRUE)
+for (i in 1:nrow(mat)) {
+  mat2 <- matrix(0, nrow = nrow(mat), ncol = ncol(mat), dimnames = dimnames(mat))
+  mat2[i, ] <- mat[i, ]
+  netVisual_circle(mat2, vertex.weight = groupSize, weight.scale = T, edge.weight.max = max(mat), title.name = rownames(mat)[i])
+}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

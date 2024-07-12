@@ -1,0 +1,81 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(tidyverse)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj <- readRDS("E:/Transcriptomics_V1/Mouse/AllGABA.rds")
+
+```
+
+
+```{r}
+
+Idents(obj) <- "Study"
+obj.mo <- subset(obj, idents = "2023 Multiome")
+Idents(obj.mo) <- "Sample"
+obj.mouse.gabaergic <- subset(obj.mo, idents = c("P17a", "P17b", "P21a", "P21b"))
+
+```
+
+
+```{r}
+
+obj.mouse.gabaergic <- ClusterSCT(obj.mouse.gabaergic, c(1))
+obj.mouse.gabaergic$predicted_doublets <- FALSE
+obj.mouse.gabaergic$predicted_doublets[1] <- TRUE
+obj.mouse.gabaergic$sample <- obj.mouse.gabaergic$Sample
+levels(obj.mouse.gabaergic) <- 
+PlotClusters(obj.mouse.gabaergic, group.id = "SCT_snn_res.1")
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.mouse.gabaergic) <- "SCT"
+ident = "SCT_snn_res.1"
+gene <- "Cemip"
+DimPlot(obj.mouse.gabaergic, reduction = "umap", group.by = ident, label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.gabaergic, gene, raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+VlnPlot(obj.mouse.gabaergic, gene, group.by = ident)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

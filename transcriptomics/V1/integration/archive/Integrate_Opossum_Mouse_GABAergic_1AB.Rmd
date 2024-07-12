@@ -1,0 +1,16 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(dplyr)
+library(ggplot2)
+library(reshape2)
+
+plot_intersection_heatmap(marker.dict.opossum, marker.dict.mouse, "Pvalb", "Pvalb", "SCT_snn_res.1", "type")
+
+```
+

@@ -1754,7 +1754,7 @@ display: none;
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuXG5saWJyYXJ5KFNldXJhdClcbmxpYnJhcnkocmV0aWN1bGF0ZSlcbmxpYnJhcnkoYXJyb3cpXG5saWJyYXJ5KGdncGxvdDIpXG5saWJyYXJ5KGRwbHlyKVxubGlicmFyeShTZXVyYXREaXNrKVxuXG5tYXRyaXggPC0gcmVhZFJEUyhcIkU6L01vdXNlX00xL01vdXNlX00xXzEweFYzX01hdHJpeC5SRFNcIilcbm1ldGFfdGIgPC0gYXJyb3c6OnJlYWRfZmVhdGhlcihcIkU6L01vdXNlX00xL01vdXNlX00xXzEweFYzX01ldGFkYXRhLmZlYXRoZXJcIilcbm1ldGFfZGYgPC0gYXMuZGF0YS5mcmFtZShtZXRhX3RiKVxucm93Lm5hbWVzKG1ldGFfZGYpIDwtIG1ldGFfZGZbLCBcInNhbXBsZV9pZFwiXVxub2JqLm1vdXNlIDwtIENyZWF0ZVNldXJhdE9iamVjdChjb3VudHMgPSBtYXRyaXgsIG1ldGEuZGF0YSA9IG1ldGFfZGYpXG5ybShsaXN0ID0gYyhcIm1hdHJpeFwiLCBcIm1ldGFfZGZcIiwgXCJtZXRhX3RiXCIpKVxuXG5gYGAifQ== -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuXG5saWJyYXJ5KFNldXJhdClcbmxpYnJhcnkocmV0aWN1bGF0ZSlcbmxpYnJhcnkoYXJyb3cpXG5saWJyYXJ5KGdncGxvdDIpXG5saWJyYXJ5KGRwbHlyKVxubGlicmFyeShTZXVyYXREaXNrKVxuXG5tYXRyaXggPC0gcmVhZFJEUyhcIkU6L1RyYW5zY3JpcHRvbWljc19NMS9Nb3VzZS9Nb3VzZV9NMV8xMHhWM19NYXRyaXguUkRTXCIpXG5tZXRhX3RiIDwtIGFycm93OjpyZWFkX2ZlYXRoZXIoXCJFOi9UcmFuc2NyaXB0b21pY3NfTTEvTW91c2UvTW91c2VfTTFfMTB4VjNfTWV0YWRhdGEuZmVhdGhlclwiKVxubWV0YV9kZiA8LSBhcy5kYXRhLmZyYW1lKG1ldGFfdGIpXG5yb3cubmFtZXMobWV0YV9kZikgPC0gbWV0YV9kZlssIFwic2FtcGxlX2lkXCJdXG5vYmoubW91c2UgPC0gQ3JlYXRlU2V1cmF0T2JqZWN0KGNvdW50cyA9IG1hdHJpeCwgbWV0YS5kYXRhID0gbWV0YV9kZilcbnJtKGxpc3QgPSBjKFwibWF0cml4XCIsIFwibWV0YV9kZlwiLCBcIm1ldGFfdGJcIikpXG5cbmBgYCJ9 -->
 <pre class="r"><code>
 library(Seurat)
 library(reticulate)
@@ -1763,8 +1763,8 @@ library(ggplot2)
 library(dplyr)
 library(SeuratDisk)
 
-matrix &lt;- readRDS(&quot;E:/Mouse_M1/Mouse_M1_10xV3_Matrix.RDS&quot;)
-meta_tb &lt;- arrow::read_feather(&quot;E:/Mouse_M1/Mouse_M1_10xV3_Metadata.feather&quot;)
+matrix &lt;- readRDS(&quot;E:/Transcriptomics_M1/Mouse/Mouse_M1_10xV3_Matrix.RDS&quot;)
+meta_tb &lt;- arrow::read_feather(&quot;E:/Transcriptomics_M1/Mouse/Mouse_M1_10xV3_Metadata.feather&quot;)
 meta_df &lt;- as.data.frame(meta_tb)
 row.names(meta_df) &lt;- meta_df[, &quot;sample_id&quot;]
 obj.mouse &lt;- CreateSeuratObject(counts = matrix, meta.data = meta_df)
@@ -1775,56 +1775,19 @@ rm(list = c(&quot;matrix&quot;, &quot;meta_df&quot;, &quot;meta_tb&quot;))
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuXG5vYmoubW91c2UgPC0gQWRkTWV0YURhdGEob2JqLm1vdXNlLCBtZXRhZGF0YSA9IHVubGlzdChyZXAobGlzdChcIk1vdXNlX00xXCIpLCBuY29sKG9iai5tb3VzZSkpKSwgY29sLm5hbWUgPSBcImRhdGFzZXRcIilcbklkZW50cyhvYmplY3QgPSBvYmoubW91c2UpIDwtIG9iai5tb3VzZVtbXCJkYXRhc2V0XCJdXVxub2JqLm1vdXNlW1tcInBlcmNlbnQubXRcIl1dIDwtIFBlcmNlbnRhZ2VGZWF0dXJlU2V0KG9iai5tb3VzZSwgcGF0dGVybiA9IFwiXm10LVwiKVxuVmxuUGxvdChvYmoubW91c2UsIGZlYXR1cmVzID0gYyhcIm5GZWF0dXJlX1JOQVwiLCBcIm5Db3VudF9STkFcIiwgXCJwZXJjZW50Lm10XCIpLCBuY29sID0gMylcbnBsb3QxIDwtIEZlYXR1cmVTY2F0dGVyKG9iai5tb3VzZSwgZmVhdHVyZTEgPSBcIm5Db3VudF9STkFcIiwgZmVhdHVyZTIgPSBcInBlcmNlbnQubXRcIilcbnBsb3QyIDwtIEZlYXR1cmVTY2F0dGVyKG9iai5tb3VzZSwgZmVhdHVyZTEgPSBcIm5Db3VudF9STkFcIiwgZmVhdHVyZTIgPSBcIm5GZWF0dXJlX1JOQVwiKVxucGxvdDEgKyBwbG90MlxuXG5gYGAifQ== -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuXG4jIGluaXRpYWwgY2x1c3RlcmluZ1xub2JqLm1vdXNlIDwtIENsdXN0ZXJTQ1Qob2JqLm1vdXNlLCBjKDEpKVxuYGBgIn0= -->
 <pre class="r"><code>
-obj.mouse &lt;- AddMetaData(obj.mouse, metadata = unlist(rep(list(&quot;Mouse_M1&quot;), ncol(obj.mouse))), col.name = &quot;dataset&quot;)
-Idents(object = obj.mouse) &lt;- obj.mouse[[&quot;dataset&quot;]]
-obj.mouse[[&quot;percent.mt&quot;]] &lt;- PercentageFeatureSet(obj.mouse, pattern = &quot;^mt-&quot;)
-VlnPlot(obj.mouse, features = c(&quot;nFeature_RNA&quot;, &quot;nCount_RNA&quot;, &quot;percent.mt&quot;), ncol = 3)
-plot1 &lt;- FeatureScatter(obj.mouse, feature1 = &quot;nCount_RNA&quot;, feature2 = &quot;percent.mt&quot;)
-plot2 &lt;- FeatureScatter(obj.mouse, feature1 = &quot;nCount_RNA&quot;, feature2 = &quot;nFeature_RNA&quot;)
-plot1 + plot2
-</code></pre>
+# initial clustering
+obj.mouse &lt;- ClusterSCT(obj.mouse, c(1))</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuXG5vYmoubW91c2UgPC0gTm9ybWFsaXplRGF0YShvYmoubW91c2UsIG5vcm1hbGl6YXRpb24ubWV0aG9kID0gXCJMb2dOb3JtYWxpemVcIiwgc2NhbGUuZmFjdG9yID0gMTAwMDApXG5vYmoubW91c2UgPC0gRmluZFZhcmlhYmxlRmVhdHVyZXMob2JqLm1vdXNlLCBzZWxlY3Rpb24ubWV0aG9kID0gXCJ2c3RcIiwgbmZlYXR1cmVzID0gMzAwMClcbmFsbC5nZW5lcyA8LSByb3duYW1lcyhvYmoubW91c2UpXG5vYmoubW91c2UgPC0gU2NhbGVEYXRhKG9iai5tb3VzZSwgZmVhdHVyZXMgPSBhbGwuZ2VuZXMpXG5vYmoubW91c2UgPC0gUnVuUENBKG9iai5tb3VzZSwgZmVhdHVyZXMgPSBWYXJpYWJsZUZlYXR1cmVzKG9iamVjdCA9IG9iai5tb3VzZSkpXG5FbGJvd1Bsb3Qob2JqLm1vdXNlLCBuZGltcyA9IDUwKVxuXG5gYGAifQ== -->
-<pre class="r"><code>
-obj.mouse &lt;- NormalizeData(obj.mouse, normalization.method = &quot;LogNormalize&quot;, scale.factor = 10000)
-obj.mouse &lt;- FindVariableFeatures(obj.mouse, selection.method = &quot;vst&quot;, nfeatures = 3000)
-all.genes &lt;- rownames(obj.mouse)
-obj.mouse &lt;- ScaleData(obj.mouse, features = all.genes)
-obj.mouse &lt;- RunPCA(obj.mouse, features = VariableFeatures(object = obj.mouse))
-ElbowPlot(obj.mouse, ndims = 50)
-</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuXG5vYmoubW91c2UgPC0gRmluZE5laWdoYm9ycyhvYmoubW91c2UsIGRpbXMgPSAxOjMwKVxub2JqLm1vdXNlIDwtIEZpbmRDbHVzdGVycyhvYmoubW91c2UsIHJlc29sdXRpb24gPSAxLCBhbGdvcml0aG0gPSA0LCBtZXRob2QgPSBcImlncmFwaFwiKVxub2JqLm1vdXNlIDwtIFJ1blVNQVAob2JqLm1vdXNlLCBkaW1zID0gMTozMCwgbWV0aG9kPVwidW1hcC1sZWFyblwiKVxuXG5gYGAifQ== -->
-<pre class="r"><code>
-obj.mouse &lt;- FindNeighbors(obj.mouse, dims = 1:30)
-obj.mouse &lt;- FindClusters(obj.mouse, resolution = 1, algorithm = 4, method = &quot;igraph&quot;)
-obj.mouse &lt;- RunUMAP(obj.mouse, dims = 1:30, method=&quot;umap-learn&quot;)
-</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuXG5TYXZlSDVTZXVyYXQob2JqLm1vdXNlLCBcIkU6L01vdXNlX00xL3NldXJhdC9tb3VzZV9tMV9hbGwuaDVzZXVyYXRcIiwgb3ZlcndyaXRlID0gVFJVRSwgdmVyYm9zZSA9IFRSVUUpXG5cbmBgYCJ9 -->
-<pre class="r"><code>
-SaveH5Seurat(obj.mouse, &quot;E:/Mouse_M1/seurat/mouse_m1_all.h5seurat&quot;, overwrite = TRUE, verbose = TRUE)
-</code></pre>
-<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiRXJyb3I6IGNhbm5vdCBhbGxvY2F0ZSB2ZWN0b3Igb2Ygc2l6ZSAzMS42IEdiXG4ifQ== -->
+<pre><code>Error: cannot allocate vector of size 31.6 Gb</code></pre>
+<!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 
-<div id="rmd-source-code">LS0tDQp0aXRsZTogIk1vdXNlIE0xIE9iamVjdCINCm91dHB1dDogaHRtbF9ub3RlYm9vaw0KLS0tDQoNCmBgYHtyfQ0KDQpsaWJyYXJ5KFNldXJhdCkNCmxpYnJhcnkocmV0aWN1bGF0ZSkNCmxpYnJhcnkoYXJyb3cpDQpsaWJyYXJ5KGdncGxvdDIpDQpsaWJyYXJ5KGRwbHlyKQ0KbGlicmFyeShTZXVyYXREaXNrKQ0KDQptYXRyaXggPC0gcmVhZFJEUygiRTovTW91c2VfTTEvTW91c2VfTTFfMTB4VjNfTWF0cml4LlJEUyIpDQptZXRhX3RiIDwtIGFycm93OjpyZWFkX2ZlYXRoZXIoIkU6L01vdXNlX00xL01vdXNlX00xXzEweFYzX01ldGFkYXRhLmZlYXRoZXIiKQ0KbWV0YV9kZiA8LSBhcy5kYXRhLmZyYW1lKG1ldGFfdGIpDQpyb3cubmFtZXMobWV0YV9kZikgPC0gbWV0YV9kZlssICJzYW1wbGVfaWQiXQ0Kb2JqLm1vdXNlIDwtIENyZWF0ZVNldXJhdE9iamVjdChjb3VudHMgPSBtYXRyaXgsIG1ldGEuZGF0YSA9IG1ldGFfZGYpDQpybShsaXN0ID0gYygibWF0cml4IiwgIm1ldGFfZGYiLCAibWV0YV90YiIpKQ0KDQpgYGANCg0KDQpgYGB7cn0NCg0Kb2JqLm1vdXNlIDwtIEFkZE1ldGFEYXRhKG9iai5tb3VzZSwgbWV0YWRhdGEgPSB1bmxpc3QocmVwKGxpc3QoIk1vdXNlX00xIiksIG5jb2wob2JqLm1vdXNlKSkpLCBjb2wubmFtZSA9ICJkYXRhc2V0IikNCklkZW50cyhvYmplY3QgPSBvYmoubW91c2UpIDwtIG9iai5tb3VzZVtbImRhdGFzZXQiXV0NCm9iai5tb3VzZVtbInBlcmNlbnQubXQiXV0gPC0gUGVyY2VudGFnZUZlYXR1cmVTZXQob2JqLm1vdXNlLCBwYXR0ZXJuID0gIl5tdC0iKQ0KVmxuUGxvdChvYmoubW91c2UsIGZlYXR1cmVzID0gYygibkZlYXR1cmVfUk5BIiwgIm5Db3VudF9STkEiLCAicGVyY2VudC5tdCIpLCBuY29sID0gMykNCnBsb3QxIDwtIEZlYXR1cmVTY2F0dGVyKG9iai5tb3VzZSwgZmVhdHVyZTEgPSAibkNvdW50X1JOQSIsIGZlYXR1cmUyID0gInBlcmNlbnQubXQiKQ0KcGxvdDIgPC0gRmVhdHVyZVNjYXR0ZXIob2JqLm1vdXNlLCBmZWF0dXJlMSA9ICJuQ291bnRfUk5BIiwgZmVhdHVyZTIgPSAibkZlYXR1cmVfUk5BIikNCnBsb3QxICsgcGxvdDINCg0KYGBgDQoNCg0KYGBge3J9DQoNCm9iai5tb3VzZSA8LSBOb3JtYWxpemVEYXRhKG9iai5tb3VzZSwgbm9ybWFsaXphdGlvbi5tZXRob2QgPSAiTG9nTm9ybWFsaXplIiwgc2NhbGUuZmFjdG9yID0gMTAwMDApDQpvYmoubW91c2UgPC0gRmluZFZhcmlhYmxlRmVhdHVyZXMob2JqLm1vdXNlLCBzZWxlY3Rpb24ubWV0aG9kID0gInZzdCIsIG5mZWF0dXJlcyA9IDMwMDApDQphbGwuZ2VuZXMgPC0gcm93bmFtZXMob2JqLm1vdXNlKQ0Kb2JqLm1vdXNlIDwtIFNjYWxlRGF0YShvYmoubW91c2UsIGZlYXR1cmVzID0gYWxsLmdlbmVzKQ0Kb2JqLm1vdXNlIDwtIFJ1blBDQShvYmoubW91c2UsIGZlYXR1cmVzID0gVmFyaWFibGVGZWF0dXJlcyhvYmplY3QgPSBvYmoubW91c2UpKQ0KRWxib3dQbG90KG9iai5tb3VzZSwgbmRpbXMgPSA1MCkNCg0KYGBgDQoNCg0KYGBge3J9DQoNCm9iai5tb3VzZSA8LSBGaW5kTmVpZ2hib3JzKG9iai5tb3VzZSwgZGltcyA9IDE6MzApDQpvYmoubW91c2UgPC0gRmluZENsdXN0ZXJzKG9iai5tb3VzZSwgcmVzb2x1dGlvbiA9IDEsIGFsZ29yaXRobSA9IDQsIG1ldGhvZCA9ICJpZ3JhcGgiKQ0Kb2JqLm1vdXNlIDwtIFJ1blVNQVAob2JqLm1vdXNlLCBkaW1zID0gMTozMCwgbWV0aG9kPSJ1bWFwLWxlYXJuIikNCg0KYGBgDQoNCg0KYGBge3J9DQoNClNhdmVINVNldXJhdChvYmoubW91c2UsICJFOi9Nb3VzZV9NMS9zZXVyYXQvbW91c2VfbTFfYWxsLmg1c2V1cmF0Iiwgb3ZlcndyaXRlID0gVFJVRSwgdmVyYm9zZSA9IFRSVUUpDQoNCmBgYA0KDQo=</div>
+<div id="rmd-source-code">LS0tDQp0aXRsZTogIk1vdXNlIE0xIE9iamVjdCINCm91dHB1dDogaHRtbF9ub3RlYm9vaw0KLS0tDQoNCmBgYHtyfQ0KDQpsaWJyYXJ5KFNldXJhdCkNCmxpYnJhcnkoU2V1cmF0RGlzaykNCmxpYnJhcnkocmV0aWN1bGF0ZSkNCmxpYnJhcnkoc2NydWJsZXRSKQ0KbGlicmFyeShnZ3Bsb3QyKQ0KbGlicmFyeShwYXRjaHdvcmspDQpsaWJyYXJ5KGRwbHlyKQ0KbGlicmFyeShkYXRhLnRhYmxlKQ0KbGlicmFyeSh0aWR5dmVyc2UpDQpzb3VyY2UoIkM6L1J5YW4vR2l0SHViL3RyYWNodGVuYmVyZy1sYWIvdHJhbnNjcmlwdG9taWNzL3Rvb2xzL3NldXJhdF9mdW5jdGlvbnMuUiIpDQoNCm1hdHJpeCA8LSByZWFkUkRTKCJFOi9UcmFuc2NyaXB0b21pY3NfTTEvTW91c2UvTW91c2VfTTFfMTB4VjNfTWF0cml4LlJEUyIpDQptZXRhX3RiIDwtIGFycm93OjpyZWFkX2ZlYXRoZXIoIkU6L1RyYW5zY3JpcHRvbWljc19NMS9Nb3VzZS9Nb3VzZV9NMV8xMHhWM19NZXRhZGF0YS5mZWF0aGVyIikNCm1ldGFfZGYgPC0gYXMuZGF0YS5mcmFtZShtZXRhX3RiKQ0Kcm93Lm5hbWVzKG1ldGFfZGYpIDwtIG1ldGFfZGZbLCAic2FtcGxlX2lkIl0NCm9iai5tb3VzZSA8LSBDcmVhdGVTZXVyYXRPYmplY3QoY291bnRzID0gbWF0cml4LCBtZXRhLmRhdGEgPSBtZXRhX2RmKQ0Kcm0obGlzdCA9IGMoIm1hdHJpeCIsICJtZXRhX2RmIiwgIm1ldGFfdGIiKSkNCg0Kb2JqLm1vdXNlJHNwZWNpZXMgPC0gIk1vdXNlIg0KDQpgYGANCg0KDQpgYGB7cn0NCg0KIyBpbml0aWFsIGNsdXN0ZXJpbmcNCm9iai5tb3VzZSA8LSBDbHVzdGVyU0NUKG9iai5tb3VzZSwgYygxKSkNClBsb3RDbHVzdGVycyhvYmoubW91c2UpDQoNCmBgYA0KDQo=</div>
 
 
 

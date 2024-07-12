@@ -1,0 +1,101 @@
+---
+title: "Mouse M1 GABAergic"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+obj.mouse.nonneuronal <- LoadH5Seurat("E:/Mouse_M1/seurat/mouse_m1_nonneuronal.h5Seurat")
+
+```
+
+
+```{r}
+
+obj.mouse.nonneuronal <- FindVariableFeatures(obj.mouse.nonneuronal, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.mouse.nonneuronal)
+obj.mouse.nonneuronal <- ScaleData(obj.mouse.nonneuronal, features = all.genes)
+obj.mouse.nonneuronal <- RunPCA(obj.mouse.nonneuronal, features = VariableFeatures(object = obj.mouse.nonneuronal))
+ElbowPlot(obj.mouse.nonneuronal, ndims = 50)
+
+```
+
+
+```{r}
+
+obj.mouse.nonneuronal <- FindNeighbors(obj.mouse.nonneuronal, dims = 1:30)
+obj.mouse.nonneuronal <- FindClusters(obj.mouse.nonneuronal, resolution = 1, algorithm = 4, method = "igraph")
+obj.mouse.nonneuronal <- RunUMAP(obj.mouse.nonneuronal, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+DimPlot(obj.mouse.nonneuronal, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+subclass_plot <- DimPlot(obj.mouse.nonneuronal, reduction = "umap", group.by = "subclass_label", label = TRUE, label.size = 4, raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+# ggsave(file="G:/Shared drives/Opossum transcriptomics/figures/Mouse_M1_Nonneuronal_Subclass.svg", plot=subclass_plot, width=4, height=4)
+DimPlot(obj.mouse.nonneuronal, reduction = "umap", group.by = "cluster_label", label = TRUE, label.size = 2,raster = FALSE) + NoLegend()  + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+FeaturePlot(obj.mouse.nonneuronal, reduction = "umap", features = c("Sst")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.mouse.nonneuronal, reduction = "umap", features = c("Pvalb")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.mouse.nonneuronal, reduction = "umap", features = c("Vip")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.mouse.nonneuronal, reduction = "umap", features = c("Lamp5")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.mouse.nonneuronal, reduction = "umap", features = c("Sncg")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.mouse.nonneuronal, reduction = "umap", features = c("Meis2")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.mouse.nonneuronal, reduction = "umap", features = c("Chat")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.mouse.nonneuronal, reduction = "umap", features = c("Slc18a3")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.mouse.nonneuronal, reduction = "umap", features = c("Slc5a7")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.mouse.nonneuronal <- FindClusters(obj.mouse.nonneuronal, resolution = 0.5, algorithm = 4, method = "igraph")
+obj.mouse.nonneuronal <- FindClusters(obj.mouse.nonneuronal, resolution = 1.5, algorithm = 4, method = "igraph")
+obj.mouse.nonneuronal <- FindClusters(obj.mouse.nonneuronal, resolution = 2, algorithm = 4, method = "igraph")
+obj.mouse.nonneuronal <- FindClusters(obj.mouse.nonneuronal, resolution = 2.5, algorithm = 4, method = "igraph")
+obj.mouse.nonneuronal <- FindClusters(obj.mouse.nonneuronal, resolution = 3, algorithm = 4, method = "igraph")
+obj.mouse.nonneuronal <- FindClusters(obj.mouse.nonneuronal, resolution = 3.5, algorithm = 4, method = "igraph")
+obj.mouse.nonneuronal <- FindClusters(obj.mouse.nonneuronal, resolution = 4, algorithm = 4, method = "igraph")
+obj.mouse.nonneuronal <- FindClusters(obj.mouse.nonneuronal, resolution = 4.5, algorithm = 4, method = "igraph")
+obj.mouse.nonneuronal <- FindClusters(obj.mouse.nonneuronal, resolution = 5, algorithm = 4, method = "igraph")
+
+```
+
+
+```{r}
+
+DimPlot(obj.mouse.nonneuronal, reduction = "umap", group.by="RNA_snn_res.0.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.mouse.nonneuronal, reduction = "umap", group.by="RNA_snn_res.1", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.mouse.nonneuronal, reduction = "umap", group.by="RNA_snn_res.1.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.mouse.nonneuronal, reduction = "umap", group.by="RNA_snn_res.2", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.mouse.nonneuronal, reduction = "umap", group.by="RNA_snn_res.2.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.mouse.nonneuronal, reduction = "umap", group.by="RNA_snn_res.3", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.mouse.nonneuronal, reduction = "umap", group.by="RNA_snn_res.3.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.mouse.nonneuronal, reduction = "umap", group.by="RNA_snn_res.4", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.mouse.nonneuronal, reduction = "umap", group.by="RNA_snn_res.4.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.mouse.nonneuronal, reduction = "umap", group.by="RNA_snn_res.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.mouse.nonneuronal) <- "subclass_label"
+SaveH5Seurat(obj.mouse.nonneuronal, "E:/Mouse_M1/seurat/mouse_m1_nonneuronal.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

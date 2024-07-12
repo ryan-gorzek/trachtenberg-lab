@@ -1,0 +1,158 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+# obj.opossum.nonneuronal <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_nonneuronal_processed.rds")
+obj.opossum.nonneuronal$subclass <- obj.opossum.nonneuronal$SCT_snn_res.1
+obj.opossum.nonneuronal$type <- obj.opossum.nonneuronal$SCT_snn_res.1
+obj.mouse.nonneuronal.P38 <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_nonneuronal_processed.rds")
+
+objs <- list(obj.opossum.nonneuronal, obj.mouse.nonneuronal.P38)
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.nonneuronal, reduction = "umap", group.by = "SCT_snn_res.1", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.nonneuronal, reduction = "umap", group.by = "all_SCT_snn_res.1", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.integrated <- IntegrateObjects(objs[[1]], objs[[2]], resolutions = c(1), nfeatures = 3000, subsample = TRUE)
+
+```
+
+
+```{r}
+
+subclasses <- c(c("Astro", "Endo", "Micro", "OD", "OPC", "VLMC"), as.character(1:15))
+PlotIntegration(obj.integrated, "species", c("integrated_snn_res.1"), subclasses)
+
+```
+
+
+```{r}
+
+objs.i <- SplitObject(obj.integrated, split.by = "species")
+
+```
+
+
+```{r}
+
+objs.m <- MapObjects(objs.i[[1]], objs.i[[2]], c("subclass", "type"), assay = "integrated")
+
+```
+
+
+```{r}
+
+PlotMapping(objs.m, ident.order = subclasses)
+
+```
+
+
+```{r}
+
+DimPlot(obj.mouse.glutamatergic.P38, group.by = "subclass", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+vfs <- VariableFeatures(obj.mouse.glutamatergic.P38[["SCT"]])
+for (vf in 1:20) {
+  p <- FeaturePlot(obj.mouse.glutamatergic.P38, features = vfs[vf], max.cutoff = 10, raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+  print(p)
+}
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.glutamatergic, group.by = "SCT_snn_res.1", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+vfs <- VariableFeatures(obj.opossum.glutamatergic[["SCT"]])
+for (vf in 21:40) {
+  p <- FeaturePlot(obj.opossum.glutamatergic, features = vfs[vf], max.cutoff = 10, raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+  print(p)
+}
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.glutamatergic) <- "SCT_snn_res.1"
+obj.opossum.glutamatergic.IT <- subset(obj.opossum.glutamatergic, idents = c(2, 3, 4, 5, 7, 8, 9, 10, 11, 13, 14, 15, 17, 19))
+obj.opossum.glutamatergic.IT <- ClusterSCT(obj.opossum.glutamatergic.IT, resolutions = c(1))
+
+```
+
+
+```{r}
+
+PlotClusters(obj.opossum.glutamatergic.IT, group.id = "SCT_snn_res.1")
+
+```
+
+
+```{r}
+
+FeaturePlot(obj.opossum.glutamatergic.IT, features = c("Cux2"))
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

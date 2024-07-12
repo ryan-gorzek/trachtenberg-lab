@@ -1,0 +1,172 @@
+---
+title: "Opossum M1 GABAergic"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+obj.opossum.gabaergic <- LoadH5Seurat("E:/Opossum_V1/seurat/opossum_v1_gabaergic.h5Seurat")
+
+```
+
+
+```{r}
+
+obj.opossum.gabaergic <- FindVariableFeatures(obj.opossum.gabaergic, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.opossum.gabaergic)
+obj.opossum.gabaergic <- ScaleData(obj.opossum.gabaergic, features = all.genes)
+obj.opossum.gabaergic <- RunPCA(obj.opossum.gabaergic, features = VariableFeatures(object = obj.opossum.gabaergic))
+ElbowPlot(obj.opossum.gabaergic, ndims = 50)
+
+```
+
+
+```{r}
+
+obj.opossum.gabaergic <- FindNeighbors(obj.opossum.gabaergic, dims = 1:30)
+obj.opossum.gabaergic <- FindClusters(obj.opossum.gabaergic, resolution = 1, algorithm = 4, method = "igraph")
+obj.opossum.gabaergic <- RunUMAP(obj.opossum.gabaergic, dims = 1:30, method="umap-learn")
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Sst")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Pvalb")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Vip")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Lamp5")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Sncg")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Meis2")) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.opossum.gabaergic <- FindClusters(obj.opossum.gabaergic, resolution = 0.5, algorithm = 4, method = "igraph")
+obj.opossum.gabaergic <- FindClusters(obj.opossum.gabaergic, resolution = 1.5, algorithm = 4, method = "igraph")
+obj.opossum.gabaergic <- FindClusters(obj.opossum.gabaergic, resolution = 2, algorithm = 4, method = "igraph")
+obj.opossum.gabaergic <- FindClusters(obj.opossum.gabaergic, resolution = 2.5, algorithm = 4, method = "igraph")
+obj.opossum.gabaergic <- FindClusters(obj.opossum.gabaergic, resolution = 3, algorithm = 4, method = "igraph")
+obj.opossum.gabaergic <- FindClusters(obj.opossum.gabaergic, resolution = 3.5, algorithm = 4, method = "igraph")
+obj.opossum.gabaergic <- FindClusters(obj.opossum.gabaergic, resolution = 4, algorithm = 4, method = "igraph")
+obj.opossum.gabaergic <- FindClusters(obj.opossum.gabaergic, resolution = 4.5, algorithm = 4, method = "igraph")
+obj.opossum.gabaergic <- FindClusters(obj.opossum.gabaergic, resolution = 5, algorithm = 4, method = "igraph")
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by="RNA_snn_res.0.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by="RNA_snn_res.1", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by="RNA_snn_res.1.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by="RNA_snn_res.2", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by="RNA_snn_res.2.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by="RNA_snn_res.3", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by="RNA_snn_res.3.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by="RNA_snn_res.4", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by="RNA_snn_res.4.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by="RNA_snn_res.5", label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.gabaergic) <- "RNA_snn_res.1"
+cells.pv <- WhichCells(obj.opossum.gabaergic, ident = c("1"))
+obj.opossum.gabaergic$subclass <- ifelse(colnames(obj.opossum.gabaergic) %in% cells.pv, "Pvalb", "ambiguous")
+
+cells.sst <- WhichCells(obj.opossum.gabaergic, ident = c("2", "5"))
+obj.opossum.gabaergic$subclass[cells.sst] <- "Sst"
+
+cells.vip <- WhichCells(obj.opossum.gabaergic, ident = c("3"))
+obj.opossum.gabaergic$subclass[cells.vip] <- "Vip"
+
+cells.lamp5 <- WhichCells(obj.opossum.gabaergic, ident = c("4"))
+obj.opossum.gabaergic$subclass[cells.lamp5] <- "Lamp5"
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.gabaergic) <- "RNA_snn_res.1"
+gabaergic.total <- ncol(subset(obj.opossum.gabaergic, idents = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "12", "13", "14", "17")))
+pv.total <- ncol(subset(obj.opossum.gabaergic, idents = c("1", "2", "5", "7", "10", "12", "14")))
+sst.total <- ncol(subset(obj.opossum.gabaergic, idents = c("4", "6", "9", "13", "17")))
+vip.total <- ncol(subset(obj.opossum.gabaergic, idents = c("3")))
+lamp5.total <- ncol(subset(obj.opossum.gabaergic, idents = c("8")))
+
+data <- data.frame(
+  group = c("PV", "SST", "VIP", "LAMP5"),
+  value = c(pv.total, sst.total, vip.total, lamp5.total)
+)
+
+# Compute the position of labels
+data <- data %>% 
+  arrange(desc(group)) %>%
+  mutate(prop = value / sum(data$value) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+# Basic piechart
+ggplot(data, aes(x="", y=prop, fill=group)) +
+  geom_bar(stat="identity", width=1) +
+  coord_polar("y", start=0) +
+  theme_void() + 
+  geom_text(aes(y = ypos, label = sprintf("%.1f%%", prop)), color = "white", size=5) +
+  scale_fill_brewer(palette="Set1")
+ 
+```
+
+
+```{r, fig.width=4, fig.height=4}
+
+Idents(obj.opossum.gabaergic) <- "subclass"
+levels(obj.opossum.gabaergic) <- c("Pvalb", "Sst", "Sst Chodl", "Vip", "Lamp5", "ambiguous")
+cholinergic.markers = c("Chrm1", "Chrm2", "Chrm3", "Chrm4", "Chrm5", 
+                        "Chrna1", "Chrna2", "Chrna3", "Chrna4", "Chrna5", "Chrna6", "Chrna7", "Chrna9", "Chrna10", 
+                        "Chrnb1", "Chrnb2", "Chrnb3", "Chrnb4", 
+                        "Chrnd", "Chrne", "Chrng")
+DoHeatmap(object = obj.opossum.gabaergic, cholinergic.markers, slot = "data") + scale_fill_gradientn(colors = c("white", "red")) + theme(text = element_text(size = 10))
+expr <- AverageExpression(obj.opossum.gabaergic, assays = "RNA", return.seurat = TRUE, features = cholinergic.markers)
+DoHeatmap(expr, features = cholinergic.markers, slot = "data", draw.lines = FALSE, size = 3) + scale_fill_gradientn(colors = magma(100), limits = c(0, 3)) + theme(text = element_text(size = 10))
+
+```
+
+
+```{r, fig.width=4, fig.height=4}
+
+Idents(obj.opossum.gabaergic) <- "subclass"
+levels(obj.opossum.gabaergic) <- c("Pvalb", "Sst", "Sst Chodl", "Vip", "Lamp5", "ambiguous")
+adrenergic.markers = c("Adra1a", "Adra1b", "Adra1d", "Adra2a", "Adra2b", "Adra2c", "Adrb1", "Adrb2", "Adrb3")
+DoHeatmap(object = obj.opossum.gabaergic, adrenergic.markers, slot = "data") + scale_fill_gradientn(colors = c("white", "red")) + theme(text = element_text(size = 10))
+expr <- AverageExpression(obj.opossum.gabaergic, assays = "RNA", return.seurat = TRUE, features = adrenergic.markers)
+DoHeatmap(expr, features = adrenergic.markers, slot = "data", draw.lines = FALSE, size = 3) + scale_fill_gradientn(colors = magma(100), limits = c(0, 3)) + theme(text = element_text(size = 10))
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.gabaergic) <- "subclass"
+obj.opossum.gabaergic <- subset(obj.opossum.gabaergic, subset = subclass != "ambiguous")
+SaveH5Seurat(obj.opossum.gabaergic, "E:/Opossum_M1/seurat/opossum_m1_gabaergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

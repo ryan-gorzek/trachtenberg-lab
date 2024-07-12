@@ -17,7 +17,7 @@ PreprocessData <- function(sample_IDs, data_path, project_name, mapping_path) {
     
   }
   
-  obj <- merge(objs[[1]], y = objs[[2]], add.cell.ids = sample_IDs, project = project_name)
+  obj <- merge(objs[[1]], y = objs[2:length(objs)], add.cell.ids = sample_IDs, project = project_name)
   genes$pre.map <- rownames(obj)
   
   # Map gene names/IDs if specified.
@@ -143,18 +143,33 @@ PlotClusters <- function(obj, group.id) {
   if (!missing(group.id)) {
     Idents(obj) <- group.id
   }
+  obj$active.ident <- obj@active.ident
   dimplot1 <- DimPlot(obj, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
   dimplot2 <- DimPlot(obj, reduction = "umap", group.by = "sample", raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+  cluster.sample <- table(obj$sample, obj$active.ident) %>%
+    as.data.frame.matrix() %>%
+    rownames_to_column(var = "sample")
+  cluster.sample[-1] <- lapply(cluster.sample[-1], function(x) x/sum(x))
+  cluster.sample <- cluster.sample %>%
+    pivot_longer(
+      cols = -c("sample"),
+      names_to = "cluster",
+      values_to = "count"
+    )
+  cluster.sample$cluster <- factor(cluster.sample$cluster, levels = unique(cluster.sample$cluster))
+  barplot1 <- ggplot(cluster.sample, aes(x=cluster, y=count, fill=sample)) +
+    geom_bar(stat="identity") +
+    theme_minimal()
   dimplot3 <- DimPlot(obj, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
   # Summarize doublets by cluster
   df <- obj[[]]
   df$active.ident <- obj@active.ident
   df_summary <- df %>%
-    group_by(active.ident, predicted_doublets) %>%
-    summarise(count = n()) %>%
-    mutate(fraction = count / sum(count))
+    dplyr::group_by(active.ident, predicted_doublets) %>%
+    dplyr::summarise(count = n()) %>%
+    dplyr::mutate(fraction = count / sum(count))
   # Create the stacked bar plot
-  barplot <-ggplot(df_summary, aes(x = active.ident, y = fraction, fill = predicted_doublets)) +
+  barplot2 <- ggplot(df_summary, aes(x = active.ident, y = fraction, fill = predicted_doublets)) +
     geom_bar(stat = "identity") +
     labs(x = "Clusters", y = "Doublet Fraction", fill = "Value") +
     theme_minimal()
@@ -165,8 +180,9 @@ PlotClusters <- function(obj, group.id) {
   
   print(dimplot1)
   print(dimplot2)
+  print(barplot1)
   print(dimplot3)
-  print(barplot)
+  print(barplot2)
   print(featplot1)
   print(vlnplot1)
   print(featplot2)
@@ -301,7 +317,7 @@ SaveDotPlots <- function(obj, markers, subclass.labels, ident.labels, savepath, 
   
   for (sbcl in subclass.labels) {
     
-    folder_path <- paste0(savepath, sbcl, "/")
+    folder_path <- paste0(savepath, gsub("/", "", sbcl), "/")
     make_folder(folder_path)
     
     for (id in ident.labels) {
@@ -323,8 +339,8 @@ SaveDotPlots <- function(obj, markers, subclass.labels, ident.labels, savepath, 
         }
         else { levels(obj.sbcl.id) <- factor(rev(levels(obj.sbcl.id))) }
         if (length(levels(obj.sbcl.id)) > 1) {
-          
-          id.path <- paste0(folder_path, id, "/")
+
+          id.path <- paste0(folder_path, gsub("/", "", id), "/")
           make_folder(id.path)
           
           marker_sets <- list(c(1:20))
@@ -379,7 +395,7 @@ SaveFeaturePlots <- function(obj, markers, subclass.labels, ident.labels, savepa
   
   for (sbcl in subclass.labels) {
     
-    folder_path <- paste0(savepath, sbcl, "/")
+    folder_path <- paste0(savepath, gsub("/", "", sbcl), "/")
     make_folder(folder_path)
     
     for (id in ident.labels) {
@@ -402,7 +418,7 @@ SaveFeaturePlots <- function(obj, markers, subclass.labels, ident.labels, savepa
         else { levels(obj.sbcl.id) <- factor(rev(levels(obj.sbcl.id))) }
         if (length(levels(obj.sbcl.id)) > 1) {
           
-          id.path <- paste0(folder_path, id, "/")
+          id.path <- paste0(folder_path, gsub("/", "", id), "/")
           make_folder(id.path)
           
           marker_sets <- list(c(1:20))
@@ -449,12 +465,12 @@ SaveFeaturePlots <- function(obj, markers, subclass.labels, ident.labels, savepa
                 }
                 
                 # Adjust the plots with new limits and coord_equal
-                for (i in 1:20) {
+                for (i in 1:length(plots$patches$plots)) {
                   plots[[i]] <- plots[[i]] + coord_equal(xlim = xlims, ylim = ylims)
                 }
                 
                 file_prefix <- ifelse(identical(feature_set, features.FC), "FeaturePlot_FC", "FeaturePlot_PD")
-                ggsave(paste0(id.path, sbcl.col, "_", file_prefix, "_id-", type, ".png"), plot = plots, width = 24, height = 16, dpi = 300)
+                ggsave(paste0(id.path, sbcl.col, "_", file_prefix, "_id-", gsub("/", "", type), ".png"), plot = plots, width = 24, height = 16, dpi = 300)
               }
             }
           }
@@ -540,7 +556,7 @@ sort_by_reference <- function(vec, ref) {
   
   # Remove elements that are not in common_elements
   sorted_vec <- sorted_vec[sorted_vec %in% common_elements]
-  
+
   return(factor(rev(sorted_vec), levels = rev(sorted_vec)))
 }
 
@@ -550,7 +566,7 @@ SaveIdentConfusionMatrices <- function(obj, subclass.labels, ident.labels, savep
   
   for (sbcl in subclass.labels) {
     
-    folder_path <- paste0(savepath, sbcl, "/")
+    folder_path <- paste0(savepath, gsub("/", "", sbcl), "/")
     make_folder(folder_path)
     
     for (id in ident.labels) {
@@ -570,7 +586,7 @@ SaveIdentConfusionMatrices <- function(obj, subclass.labels, ident.labels, savep
         levels(obj.sbcl.id) <- sort_idents(levels(obj.sbcl.id))
         if (length(levels(obj.sbcl.id)) > 1) {
           
-          id.path <- paste0(folder_path, id, "/")
+          id.path <- paste0(folder_path, gsub("/", "", id), "/")
           make_folder(id.path)
 
           mdl <- TrainModel(obj.sbcl.id, training_genes = VariableFeatures(obj))
@@ -644,15 +660,18 @@ LabelCells <- function(obj, subclass_resolution) {
     cluster_to_type <- setNames(paste0(subclass, "_", seq_along(cluster_sizes)), names(cluster_sizes))
     
     # Assign the new type labels based on the cluster sizes
-    obj@meta.data$type[cells] <- cluster_to_type[as.character(clusters)]
+    if (sum(cluster_sizes > 0) > 1) {
+      obj@meta.data$type[cells] <- cluster_to_type[as.character(clusters)]
+    } else { obj@meta.data$type[cells] <- subclass }
     obj@meta.data$subclass.type[cells] <- subclass
   }
   
+  if (any(is.na(obj@meta.data$type))) { warning("NAs present in type column...") }
   return(obj)
 
 }
 
-IdentBySample <- function(obj) {
+IdentBySample <- function(obj, y_limits = c(0, 0.50)) {
   
   # Assuming your dataframe is named df with columns 'subclass' and 'sample'
   df <- obj[[]]
@@ -689,8 +708,8 @@ IdentBySample <- function(obj) {
   median_proportions$active.ident <- factor(median_proportions$active.ident, levels = specified_order)
   relative_proportions$active.ident <- factor(relative_proportions$active.ident, levels = specified_order)
   
-  # Set y-axis limits
-  y_limits <- c(0, 0.5) # Modify these values as needed
+  # # Set y-axis limits
+  # y_limits <- c(0, 0.60) # Modify these values as needed
   
   # Calculate the maximum proportion for each active.ident
   max_proportions <- relative_proportions %>%

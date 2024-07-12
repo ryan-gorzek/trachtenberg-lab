@@ -1,0 +1,165 @@
+---
+title: "Opossum M1 GABAergic"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(SeuratDisk)
+obj.opossum.gabaergic <- LoadH5Seurat("E:/Opossum_V1/seurat/opossum_v1_gabaergic_raw.h5Seurat")
+
+```
+
+
+```{r}
+
+obj.opossum.gabaergic <- FindVariableFeatures(obj.opossum.gabaergic, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.opossum.gabaergic)
+obj.opossum.gabaergic <- ScaleData(obj.opossum.gabaergic, features = all.genes)
+obj.opossum.gabaergic <- RunPCA(obj.opossum.gabaergic, features = VariableFeatures(object = obj.opossum.gabaergic))
+ElbowPlot(obj.opossum.gabaergic, ndims = 50)
+
+```
+
+
+```{r}
+
+obj.opossum.gabaergic <- FindNeighbors(obj.opossum.gabaergic, dims = 1:30)
+obj.opossum.gabaergic <- FindClusters(obj.opossum.gabaergic, resolution = 1, algorithm = 4, method = "igraph")
+obj.opossum.gabaergic <- RunUMAP(obj.opossum.gabaergic, dims = 1:30, method = "umap-learn")
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "sample", raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, "nFeature_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, "nCount_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+VlnPlot(obj.opossum.gabaergic, "nCount_RNA")
+
+```
+
+
+```{r}
+
+# DefaultAssay(obj.opossum.gabaergic) <- "RNA"
+
+DimPlot(obj.opossum.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Pvalb")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Sst")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Vip")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Lamp5")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Frem1")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Sncg")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Meis2")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chodl")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Lhx6")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Adarb2")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.opossum.gabaergic$subclass <- NA
+obj.opossum.gabaergic <- subset(obj.opossum.gabaergic, idents = c("5", "13"), invert = TRUE)
+
+```
+
+
+```{r}
+
+obj.opossum.gabaergic <- FindVariableFeatures(obj.opossum.gabaergic, selection.method = "vst", nfeatures = 3000)
+all.genes <- rownames(obj.opossum.gabaergic)
+obj.opossum.gabaergic <- ScaleData(obj.opossum.gabaergic, features = all.genes)
+obj.opossum.gabaergic <- RunPCA(obj.opossum.gabaergic, features = VariableFeatures(object = obj.opossum.gabaergic))
+ElbowPlot(obj.opossum.gabaergic, ndims = 50)
+
+```
+
+
+```{r}
+
+obj.opossum.gabaergic <- FindNeighbors(obj.opossum.gabaergic, dims = 1:30)
+obj.opossum.gabaergic <- FindClusters(obj.opossum.gabaergic, resolution = 1.1, algorithm = 4, method = "igraph")
+obj.opossum.gabaergic <- RunUMAP(obj.opossum.gabaergic, dims = 1:30, method = "umap-learn")
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "sample", raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, "nFeature_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, "nCount_RNA", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.gabaergic, reduction = "umap", group.by = "predicted_doublets", raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+VlnPlot(obj.opossum.gabaergic, "nCount_RNA")
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Pvalb")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Sst")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Vip")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Lamp5")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Frem1")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Sncg")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Meis2")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Chodl")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Lhx6")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.gabaergic, reduction = "umap", features = c("Adarb2")) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+cells.pv <- WhichCells(obj.opossum.gabaergic, ident = c("2", "5", "6", "7", "9", "13", "14"))
+obj.opossum.gabaergic$subclass <- ifelse(colnames(obj.opossum.gabaergic) %in% cells.pv, "Pvalb", "ambiguous")
+
+cells.sst <- WhichCells(obj.opossum.gabaergic, ident = c("1", "11", "12", "15", "16", "18"))
+obj.opossum.gabaergic$subclass[cells.sst] <- "Sst"
+
+cells.vip <- WhichCells(obj.opossum.gabaergic, ident = c("3", "10"))
+obj.opossum.gabaergic$subclass[cells.vip] <- "Vip"
+
+cells.lamp5 <- WhichCells(obj.opossum.gabaergic, ident = c("4"))
+obj.opossum.gabaergic$subclass[cells.lamp5] <- "Lamp5"
+
+cells.lamp5 <- WhichCells(obj.opossum.gabaergic, ident = c("8"))
+obj.opossum.gabaergic$subclass[cells.lamp5] <- "Frem1"
+
+Idents(obj.opossum.gabaergic) <- "subclass"
+obj.opossum.gabaergic <- subset(obj.opossum.gabaergic, subset = subclass != "ambiguous")
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.gabaergic, reduction = "umap", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.gabaergic) <- "subclass"
+SaveH5Seurat(obj.opossum.gabaergic, "E:/Opossum_V1/seurat/opossum_v1_gabaergic.h5seurat", overwrite = TRUE, verbose = TRUE)
+
+```
+

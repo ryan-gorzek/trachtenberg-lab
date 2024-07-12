@@ -1,0 +1,168 @@
+---
+title: "mouse M1 Object"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(tidyverse)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+
+data_path <- "E:/Transcriptomics_v1/Mouse/P38NR/filtered_feature_bc_matrix"
+sample_IDs <- c('P38_1a', 'P38_2a', 'P38_2b')
+
+sample.objs <- c()
+
+for (sample in sample_IDs) {
+  
+  temp.obj.path <- paste(data_path, "/", sample, "/", sep = "")
+  temp.obj.data <- Read10X(temp.obj.path, gene.column = 1)
+  temp.obj <- CreateSeuratObject(counts = temp.obj.data, project = "Mouse_V1_P8")
+  temp.obj$species <- "Mouse"
+  temp.obj$sample <- sample
+  class_ <- read.csv(paste(temp.obj.path, "class.csv", sep = ""), header = FALSE)
+  rownames(class_) <- colnames(temp.obj)
+  temp.obj <- AddMetaData(temp.obj, class_, "class")
+  subclass <- read.csv(paste(temp.obj.path, "subclass.csv", sep = ""), header = FALSE)
+  rownames(subclass) <- colnames(temp.obj)
+  temp.obj <- AddMetaData(temp.obj, subclass, "subclass")
+  type <- read.csv(paste(temp.obj.path, "type.csv", sep = ""), header = FALSE)
+  rownames(type) <- colnames(temp.obj)
+  temp.obj <- AddMetaData(temp.obj, type, "type")
+  temp.obj <- scrublet_R(seurat_obj = temp.obj)
+  sample.objs <- append(sample.objs, temp.obj)
+  
+}
+
+```
+
+
+```{r}
+
+obj.mouse <- merge(sample.objs[[1]], y = sample.objs[2:3], add.cell.ids = sample_IDs, project = "Mouse_V1_P38")
+
+```
+
+
+```{r}
+
+VlnPlot(obj.mouse, features = c("nFeature_RNA"), group.by = "sample", raster = FALSE)
+VlnPlot(obj.mouse, features = c("nCount_RNA"), group.by = "sample", raster = FALSE)
+FeatureScatter(obj.mouse, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", raster = FALSE)
+
+```
+
+
+```{r}
+
+cell_mask <- Reduce(intersect,list(WhichCells(obj.mouse, expression = nFeature_RNA > 700),
+                                   WhichCells(obj.mouse, expression = nFeature_RNA < 6500),
+                                   WhichCells(obj.mouse, expression = nCount_RNA < 40000)))
+
+gene_mask <- rownames(obj.mouse)[Matrix::rowSums(obj.mouse[["RNA"]]@counts > 0) > 8]
+
+obj.mouse <- subset(obj.mouse, features = gene_mask, cells = cell_mask)
+
+```
+
+
+```{r}
+
+# initial clustering
+obj.mouse <- ClusterSCT(obj.mouse, c(1))
+PlotClusters(obj.mouse)
+DimPlot(obj.mouse, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.mouse, reduction = "umap", group.by = "type", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+# remove obvious doublets, cluster again
+obj.mouse <- subset(obj.mouse, idents = c(3, 12, 13, 21, 22, 29), invert = TRUE)
+obj.mouse <- ClusterSCT(obj.mouse, c(1))
+PlotClusters(obj.mouse)
+
+```
+
+
+```{r, fig.width=12, fig.height=6}
+
+canon.markers <- list(
+                    class = c("Snap25", "Sv2b", "Gad2"),
+                    L23 = c("Cux2", "Ccbe1", "Mdga1", "Stard8"),
+                    L4 = c("Whrn", "Rorb"),
+                    L5IT = c("Bcl11b"),
+                    L5NP = c("Nxph1", "Tshz2", "Trhr", "Slc17a8"),
+                    L5PT = c("Bcl6", "Erg", "Reln"),
+                    L6CT = c("Foxp2", "Syt6"),
+                    L6IT = c("Zfp804b", "Cdh9"),
+                    L6b = c("Ctgf", "Inpp4b", "Svil"),
+                    Pvalb = c("Pvalb", "Myo5b"), 
+                    Sst = c("Sst"),
+                    Vip = c("Vip"),
+                    Lamp5 = c("Lamp5", "Sv2c"),
+                    Astro = c("Aldh1l1", "Grin2c", "Phkg1"),
+                    Endo = c("Pecam1", "Mecom", "Flt1"),
+                    Micro = c("Cx3cr1", "Arhgap45", "Inpp5d"),
+                    OD = c("Enpp6", "Mog", "St18"),
+                    OPC = c("Pdgfra", "Cacng4"),
+                    VLMC = c("Slc6a13", "Slc47a1", "Bnc2")
+                      )
+
+# look for canonical markers
+DefaultAssay(obj.mouse) <- "RNA"
+# PlotFeatures(obj.opossum, canon.markers)
+DotPlot(obj.mouse, features = canon.markers, cols = c("lightgrey", "red"), scale = FALSE) + 
+                         theme(axis.text.x = element_text(angle = 90, vjust = 0.25)) + 
+                         theme(panel.background = element_rect(fill = "white", color = NA), plot.background = element_rect(fill = "white", color = NA)) + NoLegend()
+
+```
+
+
+```{r}
+
+# cells.glutamatergic <- WhichCells(obj.mouse, ident = c())
+# obj.mouse$class <- ifelse(colnames(obj.mouse) %in% cells.glutamatergic, "glutamatergic", "ambiguous")
+
+cells.gabaergic <- WhichCells(obj.mouse, ident = c(13, 14, 17, 21))
+obj.mouse$class[cells.gabaergic] <- "gabaergic"
+
+# cells.nonneuronal <- WhichCells(obj.mouse, ident = c())
+# obj.mouse$class[cells.nonneuronal] <- "nonneuronal"
+
+```
+
+
+```{r}
+
+DimPlot(obj.mouse, reduction = "umap", group.by = "class", label = FALSE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.mouse$all_SCT_snn_res.1 <- obj.mouse$SCT_snn_res.1
+Idents(obj.mouse) <- "class"
+
+# obj.mouse.glutamatergic <- subset(obj.mouse, idents = "glutamatergic")
+# saveRDS(obj.mouse.glutamatergic, "E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_raw_glutamatergic.rds")
+
+obj.mouse.gabaergic <- subset(obj.mouse, idents = "gabaergic")
+saveRDS(obj.mouse.gabaergic, "E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_raw_gabaergic.rds")
+
+# obj.mouse.nonneuronal <- subset(obj.mouse, idents = "nonneuronal")
+# saveRDS(obj.mouse.nonneuronal, "E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_raw_nonneuronal.rds")
+
+```
+

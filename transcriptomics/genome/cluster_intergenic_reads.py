@@ -13,12 +13,15 @@ def add_edges_to_graph(df_chunk, graph):
 # Load the data using Dask
 df = dd.read_csv('closest_knn.txt', delim_whitespace=True, header=None, names=['read1', 'read2', 'distance'])
 
+# Randomly sample 1/4 of the rows
+sampled_df = df.sample(frac=0.5, random_state=42)
+
 # Initialize an empty graph
 G = nx.Graph()
 
 # Process data in chunks to build the graph incrementally
-num_chunks = len(df.to_delayed())
-for idx, chunk in enumerate(df.to_delayed()):
+num_chunks = len(sampled_df.to_delayed())
+for idx, chunk in enumerate(sampled_df.to_delayed()):
     if (idx % 10) == 0:
         print("Adding chunk {0} of {1}...".format(idx, num_chunks))
     chunk = chunk.compute()
