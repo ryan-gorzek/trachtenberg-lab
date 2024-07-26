@@ -443,34 +443,36 @@ SaveFeaturePlots <- function(obj, markers, subclass.labels, ident.labels, savepa
               
               for (feature_set in list(features.FC, features.PD)) {
                 feature_subset <- feature_set[1:min(20, length(feature_set))]
-                
-                plots <- FeaturePlot(obj.sbcl.id, features = feature_subset, cols = c("lightgrey", "red"), ncol = 5)
-                
-                # Extract plot limits
-                plot_limits <- get_plot_limits(plots[[1]])
-                xlims <- plot_limits$xlims
-                ylims <- plot_limits$ylims
-                
-                x.range <- diff(xlims)
-                y.range <- diff(ylims)
-                
-                max.range <- max(x.range, y.range)
-                
-                if (x.range < max.range) {
-                  xlims <- mean(xlims) + c(-1, 1) * (max.range / 2)
+                feature_subset <- feature_subset[!is.na(feature_subset)]
+                if (length(feature_subset) > 0) {
+                  plots <- FeaturePlot(obj.sbcl.id, features = feature_subset, cols = c("lightgrey", "red"), ncol = 5)
+                  
+                  # Extract plot limits
+                  plot_limits <- get_plot_limits(plots[[1]])
+                  xlims <- plot_limits$xlims
+                  ylims <- plot_limits$ylims
+                  
+                  x.range <- diff(xlims)
+                  y.range <- diff(ylims)
+                  
+                  max.range <- max(x.range, y.range)
+                  
+                  if (x.range < max.range) {
+                    xlims <- mean(xlims) + c(-1, 1) * (max.range / 2)
+                  }
+                  
+                  if (y.range < max.range) {
+                    ylims <- mean(ylims) + c(-1, 1) * (max.range / 2)
+                  }
+                  
+                  # Adjust the plots with new limits and coord_equal
+                  for (i in 1:length(plots$patches$plots)) {
+                    plots[[i]] <- plots[[i]] + coord_equal(xlim = xlims, ylim = ylims)
+                  }
+                  
+                  file_prefix <- ifelse(identical(feature_set, features.FC), "FeaturePlot_FC", "FeaturePlot_PD")
+                  ggsave(paste0(id.path, sbcl.col, "_", file_prefix, "_id-", gsub("/", "", type), ".png"), plot = plots, width = 24, height = 16, dpi = 300)
                 }
-                
-                if (y.range < max.range) {
-                  ylims <- mean(ylims) + c(-1, 1) * (max.range / 2)
-                }
-                
-                # Adjust the plots with new limits and coord_equal
-                for (i in 1:length(plots$patches$plots)) {
-                  plots[[i]] <- plots[[i]] + coord_equal(xlim = xlims, ylim = ylims)
-                }
-                
-                file_prefix <- ifelse(identical(feature_set, features.FC), "FeaturePlot_FC", "FeaturePlot_PD")
-                ggsave(paste0(id.path, sbcl.col, "_", file_prefix, "_id-", gsub("/", "", type), ".png"), plot = plots, width = 24, height = 16, dpi = 300)
               }
             }
           }
@@ -676,12 +678,13 @@ IdentBySample <- function(obj, y_limits = c(0, 0.50)) {
   # Assuming your dataframe is named df with columns 'subclass' and 'sample'
   df <- obj[[]]
   df$active.ident <- obj@active.ident
+  df$smpl <- df$sample
   specified_order <- levels(obj)
-  
+
   # Check for NAs and warn the user
-  na_samples <- df %>% filter(is.na(active.ident)) %>% count(sample)
+  na_samples <- df %>% filter(is.na(active.ident)) %>% count(smpl)
   if(nrow(na_samples) > 0) {
-    warning("The following samples contained NAs and were dropped: ", 
+    warning("The following samples contained NAs and were dropped: ",
             paste(na_samples$sample, " (", na_samples$n, ")", collapse = "\n"))
   }
   
@@ -691,7 +694,7 @@ IdentBySample <- function(obj, y_limits = c(0, 0.50)) {
   # Calculate the relative proportions of each active.ident by sample
   relative_proportions <- df %>%
     group_by(sample, active.ident) %>%
-    summarize(count = n(), .groups = 'drop') %>%
+    dplyr::summarize(count = n(), .groups = 'drop') %>%
     ungroup() %>%
     group_by(sample) %>%
     mutate(Proportion = count / sum(count))
@@ -822,4 +825,138 @@ PlotSubclassGeneCounts <- function(nested_list, subclass.col, subclass.order) {
         axis.text.y = element_text(size = 12)   # Increase y-axis tick label size
       )
   }
+}
+
+plotGeneFractions <- function(df, gene_list) {
+  # Calculate the fraction of genes in each cluster that belong to the gene_list
+  fraction_data <- df %>%
+    dplyr::group_by(cluster) %>%
+    dplyr::summarize(
+      total_genes = n(),
+      matching_genes = sum(gene %in% gene_list),
+      fraction = matching_genes / total_genes
+    )
+  
+  # Plot the results
+  ggplot(fraction_data, aes(x = cluster, y = fraction)) +
+    geom_bar(stat = "identity", fill = "steelblue") +
+    labs(title = "",
+         x = "Cluster",
+         y = "Fraction of Genes") +
+    ylim(0, 1) +
+    theme_minimal()
+}
+
+PlotSubclassGeneCountCDF <- function(de_df, all_genes, sample.name, subclass.order, subclass_colors) {
+  # Extract dataframes
+  df <- de_df$subclass
+  
+  # Initialize an empty data frame to store cumulative counts
+  cdf_data <- data.frame()
+  
+  for (i in 1:length(subclass.order)) {
+    
+    sbcl <- subclass.order[i]
+    
+    # Filter dataframes for the specific cluster pair
+    df_filtered <- df %>% filter(cluster == sbcl)
+    
+    # Calculate the maximum avg_log2FC value
+    max_log2FC <- max(df_filtered$avg_log2FC, na.rm = TRUE)
+    
+    # Create a sequence of avg_log2FC values from 0.2 to the maximum or 2 (whichever is smaller)
+    log2FC_grid <- seq(0.2, min(max_log2FC, 2), length.out = 50)
+    
+    count <- c()
+    for (l in log2FC_grid) {
+      de_genes <- df_filtered$gene[df_filtered$avg_log2FC > l]
+      count <- c(count, length(de_genes)) }
+    
+    # Calculate the cumulative number of shared genes as avg_log2FC varies
+    shared_gene_counts <- data.frame(
+      avg_log2FC = log2FC_grid,
+      count = count,
+      Cluster1 = sbcl,
+      Color = subclass_colors[i]
+    )
+
+    # Combine with existing data
+    cdf_data <- rbind(cdf_data, shared_gene_counts)
+    
+  }
+  
+  cdf_data$Cluster1 <- factor(cdf_data$Cluster1, levels = subclass.order[subclass.order %in% cdf_data$Cluster1])
+  # Plot cumulative distribution function
+  ggplot(cdf_data, aes(x = avg_log2FC, y = count, color = Cluster1, group = Cluster1)) +
+    geom_line(size = 1) + # Use line size
+    scale_color_manual(values = setNames(subclass_colors, subclass.order), guide = guide_legend(reverse = TRUE)) + # Set the colors using subclass_colors
+    labs(title = paste0(""),
+         x = "avg_log2FC",
+         y = "Number of DE Genes",
+         color = "Cluster Pair") +
+    theme_minimal() +
+    scale_x_continuous(limits = c(0.2, 2)) + # Set x-axis limits
+    geom_vline(xintercept = 0.2, linetype = "dotted", color = "black") +
+    annotate("text", x = 0.2, y = max(cdf_data$count) * 0.9, label = "0.2", hjust = -0.2, vjust = -0.5) +
+    geom_vline(xintercept = 0.5, linetype = "dotted", color = "black") +
+    annotate("text", x = 0.5, y = max(cdf_data$count) * 0.9, label = "0.5", hjust = -0.2, vjust = -0.5) +
+    geom_vline(xintercept = 1, linetype = "dotted", color = "black") +
+    annotate("text", x = 1, y = max(cdf_data$count) * 0.9, label = "1.0", hjust = -0.2, vjust = -0.5) +
+    theme(
+      axis.title.x = element_text(size = 14), # Increase x-axis label size
+      axis.title.y = element_text(size = 14), # Increase y-axis label size
+      axis.text.x = element_text(size = 12),  # Increase x-axis tick label size
+      axis.text.y = element_text(size = 12)   # Increase y-axis tick label size
+    )
+}
+
+PlotSubclassGeneCountCDF_AtPoints <- function(de_df, all_genes, sample.name, subclass.order, subclass_colors, log2FC_points) {
+  # Extract dataframes
+  df <- de_df$subclass
+  
+  # Initialize an empty data frame to store cumulative counts
+  cdf_data <- data.frame()
+  
+  for (i in 1:length(subclass.order)) {
+    
+    sbcl <- subclass.order[i]
+    
+    # Filter dataframes for the specific cluster pair
+    df_filtered <- df %>% filter(cluster == sbcl)
+    
+    count <- c()
+    for (l in log2FC_points) {
+      de_genes <- df_filtered$gene[df_filtered$avg_log2FC > l]
+      count <- c(count, length(de_genes))
+    }
+    
+    # Calculate the cumulative number of shared genes as avg_log2FC varies
+    shared_gene_counts <<- data.frame(
+      avg_log2FC = log2FC_points,
+      count = count,
+      Cluster1 = sbcl,
+      Color = subclass_colors[i]
+    )
+    
+    # Combine with existing data
+    cdf_data <- rbind(cdf_data, shared_gene_counts)
+    
+  }
+  
+  # Plot cumulative distribution function
+  ggplot(cdf_data, aes(x = avg_log2FC, y = count, color = Cluster1, group = Cluster1)) +
+    geom_line(size = 1) + # Use line size
+    geom_point(size = 2) + # Add points at specified log2FC values
+    scale_color_manual(values = setNames(subclass_colors, subclass.order)) + # Set the colors using subclass_colors
+    labs(title = paste0(""),
+         x = "avg_log2FC",
+         y = "Cumulative Number of Shared Genes",
+         color = "Cluster Pair") +
+    theme_minimal() +
+    theme(
+      axis.title.x = element_text(size = 14), # Increase x-axis label size
+      axis.title.y = element_text(size = 14), # Increase y-axis label size
+      axis.text.x = element_text(size = 12),  # Increase x-axis tick label size
+      axis.text.y = element_text(size = 12)   # Increase y-axis tick label size
+    )
 }

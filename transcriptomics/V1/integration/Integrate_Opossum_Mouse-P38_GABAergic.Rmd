@@ -51,7 +51,7 @@ for (pc in c(T, F)) {
   p <- PlotSubclassDEIntersection(subclass.markers[[1]], subclass.markers[[2]], 
                                   rownames(objs[[1]]), rownames(objs[[2]]),
                                   sample.names[[1]], sample.names[[2]],
-                                  subclasses, 0.2, "E:/Transcriptomics_V1/Integration/Opossum_Mouse/subclass_markers/", percentage = pc)
+                                  subclasses, 0.2, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/subclass_markers/GABAergic/", percentage = pc)
   print(p)
 }
 

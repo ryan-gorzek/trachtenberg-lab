@@ -1,0 +1,315 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+classes <- c("Glutamatergic", "GABAergic", "Nonneuronal")
+objs.mouse <- c()
+objs.opossum <- c()
+objs.i.mouse <- c()
+objs.i.opossum <- c()
+objs.m.mouse <- c()
+objs.m.opossum <- c()
+
+for (cl in classes) {
+
+  obj.opossum <- readRDS(paste0("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_", tolower(cl), "_processed.rds"))
+  obj.opossum$species <- "Opossum"
+  obj.mouse.P38 <- readRDS(paste0("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_", tolower(cl), "_processed.rds"))
+  obj.mouse.P38$species <- "Mouse"
+
+  objs <- list(obj.opossum, obj.mouse.P38)
+  obj.integrated <- IntegrateObjects(objs[[1]], objs[[2]], resolutions = c(1, 2), nfeatures = 3000, subsample = TRUE)
+  objs.i <- SplitObject(obj.integrated, split.by = "species")
+  objs.m <- MapObjects(objs.i[["Opossum"]], objs.i[["Mouse"]], c("subclass", "type"), assay = "integrated")
+  objs.mouse <- append(objs.mouse, objs[[2]])
+  objs.opossum <- append(objs.opossum, objs[[1]])
+  objs.i.mouse <- append(objs.i.mouse, objs.i[["Mouse"]])
+  objs.i.opossum <- append(objs.i.opossum, objs.i[["Opossum"]])
+  objs.m.mouse <- append(objs.m.mouse, objs.m[[2]])
+  objs.m.opossum <- append(objs.m.opossum, objs.m[[1]])
+  
+}
+
+obj.mouse <- merge(objs.mouse[[1]], y = c(objs.mouse[[2]], objs.mouse[[3]]))
+obj.opossum <- merge(objs.opossum[[1]], y = c(objs.opossum[[2]], objs.opossum[[3]]))
+obj.m.mouse <- merge(objs.m.mouse[[1]], y = c(objs.m.mouse[[2]], objs.m.mouse[[3]]))
+obj.m.opossum <- merge(objs.m.opossum[[1]], y = c(objs.m.opossum[[2]], objs.m.opossum[[3]]))
+
+```
+
+
+```{r}
+
+obj.mouse <- ClusterSCT(obj.mouse, c(1))
+obj.m.mouse <- ClusterSCT(obj.m.mouse, c(1))
+obj.opossum <- ClusterSCT(obj.opossum, c(1))
+obj.m.opossum <- ClusterSCT(obj.m.opossum, c(1))
+
+```
+
+
+```{r}
+
+obj.mouse <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_mouse.rds")
+obj.opossum <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_opossum.rds")
+objs.i.mouse <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_i_mouse.rds")
+objs.i.opossum <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_i_opossum.rds")
+objs.m.mouse <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/objs_m_mouse.rds")
+objs.m.opossum <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/objs_m_opossum.rds")
+obj.m.mouse <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_m_mouse.rds")
+obj.m.opossum <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_m_opossum.rds")
+
+```
+
+
+```{r}
+
+colors_list <- list(
+              # Glutamatergic
+              IT = "#FF6C88",
+              IT_A = "#FFB3B3",
+              `L2/3` = "#FFB3B3",
+              IT_B = "#FFA07A",
+              L4 = "#FF7F50",
+              IT_C = "#FF7F50",
+              L5IT = "#FFA07A",
+              IT_D = "#FF6347",
+              L6IT = "#FF6347",
+              L5NP = "#FF4500",
+              L5PT = "#FF8C69",
+              L6CT = "#FFA07A",
+              L6b = "#FF6347",
+            
+              # GABAergic
+              Pvalb = "#1E90FF",
+              Sst = "#87CEEB",
+              Vip = "#87CEFA",
+              Lamp5 = "#4682B4",
+              Frem1 = "#ADD8E6",
+              Stac = "#5F9EA0",
+            
+              # Non-neuronal
+              Astro = "#8C8C8C",
+              Micro = "#A0A0A0",
+              OD = "#B4B4B4",
+              OPC = "#C8C8C8",
+              Endo = "#505050",
+              VLMC = "#B4B4B4"
+)
+
+```
+
+
+```{r}
+
+obj.opossum$subclass.plot <- obj.opossum$subclass
+obj.opossum$subclass.plot[obj.opossum$subclass %in% c("IT_A", "IT_B", "IT_C", "IT_D", "IT_E", 
+                                                        "L2/3", "L4", "L5IT", "L6IT")] <- "IT"
+opossum.counts <- as.data.frame.matrix(table(obj.opossum$sample, obj.opossum$subclass.plot))
+opossum.counts$Stac <- 0
+opossum.counts$VLMC <- 0
+opossum.counts$species <- "Opossum"
+opossum.counts$Glutamatergic <- rowSums(opossum.counts[, c("IT", "L5NP", "L5PT", "L6CT", "L6b")])
+opossum.counts$GABAergic <- rowSums(opossum.counts[, c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")])
+opossum.counts$Nonneuronal <- rowSums(opossum.counts[, c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC")])
+
+obj.mouse$subclass.plot <- obj.mouse$subclass
+obj.mouse$subclass.plot[obj.mouse$subclass %in% c("IT_A", "IT_B", "IT_C", "IT_D", "IT_E", 
+                                                        "L2/3", "L4", "L5IT", "L6IT")] <- "IT"
+mouse.counts <- as.data.frame.matrix(table(obj.mouse$sample, obj.mouse$subclass.plot))
+mouse.counts$species <- "Mouse"
+mouse.counts$Glutamatergic <- rowSums(mouse.counts[, c("IT", "L5NP", "L5PT", "L6CT", "L6b")])
+mouse.counts$GABAergic <- rowSums(mouse.counts[, c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")])
+mouse.counts$Nonneuronal <- rowSums(mouse.counts[, c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC")])
+
+all.counts <- rbind(opossum.counts, mouse.counts)
+
+all.props <- all.counts %>%
+  mutate(IT = IT / Glutamatergic,
+         L5NP = L5NP / Glutamatergic,
+         L5PT = L5PT / Glutamatergic,
+         L6CT = L6CT / Glutamatergic,
+         L6b = L6b / Glutamatergic,
+         Pvalb = Pvalb / GABAergic,
+         Sst = Sst / GABAergic,
+         Vip = Vip / GABAergic,
+         Lamp5 = Lamp5 / GABAergic,
+         Frem1 = Frem1 / GABAergic, 
+         Stac = Stac / GABAergic, 
+         Astro = Astro / Nonneuronal,
+         Micro = Micro / Nonneuronal,
+         OD = OD / Nonneuronal,
+         OPC = OPC / Nonneuronal,
+         Endo = Endo / Nonneuronal
+         )
+
+scatter.props <- all.props
+
+all.props.long <- all.props %>%
+                  pivot_longer(
+                    cols = c("IT", "L5NP", "L5PT", "L6CT", "L6b", 
+                             "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac", 
+                             "Astro", "Micro", "OD", "OPC", "Endo", "VLMC", 
+                             "Glutamatergic", "GABAergic", "Nonneuronal"),
+                    names_to = "cell.identity", 
+                    values_to = "fraction"
+                               )
+
+```
+
+
+```{r, fig.height=3, fig.width=4}
+
+all.props.long$species <- factor(all.props.long$species, levels = c("Opossum", "Mouse"))
+
+curr.props <- all.props.long[all.props.long$cell.identity %in% c("IT", "L5NP", "L5PT", "L6CT", "L6b"), ]
+
+ggplot(curr.props, aes(x = factor(cell.identity, level = c("IT", "L5NP", "L5PT", "L6CT", "L6b")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("IT", "L5NP", "L5PT", "L6CT", "L6b")) +
+    scale_y_continuous(breaks = c(0, 0.2, 0.4, 0.6, 0.8), expand = c(0, 0), limits = c(0, 0.80)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "Fraction of Glutamatergic Cells", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa"))
+
+```
+
+
+```{r, fig.height=3, fig.width=4.5}
+
+all.props.long$species <- factor(all.props.long$species, levels = c("Opossum", "Mouse"))
+
+curr.props <- all.props.long[all.props.long$cell.identity %in% c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac"), ]
+
+ggplot(curr.props, aes(x = factor(cell.identity, level = c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")) +
+    scale_y_continuous(breaks = c(0, 0.2, 0.4, 0.6), expand = c(0, 0), limits = c(0, 0.60)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "Fraction of GABAergic Cells", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa"))
+
+```
+
+
+```{r, fig.height=3, fig.width=4.5}
+
+all.props.long$species <- factor(all.props.long$species, levels = c("Opossum", "Mouse"))
+
+curr.props <- all.props.long[all.props.long$cell.identity %in% c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC"), ]
+
+ggplot(curr.props, aes(x = factor(cell.identity, level = c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC")) +
+    scale_y_continuous(breaks = c(0, 0.2, 0.4, 0.6, 0.8), expand = c(0, 0), limits = c(0, 0.60)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "Fraction of Nonneuronal Cells", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa"))
+
+```
+
+
+```{r}
+
+opossum.counts <- as.data.frame.matrix(table(obj.opossum.IT$sample, obj.opossum.IT$subclass))
+opossum.counts$`L2/3` <- opossum.counts$IT_A
+opossum.counts$L4 <- opossum.counts$IT_C
+opossum.counts$L5IT <- opossum.counts$IT_B
+opossum.counts$L6IT <- opossum.counts$IT_D
+opossum.counts$species <- "Opossum"
+opossum.counts$Glutamatergic <- rowSums(opossum.counts[, c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b")])
+
+mouse.counts <- as.data.frame.matrix(table(obj.mouse.IT$sample, obj.mouse.IT$subclass))
+mouse.counts$IT_A <- mouse.counts$`L2/3`
+mouse.counts$IT_C <- mouse.counts$L4
+mouse.counts$IT_B <- mouse.counts$L5IT
+mouse.counts$IT_D <- mouse.counts$L6IT
+mouse.counts$species <- "Mouse"
+mouse.counts$Glutamatergic <- rowSums(mouse.counts[, c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b")])
+
+all.counts <- rbind(opossum.counts, mouse.counts)
+
+all.props <- all.counts %>%
+  mutate(`L2/3` = `L2/3` / Glutamatergic,
+         L4 = L4 / Glutamatergic,
+         L5IT = L5IT / Glutamatergic,
+         L6IT = L6IT / Glutamatergic,
+         L5NP = L5NP / Glutamatergic,
+         L5PT = L5PT / Glutamatergic,
+         L6CT = L6CT / Glutamatergic,
+         L6b = L6b / Glutamatergic
+         )
+
+scatter.props <- all.props
+
+all.props.long <- all.props %>%
+                  pivot_longer(
+                    cols = c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"),
+                    names_to = "cell.identity", 
+                    values_to = "fraction"
+                               )
+
+```
+
+
+```{r, fig.height=3, fig.width=4.5}
+
+all.props.long$species <- factor(all.props.long$species, levels = c("Opossum", "Mouse"))
+
+curr.props <- all.props.long[all.props.long$cell.identity %in% c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"), ]
+
+ggplot(curr.props, aes(x = factor(cell.identity, level = c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b")) +
+    scale_y_continuous(breaks = c(0, 0.2, 0.4, 0.6), expand = c(0, 0), limits = c(0, 0.60)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "Fraction of Glutamatergic Cells", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa"))
+
+```
+
+
+```{r}
+
+saveRDS(obj.mouse, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_mouse.rds")
+saveRDS(obj.opossum, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_opossum.rds")
+saveRDS(objs.i.mouse, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_i_mouse.rds")
+saveRDS(objs.i.opossum, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_i_opossum.rds")
+saveRDS(objs.m.mouse, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/objs_m_mouse.rds")
+saveRDS(objs.m.opossum, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/objs_m_opossum.rds")
+saveRDS(obj.m.mouse, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_m_mouse.rds")
+saveRDS(obj.m.opossum, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_m_opossum.rds")
+
+```
+

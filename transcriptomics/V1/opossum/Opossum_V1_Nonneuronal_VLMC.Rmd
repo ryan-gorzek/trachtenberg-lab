@@ -1,0 +1,290 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(tidyverse)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.opossum.nonneuronal <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_nonneuronal.rds")
+
+```
+
+
+```{r}
+
+obj.opossum.nonneuronal <- ClusterSCT(obj.opossum.nonneuronal, c(1))
+PlotClusters(obj.opossum.nonneuronal, group.id = "SCT_snn_res.1")
+
+```
+
+
+```{r}
+
+canon.markers <- list(
+                    Astro = c("Aldh1l1", "Grin2c", "Phkg1"), 
+                    Endo = c("Pecam1", "Mecom", "Flt1"), 
+                    Micro = c("Cx3cr1", "Arhgap45", "Inpp5d"), 
+                    Oligo = c("Enpp6", "Mog", "St18"), 
+                    OPC = c("Lhfpl3", "Pdgfra", "Cacng4"),
+                    VLMC = c("Slc6a13", "Slc47a1", "Bnc2")
+                      )
+
+# look for canonical markers
+DefaultAssay(obj.opossum.nonneuronal) <- "RNA"
+Idents(obj.opossum.nonneuronal) <- "SCT_snn_res.1"
+PlotFeatures(obj.opossum.nonneuronal, canon.markers)
+DotPlot(obj.opossum.nonneuronal, features = canon.markers, cols = c("lightgrey", "red"), scale = FALSE) + 
+                         theme(axis.text.x = element_text(angle = 90, vjust = 0.25)) + 
+                         theme(panel.background = element_rect(fill = "white", color = NA), plot.background = element_rect(fill = "white", color = NA)) + NoLegend()
+
+```
+
+
+```{r}
+
+obj.opossum.nonneuronal.prefilt <- obj.opossum.nonneuronal
+obj.opossum.nonneuronal <- subset(obj.opossum.nonneuronal, idents = c(7, 11), invert = TRUE)
+
+```
+
+
+```{r}
+
+obj.opossum.nonneuronal <- ClusterSCT(obj.opossum.nonneuronal, c(1, 1.5, 2))
+PlotClusters(obj.opossum.nonneuronal, group.id = "SCT_snn_res.1")
+
+canon.markers <- list(
+                    Astro = c("Aldh1l1", "Grin2c", "Phkg1"), 
+                    Endo = c("Pecam1", "Mecom", "Flt1"), 
+                    Micro = c("Cx3cr1", "Arhgap45", "Inpp5d"), 
+                    Oligo = c("Enpp6", "Mog", "St18"), 
+                    OPC = c("Lhfpl3", "Pdgfra", "Cacng4"),
+                    VLMC = c("Slc6a13", "Slc47a1", "Bnc2")
+                      )
+
+# look for canonical markers
+DefaultAssay(obj.opossum.nonneuronal) <- "RNA"
+Idents(obj.opossum.nonneuronal) <- "SCT_snn_res.1"
+PlotFeatures(obj.opossum.nonneuronal, canon.markers)
+DotPlot(obj.opossum.nonneuronal, features = canon.markers, cols = c("lightgrey", "red"), scale = FALSE) + 
+                         theme(axis.text.x = element_text(angle = 90, vjust = 0.25)) + 
+                         theme(panel.background = element_rect(fill = "white", color = NA), plot.background = element_rect(fill = "white", color = NA)) + NoLegend()
+
+```
+
+
+```{r}
+
+PlotClusters(obj.opossum.nonneuronal, group.id = "SCT_snn_res.1.5")
+
+```
+
+
+```{r}
+
+PlotClusters(obj.opossum.nonneuronal, group.id = "SCT_snn_res.2")
+
+```
+
+
+```{r}
+
+clustree(obj.opossum.nonneuronal, prefix = "SCT_snn_res.")
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.opossum.nonneuronal) <- "SCT"
+ident = "SCT_snn_res.1"
+gene <- "Cck"
+DimPlot(obj.opossum.nonneuronal, reduction = "umap", group.by = ident, label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.nonneuronal, gene, raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+VlnPlot(obj.opossum.nonneuronal, gene, group.by = ident)
+
+```
+
+
+```{r}
+
+# identify subclasses at each clustering resolution
+# do differential expression for clusters within each subclass
+# generate plots of top genes for each
+
+subclass.idx.opossum <- list()
+
+subclass.idx.opossum$SCT_snn_res.1$Astro <- c("4", "6", "8", "9")
+subclass.idx.opossum$SCT_snn_res.1.5$Astro <- c("5", "7", "9", "13", "14", "18")
+subclass.idx.opossum$SCT_snn_res.2$Astro <- c("6", "8", "11", "12", "16", "17", "22")
+
+subclass.idx.opossum$SCT_snn_res.1$Micro <- c("5")
+subclass.idx.opossum$SCT_snn_res.1.5$Micro <- c("6")
+subclass.idx.opossum$SCT_snn_res.2$Micro <- c("2")
+
+subclass.idx.opossum$SCT_snn_res.1$OD <- c("1", "2", "7", "10", "12")
+subclass.idx.opossum$SCT_snn_res.1.5$OD <- c("1", "3", "4", "8", "10", "11", "16")
+subclass.idx.opossum$SCT_snn_res.2$OD <- c("1", "3", "5", "7", "9", "10", "15", "18", "20")
+
+subclass.idx.opossum$SCT_snn_res.1$OPC <- c("3", "13", "14")
+subclass.idx.opossum$SCT_snn_res.1.5$OPC <- c("2", "12", "17", "19")
+subclass.idx.opossum$SCT_snn_res.2$OPC <- c("4", "13", "14", "21", "23")
+
+subclass.idx.opossum$SCT_snn_res.1$Endo <- c("11")
+subclass.idx.opossum$SCT_snn_res.1.5$Endo <- c("15")
+subclass.idx.opossum$SCT_snn_res.2$Endo <- c("19")
+
+subclass.idx.opossum$SCT_snn_res.1$VLMC <- c("15")
+subclass.idx.opossum$SCT_snn_res.1.5$VLMC <- c("20")
+subclass.idx.opossum$SCT_snn_res.2$VLMC <- c("24")
+
+obj.opossum.nonneuronal <- SubclassByIdent(obj.opossum.nonneuronal, subclass.idx.opossum)
+
+```
+
+
+```{r}
+
+subclass.labels <- c("Astro", "OD", "OPC")
+ident.labels <- c("SCT_snn_res.1", "SCT_snn_res.1.5", "SCT_snn_res.2")
+
+markers.opossum.nonneuronal <- IdentMarkerDict(obj.opossum.nonneuronal, subclass.labels, ident.labels,
+                                        "E:/Transcriptomics_V1/Opossum/seurat/marker_genes/Nonneuronal/markerdict_clusters.rds")
+SaveDotPlots(obj.opossum.nonneuronal, markers.opossum.nonneuronal,
+             subclass.labels, ident.labels,
+             "E:/Transcriptomics_V1/Opossum/seurat/cell_types/Nonneuronal/", "ENSMODG")
+SaveFeaturePlots(obj.opossum.nonneuronal, markers.opossum.nonneuronal,
+                 subclass.labels, ident.labels,
+                 "E:/Transcriptomics_V1/Opossum/seurat/cell_types/Nonneuronal/")
+
+```
+
+
+```{r}
+
+subclass.labels <- c("Astro", "OD", "OPC")
+ident.labels <- c("SCT_snn_res.1", "SCT_snn_res.1.5", "SCT_snn_res.2")
+
+for (sbcl in subclass.labels) {
+  for (id in ident.labels) {
+    p <- PlotIdentGeneCounts(markers.opossum.nonneuronal, sbcl, id)
+    p <- p + theme(aspect.ratio = 1) # Make plot square
+    print(p)
+  }
+}
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.opossum.nonneuronal) <- "SCT"
+ident = "SCT_snn_res.1"
+gene <- "Gata2"
+DimPlot(obj.opossum.nonneuronal, reduction = "umap", group.by = ident, label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum.nonneuronal, gene, raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+VlnPlot(obj.opossum.nonneuronal, gene, group.by = ident)
+
+```
+
+
+```{r}
+
+# whole-transcriptome cross-validated classification
+subclass.labels <- c("Astro", "OD", "OPC")
+ident.labels <- c("SCT_snn_res.1", "SCT_snn_res.1.5", "SCT_snn_res.2")
+
+SaveIdentConfusionMatrices(obj.opossum.nonneuronal, subclass.labels, ident.labels, 
+                      "E:/Transcriptomics_V1/Opossum/seurat/cell_types/Nonneuronal/")
+
+```
+
+
+```{r}
+
+# label subclasses and types
+obj.opossum.nonneuronal$subclass <- NA
+obj.opossum.nonneuronal$type <- NA
+
+subclass.resolutions <- rev(list(Astro = 1, Micro = 1, OD = 1, OPC = 1, Endo = 1, VLMC = 1))
+obj.opossum.nonneuronal <- LabelCells(obj.opossum.nonneuronal, subclass.resolutions)
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.nonneuronal, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.nonneuronal, reduction = "umap", group.by = "type", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+# Plot relative subclass proportions
+Idents(obj.opossum.nonneuronal) <- "subclass"
+levels(obj.opossum.nonneuronal) <- c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC")
+
+IdentBySample(obj.opossum.nonneuronal, y_limits = c(0, 0.60))
+
+```
+
+
+```{r}
+
+subclass.labels <- c("Astro", "OD", "OPC")
+ident.labels <- c("type")
+
+subclass.markers.opossum.nonneuronal <- SubclassMarkerDict(obj.opossum.nonneuronal, "subclass",
+                                                       "E:/Transcriptomics_V1/Opossum/seurat/marker_genes/Nonneuronal/markerdict_subclass.rds")
+markers.opossum.nonneuronal <- IdentMarkerDict(obj.opossum.nonneuronal, subclass.labels, ident.labels,
+                                        "E:/Transcriptomics_V1/Opossum/seurat/marker_genes/Nonneuronal/markerdict_types.rds")
+SaveDotPlots(obj.opossum.nonneuronal, markers.opossum.nonneuronal,
+             subclass.labels, ident.labels,
+             "E:/Transcriptomics_V1/Opossum/seurat/cell_types/Nonneuronal/", "ENSMODG")
+SaveFeaturePlots(obj.opossum.nonneuronal, markers.opossum.nonneuronal,
+                 subclass.labels, ident.labels,
+                 "E:/Transcriptomics_V1/Opossum/seurat/cell_types/Nonneuronal/")
+
+PlotSubclassGeneCounts(subclass.markers.opossum.nonneuronal, "subclass", 
+                       c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC")) + theme(aspect.ratio = 1)
+for (sbcl in subclass.labels) {
+  for (id in ident.labels) {
+    p <- PlotIdentGeneCounts(markers.opossum.nonneuronal, sbcl, id)
+    p <- p + theme(aspect.ratio = 1) # Make plot square
+    print(p)
+  }
+}
+
+SaveSubclassConfusionMatrices(obj.opossum.nonneuronal, "subclass",
+                              c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC"),
+                              "E:/Transcriptomics_V1/Opossum/seurat/cell_types/Nonneuronal/")
+SaveIdentConfusionMatrices(obj.opossum.nonneuronal, subclass.labels, ident.labels,
+                           "E:/Transcriptomics_V1/Opossum/seurat/cell_types/Nonneuronal/")
+
+```
+
+
+```{r}
+
+saveRDS(obj.opossum.nonneuronal, "E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_nonneuronal_processed.rds")
+
+```
+

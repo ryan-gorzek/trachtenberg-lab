@@ -155,12 +155,12 @@ XGBoost_train = function(train_Data, train_labels = NULL, var.genes = NULL, do.s
                          nrounds = nround)
   
   # Predict hold-out validation set
-  validation_pred <- predict(bst_model, newdata = validation_matrix)
-  validation_prediction <- matrix(validation_pred, nrow = numberOfClasses,
+  validation_pred <<- predict(bst_model, newdata = validation_matrix)
+  validation_prediction <<- matrix(validation_pred, nrow = numberOfClasses,
                                    ncol = length(validation_pred) / numberOfClasses)
-  valid_predlabels <- apply(validation_prediction, 2, which.max) - 1
-  A = table(validation.label, valid_predlabels)
-  TL <- levels(train_labels)
+  valid_predlabels <<- apply(validation_prediction, 2, which.max) - 1
+  A <<- table(validation.label, valid_predlabels)
+  TL <<- levels(train_labels)
   colnames(A) = levels(train_labels); rownames(A) = levels(train_labels)
   confusion <- plotConfusionMatrix(A, order = "Row", xlab.use = "True",
                                    ylab.use = "Predicted", plot.return = TRUE,

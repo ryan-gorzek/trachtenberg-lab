@@ -1,0 +1,371 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(SeuratWrappers)
+library(monocle3)
+library(pheatmap)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.opossum <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
+obj.mouse.P38 <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+
+```
+
+
+```{r}
+
+colors_list <- list(
+              # Glutamatergic
+              IT = "#FF6C88",
+              IT_A = "#FFB3B3",
+              `L2/3` = "#FFB3B3",
+              IT_B = "#FFA07A",
+              L4 = "#FF7F50",
+              IT_C = "#FF7F50",
+              L5IT = "#FFA07A",
+              IT_D = "#FF6347",
+              L6IT = "#FF6347",
+              L5NP = "#FF4500",
+              L5PT = "#32a852", 
+              L6CT = "#7de89a",
+              L6b = "#206633",
+            
+              # GABAergic
+              Pvalb = "#1E90FF",
+              Sst = "#87CEEB",
+              Vip = "#87CEFA",
+              Lamp5 = "#4682B4",
+              Frem1 = "#ADD8E6",
+              Stac = "#5F9EA0",
+            
+              # Non-neuronal
+              Astro = "#8C8C8C",
+              Micro = "#A0A0A0",
+              OD = "#B4B4B4",
+              OPC = "#C8C8C8",
+              Endo = "#505050",
+              VLMC = "#B4B4B4"
+)
+
+```
+
+
+```{r}
+
+Idents(obj.opossum) <- "subclass"
+obj.opossum.IT <- subset(obj.opossum, idents = c("IT_A", "IT_B", "IT_C", "IT_D"))
+
+Idents(obj.mouse.P38) <- "subclass"
+obj.mouse.IT <- subset(obj.mouse.P38, idents = c("L2/3", "L4", "L5IT", "L6IT"))
+
+```
+
+
+```{r}
+
+obj.opossum.IT <- ClusterSCT(obj.opossum.IT, resolutions = c(1))
+obj.mouse.IT <- ClusterSCT(obj.mouse.IT, resolutions = c(1))
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.IT, reduction = "umap", group.by = "sample", label = FALSE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.IT, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.IT, reduction = "umap", group.by = "type", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+p <- DimPlot(obj.opossum.IT, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_V1_IT_UMAP_Subclass_FullSpace.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_V1_IT_UMAP_Subclass_FullSpace.svg", plot = p, dpi = 300)
+
+DimPlot(obj.mouse.IT, reduction = "umap", group.by = "sample", label = FALSE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.mouse.IT, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.mouse.IT, reduction = "umap", group.by = "type", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+p <- DimPlot(obj.mouse.IT, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 2/Mouse-P38_V1_IT_UMAP_Subclass_FullSpace.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Mouse-P38_V1_IT_UMAP_Subclass_FullSpace.svg", plot = p, dpi = 300)
+
+```
+
+
+```{r}
+
+opossum.vfs <- VariableFeatures(obj.opossum.IT)
+mouse.vfs <- VariableFeatures(obj.mouse.IT)
+
+poss.shared.vfs <- intersect(rownames(obj.opossum.IT), mouse.vfs)
+shared.vfs <- intersect(opossum.vfs, mouse.vfs)
+orthologues <- intersect(rownames(obj.opossum.IT), rownames(obj.mouse.IT))
+
+```
+
+
+```{r}
+
+# cluster objects in shared VF space
+obj.opossum.IT.SVF <- obj.opossum.IT
+obj.mouse.IT.SVF <- obj.mouse.IT
+
+obj.opossum.IT.SVF <- SCTransform(obj.opossum.IT.SVF, vst.flavor = "v2", residual.features = shared.vfs, return.only.var.genes = FALSE, verbose = FALSE) %>%
+                      RunPCA(npcs = 30, verbose = FALSE) %>%
+                      FindNeighbors(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+                      RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
+
+obj.mouse.IT.SVF <- SCTransform(obj.mouse.IT.SVF, vst.flavor = "v2", residual.features = shared.vfs, return.only.var.genes = FALSE, verbose = FALSE) %>%
+                    RunPCA(npcs = 30, verbose = FALSE) %>%
+                    FindNeighbors(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+                    RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.IT.SVF, reduction = "umap", group.by = "sample", label = FALSE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.IT.SVF, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.IT.SVF, reduction = "umap", group.by = "type", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+p <- DimPlot(obj.opossum.IT.SVF, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_V1_IT_UMAP_Subclass_SharedVFSpace.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_V1_IT_UMAP_Subclass_SharedVFSpace.svg", plot = p, dpi = 300)
+
+DimPlot(obj.mouse.IT.SVF, reduction = "umap", group.by = "sample", label = FALSE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.mouse.IT.SVF, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.mouse.IT.SVF, reduction = "umap", group.by = "type", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+p <- DimPlot(obj.mouse.IT.SVF, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 2/Mouse-P38_V1_IT_UMAP_Subclass_SharedVFSpace.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Mouse-P38_V1_IT_UMAP_Subclass_SharedVFSpace.svg", plot = p, dpi = 300)
+
+```
+
+
+```{r}
+
+# cluster objects in shared VF space
+obj.opossum.IT.PVF <- obj.opossum.IT
+obj.mouse.IT.PVF <- obj.mouse.IT
+
+obj.opossum.IT.PVF <- SCTransform(obj.opossum.IT.SVF, vst.flavor = "v2", residual.features = poss.shared.vfs, return.only.var.genes = FALSE, verbose = FALSE) %>%
+                      RunPCA(npcs = 30, verbose = FALSE) %>%
+                      FindNeighbors(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+                      RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
+
+obj.mouse.IT.PVF <- SCTransform(obj.mouse.IT.SVF, vst.flavor = "v2", residual.features = poss.shared.vfs, return.only.var.genes = FALSE, verbose = FALSE) %>%
+                    RunPCA(npcs = 30, verbose = FALSE) %>%
+                    FindNeighbors(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+                    RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.IT.PVF, reduction = "umap", group.by = "sample", label = FALSE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.IT.PVF, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum.IT.PVF, reduction = "umap", group.by = "type", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+p <- DimPlot(obj.opossum.IT.PVF, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_V1_IT_UMAP_Subclass_PossSharedVFSpace.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_V1_IT_UMAP_Subclass_PossSharedVFSpace.svg", plot = p, dpi = 300)
+
+DimPlot(obj.mouse.IT.PVF, reduction = "umap", group.by = "sample", label = FALSE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.mouse.IT.PVF, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.mouse.IT.PVF, reduction = "umap", group.by = "type", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+p <- DimPlot(obj.mouse.IT.PVF, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 2/Mouse-P38_V1_IT_UMAP_Subclass_PossSharedVFSpace.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Mouse-P38_V1_IT_UMAP_Subclass_PossSharedVFSpace.svg", plot = p, dpi = 300)
+
+```
+
+
+```{r}
+
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+
+obj.mouse.IT$species <- "Mouse"
+objs <- list(obj.opossum.IT, obj.mouse.IT)
+obj.integrated <- IntegrateObjects(objs[[1]], objs[[2]], resolutions = c(1, 2), nfeatures = 5000, subsample = TRUE)
+objs.i <- SplitObject(obj.integrated, split.by = "species")
+objs.m <- MapObjects(objs.i[[1]], objs.i[[2]], c("subclass", "type"), assay = "integrated")
+
+```
+
+
+```{r}
+
+subclasses <- c("IT_A", "IT_C", "IT_B", "IT_D", "IT_E", "L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b")
+PlotIntegration(obj.integrated, "species", c("integrated_snn_res.1", "integrated_snn_res.2"), subclasses)
+
+```
+
+
+```{r}
+
+DimPlot(obj.integrated, reduction = "umap", group.by = "species", cols = c("#aaaaaa", "#c692b8"), label = FALSE, raster = FALSE, shuffle = TRUE) + xlim(-16, 12) + ylim(-16, 12) + coord_equal()
+Idents(obj.integrated) <- "subclass"
+subclasses <- c("IT_A", "IT_C", "IT_B", "IT_D", "IT_E", "L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b")
+levels(obj.integrated) <- subclasses
+DimPlot(obj.integrated, reduction = "umap", split.by = "species", cols = colors_list[subclasses], label = TRUE, raster = FALSE) + NoLegend() + xlim(-16, 12) + ylim(-16, 12) + coord_equal()
+DimPlot(obj.integrated, reduction = "umap", split.by = "species", group.by = "sample", raster = FALSE) + NoLegend() + xlim(-16, 12) + ylim(-16, 12) + coord_equal()
+FeaturePlot(obj.integrated, "nCount_RNA", reduction = "umap", split.by = "species") + NoLegend() + xlim(-16, 12) + ylim(-16, 12) + coord_equal()
+
+```
+
+
+```{r}
+
+PlotMapping(objs.m, ident.order = c("IT_A", "IT_C", "IT_B", "IT_D", "IT_E", "L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"))
+
+```
+
+
+```{r, fig.width=15, fig.height=6}
+
+sbcl_conf_plots <- PlotSubclassCrossConfusionMatrices(objs.i[[1]], objs.i[[2]], 
+                                                      "Opossum", "Mouse", 
+                                                      assay = "integrated",
+                                                      c("IT_A", "IT_B", "IT_C", "IT_D", "IT_E", "L2/3", "L4", "L5IT", "L6IT"), n_iters = 5, all.genes = FALSE, upsample = TRUE)
+
+```
+
+
+```{r}
+
+print(sbcl_conf_plots[[1]])
+print(sbcl_conf_plots[[2]])
+
+```
+
+
+```{r}
+
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+
+subclass.markers.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/Glutamatergic/markerdict_subclass.rds")$subclass
+subclass.markers.opossum.gabaergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/GABAergic/markerdict_subclass.rds")$subclass
+subclass.markers.opossum.nonneuronal <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/Nonneuronal/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Glutamatergic/P38/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.gabaergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/GABAergic/P38/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.nonneuronal <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Nonneuronal/P38/markerdict_subclass.rds")$subclass
+
+subclass.markers.opossum <- list(subclass = rbind(subclass.markers.opossum.glutamatergic, subclass.markers.opossum.gabaergic, subclass.markers.opossum.nonneuronal))
+subclass.markers.mouse <- list(subclass = rbind(subclass.markers.mouse.glutamatergic, subclass.markers.mouse.gabaergic, subclass.markers.mouse.nonneuronal))
+
+# Opossum
+subclasses <- c("IT_A", "IT_B", "IT_C", "IT_D", "L5PT", "L5NP", "L6CT", "L6b")
+
+PlotSubclassGeneCountCDF(subclass.markers.opossum, 
+                         rownames(objs[[1]]), 
+                         "Opossum", 
+                         subclasses, as.character(colors_list[subclasses]))
+
+# Mouse
+subclasses <- c("L2/3", "L4", "L5IT", "L6IT", "L5PT", "L5NP", "L6CT", "L6b")
+
+PlotSubclassGeneCountCDF(subclass.markers.mouse, 
+                         rownames(objs[[2]]), 
+                         "Mouse", 
+                         subclasses, as.character(colors_list[subclasses]))
+
+```
+
+
+```{r}
+
+Idents(obj.mouse.IT) <- "subclass"
+markers.mouse.IT <- FindAllMarkers(obj.mouse.IT, only.pos = TRUE, logfc.threshold = 0.4)
+Idents(obj.opossum.IT) <- "subclass"
+markers.opossum.IT <- FindAllMarkers(obj.opossum.IT, only.pos = TRUE, logfc.threshold = 0.4)
+
+```
+
+
+```{r}
+
+plotGeneFractions(markers.mouse.IT, orthologues)
+markers.opossum.IT$cluster <- factor(markers.opossum.IT$cluster, levels = c("IT_A", "IT_B", "IT_C", "IT_D", "IT_E"))
+plotGeneFractions(markers.opossum.IT, orthologues)
+
+```
+
+
+```{r}
+
+Idents(obj.mouse.IT) <- "type"
+obj.mouse.L23 <- subset(obj.mouse.IT, idents = c("L2/3_A", "L2/3_B", "L2/3_C"))
+markers.mouse.L23 <- FindAllMarkers(obj.mouse.L23, only.pos = TRUE, logfc.threshold = 0.4)
+markers.mouse.L23$cluster <- factor(markers.mouse.L23$cluster, levels = c("L2/3_A", "L2/3_B", "L2/3_C"))
+markers.mouse.L23.sorted <- markers.mouse.L23 %>%
+                             arrange(cluster, desc(avg_log2FC))
+gene_list <- markers.mouse.L23.sorted$gene
+
+```
+
+
+```{r}
+
+# Subset the Seurat object to include only the genes of interest
+DefaultAssay(obj.mouse.L23) <- "RNA"
+seurat_subset <- subset(obj.mouse.L23, features = gene_list)
+
+data <- GetAssayData(object = seurat_subset, slot = "counts")
+celldata <- as.data.frame(seurat_subset@meta.data)
+genedata <- as.data.frame(x = row.names(data), row.names = row.names(data))
+colnames(genedata) <- "gene_short_name"
+cds <- new_cell_data_set(data, cell_metadata = celldata, gene_metadata = genedata)
+cds <- estimate_size_factors(cds)
+
+# Learn the graph and order cells by pseudotime on the subset CDS
+cds <- preprocess_cds(cds, method = "PCA")
+cds <- reduce_dimension(cds, reduction_method = "UMAP")
+cds <- cluster_cells(cds)
+cds <- learn_graph(cds)
+cds <- order_cells(cds)
+
+# Extract the pseudotime information from the subset CDS
+pseudotime_data <- pseudotime(cds)
+
+# Create a data frame with pseudotime and cell names
+pseudotime_df <- data.frame(cell = colnames(cds), pseudotime = pseudotime_data)
+# Order the data frame by pseudotime
+pseudotime_df <- pseudotime_df[order(pseudotime_df$pseudotime), ]
+# Extract ordered cell names
+ordered_cells <- pseudotime_df$cell
+
+# Extract expression matrix for the specified genes
+# sampled_cells <- ordered_cells[ordered_cells %in% sample(ordered_cells, 2000, replace = FALSE, prob = NULL)]
+expression_matrix <- as.matrix(exprs(cds[gene_list, ordered_cells]))
+
+breaks <- seq(-5, 5, length.out = 101)
+colors <- colorRampPalette(c("blue", "white", "red"))(100)
+
+# Generate the heatmap
+pheatmap(expression_matrix, cluster_rows = FALSE, cluster_cols = FALSE,
+         show_rownames = FALSE, show_colnames = FALSE,
+         scale = "row", 
+         color = colors,
+         breaks = breaks,
+         main = "Gene Expression Heatmap Ordered by Pseudotime")
+
+```
+

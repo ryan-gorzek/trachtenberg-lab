@@ -1,0 +1,276 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+```
+
+
+```{r}
+
+colors_list <- list(
+              # Glutamatergic
+              IT = "#FF6C88",
+              IT_A = "#FFB3B3",
+              `L2/3` = "#FFB3B3",
+              IT_B = "#FFA07A",
+              L4 = "#FF7F50",
+              IT_C = "#FF7F50",
+              L5IT = "#FFA07A",
+              IT_D = "#FF6347",
+              L6IT = "#FF6347",
+              L5NP = "#FF4500",
+              L5PT = "#32a852", 
+              L6CT = "#7de89a",
+              L6b = "#206633",
+            
+              # GABAergic
+              Pvalb = "#1E90FF",
+              Sst = "#87CEEB",
+              Vip = "#87CEFA",
+              Lamp5 = "#4682B4",
+              Frem1 = "#ADD8E6",
+              Stac = "#5F9EA0",
+            
+              # Non-neuronal
+              Astro = "#8C8C8C",
+              Micro = "#A0A0A0",
+              OD = "#B4B4B4",
+              OPC = "#C8C8C8",
+              Endo = "#505050",
+              VLMC = "#B4B4B4"
+)
+
+```
+
+
+```{r, fig.width=8, fig.height=5}
+
+subclass.markers.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/Glutamatergic/markerdict_subclass.rds")$subclass
+subclass.markers.opossum.gabaergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/GABAergic/markerdict_subclass.rds")$subclass
+subclass.markers.opossum.nonneuronal <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/Nonneuronal/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Glutamatergic/P38/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.gabaergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/GABAergic/P38/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.nonneuronal <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Nonneuronal/P38/markerdict_subclass.rds")$subclass
+
+subclass.markers.opossum <- list(subclass = rbind(subclass.markers.opossum.glutamatergic, subclass.markers.opossum.gabaergic, subclass.markers.opossum.nonneuronal))
+subclass.markers.mouse <- list(subclass = rbind(subclass.markers.mouse.glutamatergic, subclass.markers.mouse.gabaergic, subclass.markers.mouse.nonneuronal))
+
+subclasses <- rev(c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b", 
+                "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac", 
+                "Astro", "Micro", "OD", "OPC", "Endo", "VLMC"))
+ortho.genes <- rownames(obj.integrated)
+
+PlotSubclassDEIntersectionTotalCDF(subclass.markers.mouse, ortho.genes, subclasses, as.character(colors_list[subclasses])) + coord_fixed(ratio = 1)
+
+```
+
+
+```{r, fig.width=8, fig.height=5}
+
+subclass.markers.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/Glutamatergic/markerdict_subclass.rds")$subclass
+subclass.markers.opossum.gabaergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/GABAergic/markerdict_subclass.rds")$subclass
+subclass.markers.opossum.nonneuronal <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/Nonneuronal/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Glutamatergic/P38/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.gabaergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/GABAergic/P38/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.nonneuronal <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Nonneuronal/P38/markerdict_subclass.rds")$subclass
+
+subclass.markers.opossum <- list(subclass = rbind(subclass.markers.opossum.glutamatergic, subclass.markers.opossum.gabaergic, subclass.markers.opossum.nonneuronal))
+subclass.markers.mouse <- list(subclass = rbind(subclass.markers.mouse.glutamatergic, subclass.markers.mouse.gabaergic, subclass.markers.mouse.nonneuronal))
+
+subclasses <- rev(c("IT_A", "IT_B", "IT_C", "IT_D", "L5NP", "L5PT", "L6CT", "L6b", 
+                    "Pvalb", "Sst", "Vip", "Lamp5", "Frem1",  
+                    "Astro", "Micro", "OD", "OPC", "Endo"))
+ortho.genes <- rownames(obj.integrated)
+
+PlotSubclassDEIntersectionTotalCDF(subclass.markers.opossum, ortho.genes, subclasses, as.character(colors_list[subclasses])) + coord_fixed(ratio = 1)
+
+```
+
+
+```{r, fig.width=10, fig.height=10}
+
+subclass.markers.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/Glutamatergic/markerdict_subclass.rds")$subclass
+subclass.markers.opossum.gabaergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/GABAergic/markerdict_subclass.rds")$subclass
+subclass.markers.opossum.nonneuronal <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/Nonneuronal/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Glutamatergic/P38/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.gabaergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/GABAergic/P38/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.nonneuronal <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Nonneuronal/P38/markerdict_subclass.rds")$subclass
+
+subclass.markers.opossum <- list(subclass = rbind(subclass.markers.opossum.glutamatergic, subclass.markers.opossum.gabaergic, subclass.markers.opossum.nonneuronal))
+subclass.markers.mouse <- list(subclass = rbind(subclass.markers.mouse.glutamatergic, subclass.markers.mouse.gabaergic, subclass.markers.mouse.nonneuronal))
+
+subclasses <- c("IT_A", "IT_C", "IT_B", "IT_D", "L2/3", "L4", "L5IT", "L6IT", "L5PT", "L5NP", "L6CT", "L6b", 
+                "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac", 
+                "Astro", "Micro", "OD", "OPC", "Endo", "VLMC")
+
+PlotSubclassDEIntersectionHeatmap(subclass.markers.mouse, subclass.markers.opossum, 
+                                  rownames(objs[[1]]), rownames(objs[[2]]),
+                                  "Mouse", "Opossum",
+                                  subclasses, 0.2, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/subclass_markers/All/", 
+                                  percentage = TRUE)
+
+```
+
+
+```{r, fig.width=8, fig.height=5}
+
+subclass.markers.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/Glutamatergic/markerdict_subclass.rds")$subclass
+subclass.markers.opossum.gabaergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/GABAergic/markerdict_subclass.rds")$subclass
+subclass.markers.opossum.nonneuronal <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/Nonneuronal/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Glutamatergic/P38/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.gabaergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/GABAergic/P38/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.nonneuronal <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Nonneuronal/P38/markerdict_subclass.rds")$subclass
+
+subclass.markers.opossum <- list(subclass = rbind(subclass.markers.opossum.glutamatergic, subclass.markers.opossum.gabaergic, subclass.markers.opossum.nonneuronal))
+subclass.markers.mouse <- list(subclass = rbind(subclass.markers.mouse.glutamatergic, subclass.markers.mouse.gabaergic, subclass.markers.mouse.nonneuronal))
+
+subclasses <- rev(c("IT_A", "IT_B", "IT_C", "IT_D", "L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b", 
+                    "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac", 
+                    "Astro", "Micro", "OD", "OPC", "Endo", "VLMC"))
+
+cluster_pairs = list(c("L2/3", "IT_A"), c("L4", "IT_C"), c("L5IT", "IT_B"), c("L6IT", "IT_D"), c("L5NP", "L5NP"),
+                     c("L5PT", "L5PT"), c("L6CT", "L6CT"), c("L6b", "L6b"), 
+                     c("Pvalb", "Pvalb"), c("Sst", "Sst"), c("Vip", "Vip"), c("Lamp5", "Lamp5"), c("Frem1", "Frem1"), 
+                     c("Astro", "Astro"), c("Micro", "Micro"), c("OD", "OD"), c("OPC", "OPC"), c("Endo", "Endo"))
+
+pair_ids <- c()
+for (i in 1:length(cluster_pairs)) {
+  pair_ids <- c(pair_ids, cluster_pairs[[i]][1])
+}
+
+PlotSubclassDEIntersectionCDF(subclass.markers.mouse, subclass.markers.opossum, 
+                              rownames(objs[[1]]), rownames(objs[[2]]),
+                              "Mouse", "Opossum",
+                              subclasses, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/subclass_markers/All/", 
+                              cluster_pairs, as.character(colors_list[pair_ids]), normalize.within = TRUE)
+
+```
+
+
+```{r, fig.width=8, fig.height=5}
+
+subclass.markers.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/Glutamatergic/markerdict_subclass.rds")$subclass
+subclass.markers.opossum.gabaergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/GABAergic/markerdict_subclass.rds")$subclass
+subclass.markers.opossum.nonneuronal <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/Nonneuronal/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Glutamatergic/P38/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.gabaergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/GABAergic/P38/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.nonneuronal <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Nonneuronal/P38/markerdict_subclass.rds")$subclass
+
+subclass.markers.opossum <- list(subclass = rbind(subclass.markers.opossum.glutamatergic, subclass.markers.opossum.gabaergic, subclass.markers.opossum.nonneuronal))
+subclass.markers.mouse <- list(subclass = rbind(subclass.markers.mouse.glutamatergic, subclass.markers.mouse.gabaergic, subclass.markers.mouse.nonneuronal))
+
+subclasses <- rev(c("IT_A", "IT_B", "IT_C", "IT_D", "L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b", 
+                    "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac", 
+                    "Astro", "Micro", "OD", "OPC", "Endo", "VLMC"))
+
+cluster_pairs = list(c("L2/3", "IT_A"), c("L4", "IT_C"), c("L5IT", "IT_B"), c("L6IT", "IT_D"), c("L5NP", "L5NP"),
+                     c("L5PT", "L5PT"), c("L6CT", "L6CT"), c("L6b", "L6b"), 
+                     c("Pvalb", "Pvalb"), c("Sst", "Sst"), c("Vip", "Vip"), c("Lamp5", "Lamp5"), c("Frem1", "Frem1"), 
+                     c("Astro", "Astro"), c("Micro", "Micro"), c("OD", "OD"), c("OPC", "OPC"), c("Endo", "Endo"))
+
+pair_ids <- c()
+for (i in 1:length(cluster_pairs)) {
+  pair_ids <- c(pair_ids, cluster_pairs[[i]][1])
+}
+
+PlotSubclassDEIntersectionCDF_TopX(subclass.markers.mouse, subclass.markers.opossum,
+                                   rownames(objs[[1]]), rownames(objs[[2]]),
+                                  "Mouse", "Opossum",
+                                  subclasses, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/subclass_markers/All/",
+                                  cluster_pairs, as.character(colors_list[pair_ids]), seq(25, 300, 5))
+
+```
+
+
+```{r, fig.width=8, fig.height=5}
+
+subclass.markers.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/Glutamatergic/markerdict_subclass.rds")$subclass
+subclass.markers.opossum.gabaergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/GABAergic/markerdict_subclass.rds")$subclass
+subclass.markers.opossum.nonneuronal <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/Nonneuronal/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Glutamatergic/P38/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.gabaergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/GABAergic/P38/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.nonneuronal <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Nonneuronal/P38/markerdict_subclass.rds")$subclass
+
+subclass.markers.opossum <- list(subclass = rbind(subclass.markers.opossum.glutamatergic, subclass.markers.opossum.gabaergic, subclass.markers.opossum.nonneuronal))
+subclass.markers.mouse <- list(subclass = rbind(subclass.markers.mouse.glutamatergic, subclass.markers.mouse.gabaergic, subclass.markers.mouse.nonneuronal))
+
+# Opossum
+subclasses <- rev(c("IT_A", "IT_B", "IT_C", "IT_D", "L5NP", "L5PT", "L6CT", "L6b", 
+                    "Pvalb", "Sst", "Vip", "Lamp5", "Frem1",
+                    "Astro", "Micro", "OD", "OPC", "Endo"))
+
+PlotSubclassGeneCountCDF(subclass.markers.opossum, 
+                         rownames(objs[[1]]), 
+                         "Opossum", 
+                         subclasses, as.character(colors_list[subclasses]))
+
+# Mouse
+subclasses <- rev(c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b", 
+                    "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac",
+                    "Astro", "Micro", "OD", "OPC", "Endo", "VLMC"))
+
+PlotSubclassGeneCountCDF(subclass.markers.mouse, 
+                         rownames(objs[[2]]), 
+                         "Mouse", 
+                         subclasses, as.character(colors_list[subclasses]))
+
+```
+
+
+Transcription factors vs. effectors...
+
+
+```{r}
+
+library(rbioapi)
+shared.genes <- intersect(rownames(obj.opossum), rownames(obj.mouse.P38))
+integration.features <- SelectIntegrationFeatures(c(obj.opossum, obj.mouse.P38), nfeatures = 10000)
+
+```
+
+
+```{r}
+
+ref.genes <- union()
+
+```
+
+
+```{r}
+
+subclass <- "L6CT"
+ref.genes <- read.table(paste0("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/subclass_markers/All/", subclass, "_vs_", subclass, "_all_genes.txt"))$V1
+test.genes <- read.table(paste0("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/subclass_markers/All/", subclass, "_vs_", subclass, "_intersecting_genes.txt"))$V1
+
+```
+
+
+```{r}
+
+enr <- rba_panther_enrich(genes = test.genes, organism = 10090, annot_dataset = "ANNOT_TYPE_ID_PANTHER_PC", cutoff = 1, ref_genes = shared.genes, ref_organism = 10090)
+
+```
+

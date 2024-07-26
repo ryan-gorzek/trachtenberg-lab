@@ -1,0 +1,226 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(tidyverse)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.mouse.nonneuronal <- readRDS("E:/Transcriptomics_M1/Mouse/seurat/mouse_m1_nonneuronal.rds")
+
+```
+
+
+```{r}
+
+obj.mouse.nonneuronal <- ClusterSCT(obj.mouse.nonneuronal, c(1))
+obj.mouse.nonneuronal$predicted_doublets <- FALSE
+obj.mouse.nonneuronal$predicted_doublets[1] <- TRUE
+PlotClusters(obj.mouse.nonneuronal, group.id = "SCT_snn_res.1")
+
+```
+
+
+```{r}
+
+canon.markers <- list(
+                    Astro = c("Aldh1l1", "Grin2c", "Phkg1"), 
+                    Endo = c("Pecam1", "Mecom", "Flt1"), 
+                    Micro = c("Cx3cr1", "Arhgap45", "Inpp5d"), 
+                    Oligo = c("Enpp6", "Mog", "St18"), 
+                    OPC = c("Lhfpl3", "Pdgfra", "Cacng4"),
+                    VLMC = c("Slc6a13", "Slc47a1", "Bnc2")
+                      )
+
+# look for canonical markers
+DefaultAssay(obj.mouse.nonneuronal) <- "RNA"
+Idents(obj.mouse.nonneuronal) <- "SCT_snn_res.1"
+PlotFeatures(obj.mouse.nonneuronal, canon.markers)
+DotPlot(obj.mouse.nonneuronal, features = canon.markers, cols = c("lightgrey", "red"), scale = FALSE) + 
+                         theme(axis.text.x = element_text(angle = 90, vjust = 0.25)) + 
+                         theme(panel.background = element_rect(fill = "white", color = NA), plot.background = element_rect(fill = "white", color = NA)) + NoLegend()
+
+```
+
+
+```{r}
+
+DimPlot(obj.mouse.nonneuronal, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.mouse.nonneuronal, reduction = "umap", group.by = "type", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+# identify subclasses at each clustering resolution
+# do differential expression for clusters within each subclass
+# generate plots of top genes for each
+
+subclass.idx.mouse <- list()
+
+subclass.idx.mouse$type$Astro <- c("Astro_A", "Astro_B", "Astro_C")
+
+subclass.idx.mouse$type$Micro <- c("Micro_A", "Micro_B", "Micro_C", "Micro_D")
+
+subclass.idx.mouse$type$OD <- c("OD_A", "OD_B", "OD_C", "OD_D", "OD_E", "OD_F", "OD_G", "OD_H")
+
+subclass.idx.mouse$type$OPC <- c("OPC")
+
+subclass.idx.mouse$type$Endo <- c("Endo")
+
+subclass.idx.mouse$type$VLMC <- c("VLMC_A", "VLMC_B", "VLMC_C", "VLMC_D", "VLMC_E", "VLMC_F", "VLMC_G")
+
+subclass.idx.mouse$type$Peri <- c("Peri")
+
+subclass.idx.mouse$type$SMC <- c("SMC")
+
+obj.mouse.nonneuronal <- SubclassByIdent(obj.mouse.nonneuronal, subclass.idx.mouse)
+
+```
+
+
+```{r}
+
+subclass.labels <- c("Astro", "OD", "OPC")
+ident.labels <- c("SCT_snn_res.1", "SCT_snn_res.1.5", "SCT_snn_res.2")
+
+markers.mouse.nonneuronal <- IdentMarkerDict(obj.mouse.nonneuronal, subclass.labels, ident.labels,
+                                        "E:/Transcriptomics_M1/Mouse/seurat/marker_genes/Nonneuronal/markerdict_clusters.rds")
+SaveDotPlots(obj.mouse.nonneuronal, markers.mouse.nonneuronal,
+             subclass.labels, ident.labels,
+             "E:/Transcriptomics_M1/Mouse/seurat/cell_types/Nonneuronal/", "ENSMODG")
+SaveFeaturePlots(obj.mouse.nonneuronal, markers.mouse.nonneuronal,
+                 subclass.labels, ident.labels,
+                 "E:/Transcriptomics_M1/Mouse/seurat/cell_types/Nonneuronal/")
+
+```
+
+
+```{r}
+
+subclass.labels <- c("Astro", "OD", "OPC")
+ident.labels <- c("SCT_snn_res.1", "SCT_snn_res.1.5", "SCT_snn_res.2")
+
+for (sbcl in subclass.labels) {
+  for (id in ident.labels) {
+    p <- PlotIdentGeneCounts(markers.mouse.nonneuronal, sbcl, id)
+    p <- p + theme(aspect.ratio = 1) # Make plot square
+    print(p)
+  }
+}
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.mouse.nonneuronal) <- "SCT"
+ident = "SCT_snn_res.1"
+gene <- "Gata2"
+DimPlot(obj.mouse.nonneuronal, reduction = "umap", group.by = ident, label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse.nonneuronal, gene, raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+VlnPlot(obj.mouse.nonneuronal, gene, group.by = ident)
+
+```
+
+
+```{r}
+
+# whole-transcriptome cross-validated classification
+subclass.labels <- c("Astro", "OD", "OPC")
+ident.labels <- c("SCT_snn_res.1", "SCT_snn_res.1.5", "SCT_snn_res.2")
+
+SaveIdentConfusionMatrices(obj.mouse.nonneuronal, subclass.labels, ident.labels, 
+                      "E:/Transcriptomics_M1/Mouse/seurat/cell_types/Nonneuronal/")
+
+```
+
+
+```{r}
+
+# label subclasses and types
+obj.mouse.nonneuronal$subclass <- NA
+obj.mouse.nonneuronal$type <- NA
+
+subclass.resolutions <- rev(list(Astro = 1, Micro = 1, OD = 1, OPC = 1, Endo = 1, VLMC = 1))
+obj.mouse.nonneuronal <- LabelCells(obj.mouse.nonneuronal, subclass.resolutions)
+
+```
+
+
+```{r}
+
+DimPlot(obj.mouse.nonneuronal, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.mouse.nonneuronal, reduction = "umap", group.by = "type", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+# Plot relative subclass proportions
+Idents(obj.mouse.nonneuronal) <- "subclass"
+levels(obj.mouse.nonneuronal) <- c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC")
+
+IdentBySample(obj.mouse.nonneuronal, y_limits = c(0, 0.60))
+
+```
+
+
+```{r}
+
+subclass.labels <- c("Astro", "Micro", "OD", "VLMC")
+ident.labels <- c("type")
+
+subclass.markers.mouse.nonneuronal <- SubclassMarkerDict(obj.mouse.nonneuronal, "subclass",
+                                                       "E:/Transcriptomics_M1/Mouse/seurat/marker_genes/Nonneuronal/markerdict_subclass.rds")
+markers.mouse.nonneuronal <- IdentMarkerDict(obj.mouse.nonneuronal, subclass.labels, ident.labels,
+                                        "E:/Transcriptomics_M1/Mouse/seurat/marker_genes/Nonneuronal/markerdict_types.rds")
+SaveDotPlots(obj.mouse.nonneuronal, markers.mouse.nonneuronal,
+             subclass.labels, ident.labels,
+             "E:/Transcriptomics_M1/Mouse/seurat/cell_types/Nonneuronal/", "ENSMODG")
+SaveFeaturePlots(obj.mouse.nonneuronal, markers.mouse.nonneuronal,
+                 subclass.labels, ident.labels,
+                 "E:/Transcriptomics_M1/Mouse/seurat/cell_types/Nonneuronal/")
+
+PlotSubclassGeneCounts(subclass.markers.mouse.nonneuronal, "subclass", 
+                       c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC", "Peri", "SMC")) + theme(aspect.ratio = 1)
+for (sbcl in subclass.labels) {
+  for (id in ident.labels) {
+    p <- PlotIdentGeneCounts(markers.mouse.nonneuronal, sbcl, id)
+    p <- p + theme(aspect.ratio = 1) # Make plot square
+    print(p)
+  }
+}
+
+SaveSubclassConfusionMatrices(obj.mouse.nonneuronal, "subclass",
+                              c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC", "Peri", "SMC"),
+                              "E:/Transcriptomics_M1/Mouse/seurat/cell_types/Nonneuronal/")
+SaveIdentConfusionMatrices(obj.mouse.nonneuronal, subclass.labels, ident.labels,
+                           "E:/Transcriptomics_M1/Mouse/seurat/cell_types/Nonneuronal/")
+
+```
+
+
+```{r}
+
+saveRDS(obj.mouse.nonneuronal, "E:/Transcriptomics_M1/Mouse/seurat/mouse_m1_nonneuronal_processed.rds")
+
+```
+

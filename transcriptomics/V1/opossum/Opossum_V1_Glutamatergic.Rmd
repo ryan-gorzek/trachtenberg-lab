@@ -28,8 +28,8 @@ obj.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/oposs
 
 ```{r}
 
-obj.opossum.glutamatergic <- ClusterSCT(obj.opossum.glutamatergic, c(1))
-PlotClusters(obj.opossum.glutamatergic, group.id = "SCT_snn_res.1")
+obj.opossum.glutamatergic <- ClusterSCT(obj.opossum.glutamatergic, c(0.1))
+PlotClusters(obj.opossum.glutamatergic, group.id = "SCT_snn_res.0.1")
 
 ```
 
@@ -50,7 +50,7 @@ canon.markers <- list(
 
 # look for canonical markers
 DefaultAssay(obj.opossum.glutamatergic) <- "RNA"
-Idents(obj.opossum.glutamatergic) <- "SCT_snn_res.1"
+Idents(obj.opossum.glutamatergic) <- "SCT_snn_res.0.1"
 PlotFeatures(obj.opossum.glutamatergic, canon.markers)
 DotPlot(obj.opossum.glutamatergic, features = canon.markers, cols = c("lightgrey", "red"), scale = FALSE) + 
                          theme(axis.text.x = element_text(angle = 90, vjust = 0.25)) + 
@@ -69,8 +69,8 @@ obj.opossum.glutamatergic <- subset(obj.opossum.glutamatergic, idents = c(NA), i
 
 ```{r}
 
-obj.opossum.glutamatergic <- ClusterSCT(obj.opossum.glutamatergic, c(1, 1.5, 2))
-PlotClusters(obj.opossum.glutamatergic, group.id = "SCT_snn_res.1")
+obj.opossum.glutamatergic <- ClusterSCT(obj.opossum.glutamatergic, c(0.2, 0.5, 1.5))
+PlotClusters(obj.opossum.glutamatergic, group.id = "SCT_snn_res.0.1")
 
 canon.markers <- list(
                     class = c("Slc17a6", "Slc17a7", "Sv2b"),
@@ -86,11 +86,25 @@ canon.markers <- list(
 
 # look for canonical markers
 DefaultAssay(obj.opossum.glutamatergic) <- "RNA"
-Idents(obj.opossum.glutamatergic) <- "SCT_snn_res.1"
+Idents(obj.opossum.glutamatergic) <- "SCT_snn_res.0.1"
 PlotFeatures(obj.opossum.glutamatergic, canon.markers)
 DotPlot(obj.opossum.glutamatergic, features = canon.markers, cols = c("lightgrey", "red"), scale = FALSE) + 
                          theme(axis.text.x = element_text(angle = 90, vjust = 0.25)) + 
                          theme(panel.background = element_rect(fill = "white", color = NA), plot.background = element_rect(fill = "white", color = NA)) + NoLegend()
+
+```
+
+
+```{r}
+
+PlotClusters(obj.opossum.glutamatergic, group.id = "SCT_snn_res.0.2")
+
+```
+
+
+```{r}
+
+PlotClusters(obj.opossum.glutamatergic, group.id = "SCT_snn_res.0.5")
 
 ```
 
@@ -104,35 +118,7 @@ PlotClusters(obj.opossum.glutamatergic, group.id = "SCT_snn_res.1.5")
 
 ```{r}
 
-PlotClusters(obj.opossum.glutamatergic, group.id = "SCT_snn_res.2")
-
-```
-
-
-```{r}
-
 clustree(obj.opossum.glutamatergic, prefix = "SCT_snn_res.")
-
-```
-
-
-```{r}
-
-DefaultAssay(obj.opossum.glutamatergic) <- "SCT"
-Idents(obj.opossum.glutamatergic) <- "SCT_snn_res.1"
-markers.7 <- FindMarkers(obj.opossum.glutamatergic, ident.1 = 7)
-
-```
-
-
-```{r}
-
-DefaultAssay(obj.opossum.glutamatergic) <- "SCT"
-ident = "SCT_snn_res.1"
-gene <- "Cck"
-DimPlot(obj.opossum.glutamatergic, reduction = "umap", group.by = ident, label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
-FeaturePlot(obj.opossum.glutamatergic, gene, raster = FALSE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
-VlnPlot(obj.opossum.glutamatergic, gene, group.by = ident)
 
 ```
 
@@ -145,25 +131,35 @@ VlnPlot(obj.opossum.glutamatergic, gene, group.by = ident)
 
 subclass.idx.opossum <- list()
 
-subclass.idx.opossum$SCT_snn_res.1$IT <- c("2", "3", "4", "5", "7", "8", "9", "10", "11", "13", "14", "15", "17", "19")
-subclass.idx.opossum$SCT_snn_res.1.5$IT <- c("1", "2", "3", "5", "6", "9", "10", "11", "12", "13", "14", "15", "16", "19", "22", "23", "24")
-subclass.idx.opossum$SCT_snn_res.2$IT <- c("1", "3", "4", "6", "8", "9", "10", "11", "14", "15", "16", "17", "18", "19", "20", "21", "24", "25", "26")
+subclass.idx.opossum$SCT_snn_res.0.2$IT_A <- c("1", "2")
+subclass.idx.opossum$SCT_snn_res.0.5$IT_A <- c("2", "3", "4", "6", "10")
+subclass.idx.opossum$SCT_snn_res.1.5$IT_A <- c("1", "2", "5", "9", "10", "11", "12", "13", "14", "16", "23")
 
-subclass.idx.opossum$SCT_snn_res.1$L5PT <- c("6")
+subclass.idx.opossum$SCT_snn_res.0.2$IT_B <- c("4")
+subclass.idx.opossum$SCT_snn_res.0.5$IT_B <- c("7", "8")
+subclass.idx.opossum$SCT_snn_res.1.5$IT_B <- c("3", "15", "24")
+
+subclass.idx.opossum$SCT_snn_res.0.2$IT_C <- c("5")
+subclass.idx.opossum$SCT_snn_res.0.5$IT_C <- c("5")
+subclass.idx.opossum$SCT_snn_res.1.5$IT_C <- c("6", "19")
+
+subclass.idx.opossum$SCT_snn_res.0.2$IT_D <- c("7")
+subclass.idx.opossum$SCT_snn_res.0.5$IT_D <- c("12")
+subclass.idx.opossum$SCT_snn_res.1.5$IT_D <- c("22")
+
+subclass.idx.opossum$SCT_snn_res.0.2$L5PT <- c("6")
+subclass.idx.opossum$SCT_snn_res.0.5$L5PT <- c("9")
 subclass.idx.opossum$SCT_snn_res.1.5$L5PT <- c("18", "21")
-subclass.idx.opossum$SCT_snn_res.2$L5PT <- c("13", "23")
 
-subclass.idx.opossum$SCT_snn_res.1$L5NP <- c("16")
+subclass.idx.opossum$SCT_snn_res.0.5$L5NP <- c("11")
 subclass.idx.opossum$SCT_snn_res.1.5$L5NP <- c("17")
-subclass.idx.opossum$SCT_snn_res.2$L5NP <- c("12")
 
-subclass.idx.opossum$SCT_snn_res.1$L6CT <- c("1", "12")
+subclass.idx.opossum$SCT_snn_res.0.2$L6CT <- c("3")
+subclass.idx.opossum$SCT_snn_res.0.5$L6CT <- c("1")
 subclass.idx.opossum$SCT_snn_res.1.5$L6CT <- c("4", "7", "8", "20")
-subclass.idx.opossum$SCT_snn_res.2$L6CT <- c("2", "5", "7", "22")
 
-subclass.idx.opossum$SCT_snn_res.1$L6b <- c("18")
+subclass.idx.opossum$SCT_snn_res.0.5$L6b <- c("13")
 subclass.idx.opossum$SCT_snn_res.1.5$L6b <- c("25")
-subclass.idx.opossum$SCT_snn_res.2$L6b <- c("27")
 
 obj.opossum.glutamatergic <- SubclassByIdent(obj.opossum.glutamatergic, subclass.idx.opossum)
 
@@ -172,8 +168,8 @@ obj.opossum.glutamatergic <- SubclassByIdent(obj.opossum.glutamatergic, subclass
 
 ```{r}
 
-subclass.labels <- c("IT", "L5PT", "L6CT")
-ident.labels <- c("SCT_snn_res.1", "SCT_snn_res.1.5", "SCT_snn_res.2")
+subclass.labels <- c("IT_A", "IT_B", "IT_C", "L5PT", "L6CT")
+ident.labels <- c("SCT_snn_res.0.2", "SCT_snn_res.0.5", "SCT_snn_res.1.5")
 
 markers.opossum.glutamatergic <- IdentMarkerDict(obj.opossum.glutamatergic, subclass.labels, ident.labels,
                                         "E:/Transcriptomics_V1/Opossum/seurat/marker_genes/Glutamatergic/markerdict_clusters.rds")
@@ -189,8 +185,8 @@ SaveFeaturePlots(obj.opossum.glutamatergic, markers.opossum.glutamatergic,
 
 ```{r}
 
-subclass.labels <- c("IT", "L5PT", "L6CT")
-ident.labels <- c("SCT_snn_res.1", "SCT_snn_res.1.5", "SCT_snn_res.2")
+subclass.labels <- c("IT_A", "IT_B", "IT_C", "IT_D", "L5PT", "L6CT")
+ident.labels <- c("SCT_snn_res.0.2", "SCT_snn_res.0.5", "SCT_snn_res.1.5")
 
 for (sbcl in subclass.labels) {
   for (id in ident.labels) {
@@ -218,8 +214,8 @@ VlnPlot(obj.opossum.glutamatergic, gene, group.by = ident)
 ```{r}
 
 # whole-transcriptome cross-validated classification
-subclass.labels <- c("IT", "L5PT", "L6CT")
-ident.labels <- c("SCT_snn_res.1", "SCT_snn_res.1.5", "SCT_snn_res.2")
+subclass.labels <- c("IT_A", "IT_B", "IT_C", "IT_D", "L5PT", "L6CT")
+ident.labels <- c("SCT_snn_res.0.2", "SCT_snn_res.0.5", "SCT_snn_res.1.5")
 
 SaveIdentConfusionMatrices(obj.opossum.glutamatergic, subclass.labels, ident.labels, 
                       "E:/Transcriptomics_V1/Opossum/seurat/cell_types/Glutamatergic/")
@@ -233,7 +229,7 @@ SaveIdentConfusionMatrices(obj.opossum.glutamatergic, subclass.labels, ident.lab
 obj.opossum.glutamatergic$subclass <- NA
 obj.opossum.glutamatergic$type <- NA
 
-subclass.resolutions <- rev(list(IT = 1, L5PT = 2, L5NP = 2, L6CT = 2, L6b = 2))
+subclass.resolutions <- rev(list(IT_A = 0.5, IT_B = 0.5, IT_C = 0.5, IT_D = 0.5, L5PT = 1.5, L5NP = 0.5, L6CT = 1.5, L6b = 0.5))
 obj.opossum.glutamatergic <- LabelCells(obj.opossum.glutamatergic, subclass.resolutions)
 
 ```
@@ -251,7 +247,7 @@ DimPlot(obj.opossum.glutamatergic, reduction = "umap", group.by = "type", label 
 
 # Plot relative subclass proportions
 Idents(obj.opossum.glutamatergic) <- "subclass"
-levels(obj.opossum.glutamatergic) <- c("IT", "L5PT", "L5NP", "L6CT", "L6b")
+levels(obj.opossum.glutamatergic) <- c("IT_A", "IT_B", "IT_C", "IT_D", "L5PT", "L5NP", "L6CT", "L6b")
 
 IdentBySample(obj.opossum.glutamatergic, y_limits = c(0, 0.60))
 
@@ -260,7 +256,7 @@ IdentBySample(obj.opossum.glutamatergic, y_limits = c(0, 0.60))
 
 ```{r}
 
-subclass.labels <- c("IT", "L5PT", "L6CT")
+subclass.labels <- c("IT_A", "IT_B", "IT_C", "L5PT", "L6CT")
 ident.labels <- c("type")
 
 subclass.markers.opossum.glutamatergic <- SubclassMarkerDict(obj.opossum.glutamatergic, "subclass",
@@ -275,7 +271,7 @@ SaveFeaturePlots(obj.opossum.glutamatergic, markers.opossum.glutamatergic,
                  "E:/Transcriptomics_V1/Opossum/seurat/cell_types/Glutamatergic/")
 
 PlotSubclassGeneCounts(subclass.markers.opossum.glutamatergic, "subclass", 
-                       c("IT", "L5PT", "L5NP", "L6CT", "L6b")) + theme(aspect.ratio = 1)
+                       c("IT_A", "IT_B", "IT_C", "IT_D", "L5PT", "L5NP", "L6CT", "L6b")) + theme(aspect.ratio = 1)
 for (sbcl in subclass.labels) {
   for (id in ident.labels) {
     p <- PlotIdentGeneCounts(markers.opossum.glutamatergic, sbcl, id)
@@ -285,7 +281,7 @@ for (sbcl in subclass.labels) {
 }
 
 SaveSubclassConfusionMatrices(obj.opossum.glutamatergic, "subclass",
-                              c("IT", "L5PT", "L5NP", "L6CT", "L6b"),
+                              c("IT_A", "IT_B", "IT_C", "IT_D", "L5PT", "L5NP", "L6CT", "L6b"),
                               "E:/Transcriptomics_V1/Opossum/seurat/cell_types/Glutamatergic/")
 SaveIdentConfusionMatrices(obj.opossum.glutamatergic, subclass.labels, ident.labels,
                            "E:/Transcriptomics_V1/Opossum/seurat/cell_types/Glutamatergic/")

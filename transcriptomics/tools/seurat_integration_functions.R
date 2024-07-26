@@ -82,13 +82,20 @@ MapObjects <- function(seurat_obj1, seurat_obj2, idents, assay = "SCT") {
   
   objs <- list(seurat_obj1, seurat_obj2)
   # Perform SCTransform v2 on each object
-  objs <- lapply(objs, function(x) {
+  if (assay == "integrated") {
+    objs <- lapply(objs, function(x) {
+      # SCTransform(x, vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE) %>%
+      x <- RunPCA(x, npcs = 30, assay = "integrated", verbose = FALSE) %>%
+           RunUMAP(reduction = "pca", dims = 1:30, assay = "integrated", return.model = TRUE, verbose = FALSE)
+      return(x)
+    })
+  } else if (assay == "SCT") {
     x <- SCTransform(x, vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE) %>%
          RunPCA(npcs = 30, verbose = FALSE) %>%
          RunUMAP(reduction = "pca", dims = 1:30, return.model = TRUE, verbose = FALSE)
     return(x)
-  })
-  objs.idx <- list(ref = c(1, 2), qry = c(2, 1))
+  }
+  objs.idx <- list(qry = c(1, 2), ref = c(2, 1))
   objs.mapped <- list()
   
   refdata <- list()
@@ -100,6 +107,8 @@ MapObjects <- function(seurat_obj1, seurat_obj2, idents, assay = "SCT") {
     reference <- objs[[objs.idx$ref[idx]]]
     query <- objs[[objs.idx$qry[idx]]]
     anchors.query <- FindTransferAnchors(reference = reference, query = query, reference.reduction = "pca", dims = 1:30)
+    # if (nrow(anchors.query@anchors) < 50) { k.weight = 10 } # floor(nrow(anchors.query@anchors) * 0.25)
+    # else { k.weight = 50 }
     objs.mapped[[idx]] <- MapQuery(anchorset = anchors.query, 
                                    reference = reference, query = query, 
                                    refdata = refdata, 
@@ -245,7 +254,7 @@ IntegratedClusterOverlapHeatmap <- function(integrated.obj, integvar.col, ident.
 IntegratedClusterMakeupHeatmap <- function(integrated.obj, integvar.col, ident.col, cluster.col, primary_order, 
                                            col.low = "white", col.high = "red", x.lab.rot = TRUE) {
   # Extract the relevant columns
-  metadata <<- integrated.obj@meta.data %>% select(all_of(c(integvar.col, cluster.col, ident.col)))
+  metadata <- integrated.obj@meta.data %>% select(all_of(c(integvar.col, cluster.col, ident.col)))
   
   # Rename columns for convenience
   colnames(metadata) <- c("integvar", "cluster", "ident")
@@ -325,7 +334,7 @@ IntegratedClusterMakeupHeatmap <- function(integrated.obj, integvar.col, ident.c
 IdentToIntegratedClusterHeatmap <- function(integrated.obj, integvar.col, ident.col, cluster.col, primary_order, 
                                            col.low = "white", col.high = "red", x.lab.rot = TRUE) {
   # Extract the relevant columns
-  metadata <<- integrated.obj@meta.data %>% select(all_of(c(integvar.col, cluster.col, ident.col)))
+  metadata <- integrated.obj@meta.data %>% select(all_of(c(integvar.col, cluster.col, ident.col)))
   
   # Rename columns for convenience
   colnames(metadata) <- c("integvar", "cluster", "ident")
@@ -474,20 +483,24 @@ PlotIdentDEIntersection <- function(list1, list2, all_genes1, all_genes2, sample
     ) # Make cells square
 }
 
-PlotSubclassDEIntersection <- function(list1, list2, all_genes1, all_genes2, sample.name1, sample.name2, subclass.order, log2FC_threshold, output_path, percentage = FALSE) {
+PlotSubclassDEIntersectionHeatmap <- function(list1, list2, all_genes1, all_genes2, sample.name1, sample.name2, subclass.order, log2FC_threshold, output_path, percentage = FALSE) {
   # Extract dataframes
   df1 <- list1$subclass
   df2 <- list2$subclass
   
   # Filter by log2FC_threshold
-  df1 <- df1 %>% filter(avg_log2FC > log2FC_threshold)
-  df2 <- df2 %>% filter(avg_log2FC > log2FC_threshold)
+  df1 <- df1 %>% filter(avg_log2FC > log2FC_threshold & cluster %in% subclass.order)
+  subclasses <- subclass.order[subclass.order %in% df1$cluster]
+  df1$cluster <- factor(df1$cluster, levels = subclasses)
+  df2 <- df2 %>% filter(avg_log2FC > log2FC_threshold & cluster %in% subclass.order)
+  subclasses <- subclass.order[subclass.order %in% df2$cluster]
+  df2$cluster <- factor(df2$cluster, levels = subclasses)
   
   # Find intersecting genes
   intersecting_genes <- intersect(all_genes1, all_genes2)
   
   # Create grid
-  cluster_combinations <- expand.grid(
+  cluster_combinations <<- expand.grid(
     Cluster1 = unique(df1$cluster), 
     Cluster2 = unique(df2$cluster)
   )
@@ -506,6 +519,7 @@ PlotSubclassDEIntersection <- function(list1, list2, all_genes1, all_genes2, sam
     
     # Find intersecting DE genes for the specific cluster pair
     intersecting_de_genes <- intersect(df1_filtered$gene, df2_filtered$gene)
+    all_de_genes <- union(df1_filtered$gene[df1_filtered$gene %in% intersecting_genes], df2_filtered$gene[df2_filtered$gene %in% intersecting_genes])
     
     # Count the number of intersecting DE genes
     count <- length(intersecting_de_genes)
@@ -523,6 +537,8 @@ PlotSubclassDEIntersection <- function(list1, list2, all_genes1, all_genes2, sam
     # Save intersecting genes to a text file
     filename <- paste0(output_path, "/", gsub("/", "", cluster1), "_vs_", gsub("/", "", cluster2), "_intersecting_genes.txt")
     write.table(intersecting_de_genes, file = filename, quote = FALSE, row.names = FALSE, col.names = FALSE)
+    filename <- paste0(output_path, "/", gsub("/", "", cluster1), "_vs_", gsub("/", "", cluster2), "_all_genes.txt")
+    write.table(all_de_genes, file = filename, quote = FALSE, row.names = FALSE, col.names = FALSE)
   }
   
   fill_label <- if (percentage) "Percentage of DE Genes" else "# DE Genes"
@@ -545,9 +561,223 @@ PlotSubclassDEIntersection <- function(list1, list2, all_genes1, all_genes2, sam
     theme_minimal() +
     theme(
       aspect.ratio = 1,
-      axis.text.x = element_text(size = 12),  # Increase x-axis tick label size
+      axis.text.x = element_text(size = 12, angle = 90, hjust = 1, vjust = 0.5),  # Rotate x-axis tick labels
       axis.text.y = element_text(size = 12)   # Increase y-axis tick label size
     ) # Make cells square
+}
+
+PlotSubclassDEIntersectionTotalCDF <- function(list, ortho_genes, subclass.order, subclass_colors) {
+  # Extract dataframes
+  df <- list$subclass
+  
+  # Initialize an empty data frame to store cumulative counts
+  cdf_data <- data.frame()
+  
+  # Calculate cumulative distribution for each specified cluster pair
+  for (i in seq_along(subclass.order)) {
+    sbcl <- subclass.order[[i]]
+    
+    # Filter dataframes for the specific cluster pair
+    df_filtered <- df %>% filter(cluster == sbcl)
+    
+    # Calculate the maximum avg_log2FC value
+    max_log2FC <- max(df_filtered$avg_log2FC, na.rm = TRUE)
+    
+    # Create a sequence of avg_log2FC values from 0.2 to the maximum or 2 (whichever is smaller)
+    log2FC_grid <- seq(0.2, min(max_log2FC, 2), length.out = 50)
+    
+    count <- c()
+    for (l in log2FC_grid) {
+      de_genes <- df_filtered$gene[df_filtered$avg_log2FC > l]
+      de_genes_ortho <- de_genes[de_genes %in% ortho_genes]
+      count <- c(count, length(de_genes_ortho) / length(de_genes))
+    }
+    
+    # Calculate the cumulative number of shared genes as avg_log2FC varies
+    shared_gene_counts <- data.frame(
+      avg_log2FC = log2FC_grid,
+      count = count,
+      Cluster = sbcl,
+      Color = subclass_colors[i]
+    )
+    
+    # Combine with existing data
+    cdf_data <- rbind(cdf_data, shared_gene_counts)
+    
+  }
+  
+  cdf_data$Cluster <- factor(cdf_data$Cluster, levels = subclass.order)
+  # Plot cumulative distribution function
+  ggplot(cdf_data, aes(x = avg_log2FC, y = count, color = Cluster, group = Cluster)) +
+    geom_line(size = 1) + # Use line size
+    scale_color_manual(values = setNames(subclass_colors, subclass.order), guide = guide_legend(reverse = TRUE)) + # Set the colors using subclass_colors
+    labs(title = paste0(""),
+         x = "avg_log2FC",
+         y = "Fraction of DE Genes with a 1:1 Ortholog",
+         color = "Cluster Pair") +
+    theme_minimal() +
+    scale_x_continuous(limits = c(0.2, 2)) + # Set x-axis limits
+    scale_y_continuous(limits = c(0, 1)) + # Set x-axis limits
+    geom_vline(xintercept = 0.2, linetype = "dotted", color = "black") +
+    annotate("text", x = 0.2, y = 0.95, label = "0.2", hjust = -0.2, vjust = -0.5) +
+    geom_vline(xintercept = 0.5, linetype = "dotted", color = "black") +
+    annotate("text", x = 0.5, y = 0.95, label = "0.5", hjust = -0.2, vjust = -0.5) +
+    geom_vline(xintercept = 1, linetype = "dotted", color = "black") +
+    annotate("text", x = 1, y = 0.95, label = "1", hjust = -0.2, vjust = -0.5) +
+    theme(
+      axis.title.x = element_text(size = 14), # Increase x-axis label size
+      axis.title.y = element_text(size = 14), # Increase y-axis label size
+      axis.text.x = element_text(size = 12),  # Increase x-axis tick label size
+      axis.text.y = element_text(size = 12)   # Increase y-axis tick label size
+    )
+}
+
+PlotSubclassDEIntersectionCDF <- function(list1, list2, all_genes1, all_genes2, sample.name1, sample.name2, subclass.order, output_path, cluster_pairs, pair_colors, normalize.within = TRUE) {
+  # Extract dataframes
+  df1 <- list1$subclass
+  df2 <- list2$subclass
+  
+  # Find intersecting genes
+  intersecting_genes <- intersect(all_genes1, all_genes2)
+  
+  # Initialize an empty data frame to store cumulative counts
+  cdf_data <- data.frame()
+  
+  # Calculate cumulative distribution for each specified cluster pair
+  for (i in seq_along(cluster_pairs)) {
+    pair <- cluster_pairs[[i]]
+    cluster1 <- pair[1]
+    cluster2 <- pair[2]
+    
+    # Filter dataframes for the specific cluster pair
+    df1_filtered <- df1 %>% filter(cluster == cluster1)
+    df2_filtered <- df2 %>% filter(cluster == cluster2)
+    
+    # Calculate the maximum avg_log2FC value
+    max_log2FC <- max(c(df1_filtered$avg_log2FC, df2_filtered$avg_log2FC), na.rm = TRUE)
+    
+    # Create a sequence of avg_log2FC values from 0.2 to the maximum or 2 (whichever is smaller)
+    log2FC_grid <- seq(0.2, min(max_log2FC, 2), length.out = 50)
+    
+    total_intersecting_genes_init <- length(union(intersect(df1_filtered$gene, intersecting_genes), intersect(df2_filtered$gene, intersecting_genes)))
+    
+    count <- c()
+    for (l in log2FC_grid) {
+      de_genes_1 <- df1_filtered$gene[df1_filtered$avg_log2FC > l]
+      de_genes_2 <- df2_filtered$gene[df2_filtered$avg_log2FC > l]
+      intersecting_de_genes <- intersect(de_genes_1, de_genes_2)
+      total_intersecting_genes <- length(union(intersect(de_genes_1, intersecting_genes), intersect(de_genes_2, intersecting_genes)))
+      if (normalize.within == TRUE) { 
+        count <- c(count, length(intersecting_de_genes) / total_intersecting_genes) }
+      else { count <- c(count, length(intersecting_de_genes) / total_intersecting_genes_init) }
+      
+    }
+    
+    # Calculate the cumulative number of shared genes as avg_log2FC varies
+    shared_gene_counts <<- data.frame(
+      avg_log2FC = log2FC_grid,
+      count = count,
+      Cluster1 = cluster1,
+      Cluster2 = cluster2,
+      Color = pair_colors[i]
+    )
+    
+    # Combine with existing data
+    cdf_data <- rbind(cdf_data, shared_gene_counts)
+    
+    # # Save intersecting genes to a text file
+    # filename <- paste0(output_path, "/", gsub("/", "", cluster1), "_vs_", gsub("/", "", cluster2), "_intersecting_genes.txt")
+    # write.table(intersecting_de_genes, file = filename, quote = FALSE, row.names = FALSE, col.names = FALSE)
+  }
+  
+  cdf_data$Cluster1 <- factor(cdf_data$Cluster1, levels = subclass.order[subclass.order %in% cdf_data$Cluster1])
+  cdf_data$Cluster2 <- factor(cdf_data$Cluster2, levels = subclass.order[subclass.order %in% cdf_data$Cluster2])
+  # Plot cumulative distribution function
+  ggplot(cdf_data, aes(x = avg_log2FC, y = count, color = interaction(Cluster1, Cluster2), group = interaction(Cluster1, Cluster2))) +
+    geom_line(size = 1) + # Use line size
+    scale_color_manual(values = setNames(pair_colors, unique(interaction(cdf_data$Cluster1, cdf_data$Cluster2))), guide = guide_legend(reverse = TRUE)) + # Set the colors using pair_colors
+    labs(title = paste0(""),
+         x = "avg_log2FC",
+         y = "Fraction of 1:1 DE Genes Shared Across Species",
+         color = "Cluster Pair") +
+    theme_minimal() +
+    scale_x_continuous(limits = c(0.2, 2)) + # Set x-axis limits
+    geom_vline(xintercept = 0.2, linetype = "dotted", color = "black") +
+    annotate("text", x = 0.2, y = 0.5, label = "0.2", hjust = -0.2, vjust = -0.5) +
+    geom_vline(xintercept = 0.5, linetype = "dotted", color = "black") +
+    annotate("text", x = 0.5, y = 0.5, label = "0.5", hjust = -0.2, vjust = -0.5) +
+    geom_vline(xintercept = 1, linetype = "dotted", color = "black") +
+    annotate("text", x = 1, y = 0.5, label = "1", hjust = -0.2, vjust = -0.5) +
+    theme(
+      axis.title.x = element_text(size = 14), # Increase x-axis label size
+      axis.title.y = element_text(size = 14), # Increase y-axis label size
+      axis.text.x = element_text(size = 12),  # Increase x-axis tick label size
+      axis.text.y = element_text(size = 12)   # Increase y-axis tick label size
+    )
+}
+
+PlotSubclassDEIntersectionCDF_TopX <- function(list1, list2, all_genes1, all_genes2, sample.name1, sample.name2, subclass.order, output_path, cluster_pairs, pair_colors, top_genes_seq) {
+  # Extract dataframes
+  df1 <- list1$subclass
+  df2 <- list2$subclass
+  
+  # Find intersecting genes
+  intersecting_genes <- intersect(all_genes1, all_genes2)
+  
+  # Initialize an empty data frame to store cumulative counts
+  cdf_data <- data.frame()
+  
+  # Calculate cumulative distribution for each specified cluster pair
+  for (i in seq_along(cluster_pairs)) {
+    pair <- cluster_pairs[[i]]
+    cluster1 <- pair[1]
+    cluster2 <- pair[2]
+    
+    # Filter dataframes for the specific cluster pair
+    df1_filtered <- df1 %>% filter(cluster == cluster1) %>% filter(gene %in% intersecting_genes)
+    df2_filtered <- df2 %>% filter(cluster == cluster2) %>% filter(gene %in% intersecting_genes)
+    
+    # Rank genes by avg_log2FC
+    df1_filtered <- df1_filtered %>% arrange(desc(avg_log2FC))
+    df2_filtered <- df2_filtered %>% arrange(desc(avg_log2FC))
+    
+    # Calculate the cumulative fraction of shared genes as top X DE genes vary
+    shared_gene_counts <- data.frame(
+      top_genes = top_genes_seq,
+      count = sapply(top_genes_seq, function(x) {
+        top_genes1 <- head(df1_filtered$gene, x)
+        top_genes2 <- head(df2_filtered$gene, x)
+        length(intersect(top_genes1, top_genes2)) / x
+      }),
+      Cluster1 = cluster1,
+      Cluster2 = cluster2,
+      Color = pair_colors[i]
+    )
+    
+    # Combine with existing data
+    cdf_data <- rbind(cdf_data, shared_gene_counts)
+    
+  }
+  
+  cdf_data$Cluster1 <- factor(cdf_data$Cluster1, levels = subclass.order[subclass.order %in% cdf_data$Cluster1])
+  cdf_data$Cluster2 <- factor(cdf_data$Cluster2, levels = subclass.order[subclass.order %in% cdf_data$Cluster2])
+  cdf_data$ClusterPair <- interaction(cdf_data$Cluster1, cdf_data$Cluster2)
+  # Plot cumulative distribution function
+  ggplot(cdf_data, aes(x = top_genes, y = count, color = ClusterPair, group = ClusterPair)) +
+    geom_line(size = 1) + # Use line size
+    scale_color_manual(values = setNames(pair_colors, unique(cdf_data$ClusterPair)), guide = guide_legend(reverse = TRUE)) + # Set the colors using pair_colors
+    labs(title = paste0(""),
+         x = "Top X DE Genes",
+         y = "Fraction of 1:1 DE Genes Shared Across Species",
+         color = "Cluster Pair") +
+    scale_x_reverse() + # Reverse the x-axis
+    theme_minimal() +
+    theme(
+      axis.title.x = element_text(size = 14), # Increase x-axis label size
+      axis.title.y = element_text(size = 14), # Increase y-axis label size
+      axis.text.x = element_text(size = 12),  # Increase x-axis tick label size
+      axis.text.y = element_text(size = 12)   # Increase y-axis tick label size
+    )
 }
 
 PlotIdentCrossConfusionMatrices <- function(obj1, obj2, sample.name1, sample.name2, assay = "SCT", subclass.labels, ident.labels, n_iters = 10, all.genes = FALSE, ident.genes = FALSE, upsample = FALSE, downsample = FALSE) {

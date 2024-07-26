@@ -63,6 +63,7 @@ obj.mouse$subclass[obj.mouse$subclass == "Oligo"] <- "OD"
 obj.mouse$type <- obj.mouse$cluster_label
 meta.data <- obj.mouse[[]]
 df <- meta.data[,c("subclass", "type")]
+df_renamed <- meta.data[,c("subclass", "type")]
 
 # Define the mapping list
 mapping <- c("L2/3 IT" = "L2/3", "L5 IT" = "L5IT", "L5/6 NP" = "L5NP", "L5 ET" = "L5PT", "L6 IT" = "L6IT", 
@@ -75,14 +76,16 @@ rename_types <- function(data) {
     mutate(
       type = factor(type),
       type_rank = as.numeric(factor(type, levels = names(sort(table(type), decreasing = TRUE)))),
-      type = paste0(subclass, "_", LETTERS[type_rank])
+      type_new = paste0(subclass, "_", LETTERS702[type_rank])
     ) %>%
     select(-type_rank) %>%
     ungroup()
 }
 
 # Apply the function
-df_renamed <- rename_types(df)
+for (sbcl in unique(df$subclass)) {
+  df_renamed$type[df$subclass == sbcl] <- rename_types(df[df$subclass == sbcl,])
+}
 obj.mouse$type <- df_renamed$type
 obj.mouse$type[obj.mouse$type == "OPC_A"] <- "OPC"
 obj.mouse$type[obj.mouse$type == "Peri_A"] <- "Peri"

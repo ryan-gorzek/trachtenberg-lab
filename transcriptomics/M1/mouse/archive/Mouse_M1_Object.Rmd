@@ -1,0 +1,38 @@
+---
+title: "Mouse M1 Object"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(tidyverse)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+
+matrix <- readRDS("E:/Transcriptomics_M1/Mouse/Mouse_M1_10xV3_Matrix.RDS")
+meta_tb <- arrow::read_feather("E:/Transcriptomics_M1/Mouse/Mouse_M1_10xV3_Metadata.feather")
+meta_df <- as.data.frame(meta_tb)
+row.names(meta_df) <- meta_df[, "sample_id"]
+obj.mouse <- CreateSeuratObject(counts = matrix, meta.data = meta_df)
+rm(list = c("matrix", "meta_df", "meta_tb"))
+
+obj.mouse$species <- "Mouse"
+
+```
+
+
+```{r}
+
+# initial clustering
+obj.mouse <- ClusterSCT(obj.mouse, c(1))
+PlotClusters(obj.mouse)
+
+```
+

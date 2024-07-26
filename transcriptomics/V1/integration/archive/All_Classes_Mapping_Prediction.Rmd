@@ -1,0 +1,127 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+classes <- c("Glutamatergic", "GABAergic", "Nonneuronal")
+objs.mouse <- c()
+objs.opossum <- c()
+objs.i.mouse <- c()
+objs.i.opossum <- c()
+objs.m.mouse <- c()
+objs.m.opossum <- c()
+
+for (cl in classes) {
+
+  obj.opossum <- readRDS(paste0("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_", tolower(cl), "_processed.rds"))
+  obj.mouse.P38 <- readRDS(paste0("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_", tolower(cl), "_processed.rds"))
+  
+  objs <- list(obj.opossum, obj.mouse.P38)
+
+  objs.mouse <- append(objs.mouse, objs[[2]])
+  objs.opossum <- append(objs.opossum, objs[[1]])
+  
+}
+
+obj.mouse <- merge(objs.mouse[[1]], y = c(objs.mouse[[2]], objs.mouse[[3]]))
+obj.opossum <- merge(objs.opossum[[1]], y = c(objs.opossum[[2]], objs.opossum[[3]]))
+
+obj.mouse$species <- "Mouse"
+obj.opossum$species <- "Opossum"
+
+obj.combined <- merge(obj.mouse, y = obj.opossum)
+
+```
+
+
+```{r}
+
+obj.combined$subclass.plot <- obj.combined$subclass
+obj.combined$subclass.plot[obj.combined$subclass %in% c("IT_A", "IT_B", "IT_C", "IT_D", "IT_E", 
+                                                   "L2/3", "L4", "L5IT", "L6IT")] <- "IT"
+
+```
+
+
+```{r, fig.width=10, fig.height=8}
+
+Idents(obj.combined) <- "subclass.plot"
+levels(obj.combined) <- rev(c("IT", "L5NP", "L5PT", "L6CT", "L6b",
+                              "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac", "Meis2", 
+                              "Astro", "Micro", "OD", "OPC", "Endo", "VLMC"))
+DotPlot(obj.combined, assay = "RNA", features = c("Snap25", "Sv2b", "Cux2", "Rorb", "Deptor", "Etv1", "Trpc4", "Foxp2", "Lin28b", 
+                                                  "Gad1", "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac", "Meis2",
+                                                  "Aldh1l1", "Cx3cr1", "Mog", "Pdgfra", "Flt1", "Bnc2"), cols = c("gray", "red"), split.by = "species", scale = FALSE) + theme(axis.text.x=element_text(angle = 90, vjust = 0.4))
+
+```
+
+
+```{r}
+
+Idents(obj.combined) <- "subclass.plot"
+obj.combined.glutamatergic <- subset(obj.combined, idents = c("IT", "L5NP", "L5PT", "L6CT", "L6b"))
+obj.combined.gabaergic <- subset(obj.combined, idents = c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac", "Meis2"))
+obj.combined.nonneuronal <- subset(obj.combined, idents = c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC"))
+
+```
+
+
+```{r, fig.width=10, fig.height=8}
+
+Idents(obj.combined.glutamatergic) <- "subclass.plot"
+levels(obj.combined.glutamatergic) <- rev(c("IT", "L5NP", "L5PT", "L6CT", "L6b"))
+DotPlot(obj.combined.glutamatergic, assay = "RNA", features = c("Snap25", "Sv2b", "Cux2", "Rorb", "Deptor", "Etv1", "Trpc4", "Foxp2", "Lin28b"), 
+                                                   cols = c("gray", "red"), split.by = "species", scale = FALSE) + theme(axis.text.x=element_text(angle = 90, vjust = 0.4))
+
+```
+
+
+```{r, fig.width=10, fig.height=8}
+
+Idents(obj.combined.glutamatergic) <- "subclass.plot"
+levels(obj.combined.glutamatergic) <- rev(c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac", "Meis2"))
+DotPlot(obj.combined.glutamatergic, assay = "RNA", features = c("Snap25", "Gad1", "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac", "Meis2",
+                                                  "Aldh1l1", "Cx3cr1", "Mog", "Pdgfra", "Flt1", "Bnc2"), cols = c("gray", "red"), split.by = "species", scale = FALSE) + theme(axis.text.x=element_text(angle = 90, vjust = 0.4))
+
+```
+
+
+```{r, fig.width=10, fig.height=8}
+
+Idents(obj.combined.glutamatergic) <- "subclass.plot"
+levels(obj.combined.glutamatergic) <- rev(c("IT", "L5NP", "L5PT", "L6CT", "L6b",
+                              "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac", "Meis2", 
+                              "Astro", "Micro", "OD", "OPC", "Endo", "VLMC"))
+DotPlot(obj.combined.glutamatergic, assay = "RNA", features = c("Snap25", "Sv2b", "Cux2", "Rorb", "Deptor", "Etv1", "Trpc4", "Foxp2", "Lin28b", 
+                                                  "Gad1", "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac", "Meis2",
+                                                  "Aldh1l1", "Cx3cr1", "Mog", "Pdgfra", "Flt1", "Bnc2"), cols = c("gray", "red"), split.by = "species", scale = FALSE) + theme(axis.text.x=element_text(angle = 90, vjust = 0.4))
+
+```
+
+
+
+
+
+

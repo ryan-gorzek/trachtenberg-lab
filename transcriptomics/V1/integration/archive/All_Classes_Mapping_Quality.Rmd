@@ -1,0 +1,229 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+classes <- c("Glutamatergic", "GABAergic", "Nonneuronal")
+objs.mouse <- c()
+objs.opossum <- c()
+objs.i.mouse <- c()
+objs.i.opossum <- c()
+objs.m.mouse <- c()
+objs.m.opossum <- c()
+
+for (cl in c(2, 3)) { # 1, classes
+
+  # obj.opossum <- readRDS(paste0("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_", tolower(cl), "_processed.rds"))
+  # obj.opossum$species <- "Opossum"
+  # obj.mouse.P38 <- readRDS(paste0("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_", tolower(cl), "_processed.rds"))
+  # obj.mouse.P38$species <- "Mouse"
+
+  # objs <- list(obj.opossum, obj.mouse.P38)
+  # obj.integrated <- IntegrateObjects(objs[[1]], objs[[2]], resolutions = c(1, 2), nfeatures = 3000, subsample = TRUE)
+  # objs.i <- SplitObject(obj.integrated, split.by = "species")
+  objs.m <- MapObjects(objs.i.mouse[[cl]], objs.i.opossum[[cl]], c("subclass", "type"), assay = "integrated")
+  # objs.mouse <- append(objs.mouse, objs[[2]])
+  # objs.opossum <- append(objs.opossum, objs[[1]])
+  # objs.i.mouse <- append(objs.i.mouse, objs.i[["Mouse"]])
+  # objs.i.opossum <- append(objs.i.opossum, objs.i[["Opossum"]])
+  objs.m.mouse <- append(objs.m.mouse, objs.m[[2]])
+  objs.m.opossum <- append(objs.m.opossum, objs.m[[1]])
+  
+}
+
+# obj.mouse <- merge(objs.mouse[[1]], y = c(objs.mouse[[2]], objs.mouse[[3]]))
+# obj.opossum <- merge(objs.opossum[[1]], y = c(objs.opossum[[2]], objs.opossum[[3]]))
+obj.m.mouse <- merge(objs.m.mouse[[1]], y = c(objs.m.mouse[[2]], objs.m.mouse[[3]]))
+obj.m.opossum <- merge(objs.m.opossum[[1]], y = c(objs.m.opossum[[2]], objs.m.opossum[[3]]))
+
+```
+
+
+```{r}
+
+obj.mouse <- ClusterSCT(obj.mouse, c(1))
+obj.m.mouse <- ClusterSCT(obj.m.mouse, c(1))
+obj.opossum <- ClusterSCT(obj.opossum, c(1))
+obj.m.opossum <- ClusterSCT(obj.m.opossum, c(1))
+
+```
+
+
+```{r}
+
+obj.mouse <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_mouse.rds")
+obj.opossum <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_opossum.rds")
+objs.i.mouse <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_i_mouse.rds")
+objs.i.opossum <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_i_opossum.rds")
+objs.m.mouse <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/objs_m_mouse.rds")
+objs.m.opossum <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/objs_m_opossum.rds")
+obj.m.mouse <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_m_mouse.rds")
+obj.m.opossum <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_m_opossum.rds")
+
+```
+
+
+```{r}
+
+DimPlot(obj.mouse, reduction = "umap", group.by = "sample", label = FALSE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.mouse, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.mouse, reduction = "umap", group.by = "type", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+obj.mouse$subclass.IT <- obj.mouse$subclass
+obj.mouse$subclass.IT[obj.mouse$subclass %in% c("L2/3", "L4", "L5IT", "L6IT")] <-  "IT"
+p <- DimPlot(obj.mouse, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 1/Mouse-P38_V1_All_UMAP_Subclass_FullSpace.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 1/Mouse-P38_V1_All_UMAP_Subclass_FullSpace.svg", plot = p, dpi = 300)
+p <- DimPlot(obj.mouse, reduction = "umap", group.by = "subclass.IT", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 1/Mouse-P38_V1_All_UMAP_SubclassIT_FullSpace.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 1/Mouse-P38_V1_All_UMAP_SubclassIT_FullSpace.svg", plot = p, dpi = 300)
+
+```
+
+
+```{r}
+
+DimPlot(obj.m.mouse, reduction = "umap", group.by = "sample", label = FALSE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.m.mouse, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.m.mouse, reduction = "umap", group.by = "predicted.subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.m.mouse, reduction = "umap", group.by = "type", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+p <- DimPlot(obj.m.mouse, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 1/Mouse-P38_V1_All_UMAP_Subclass_IntSpace.svg", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 1/Mouse-P38_V1_All_UMAP_Subclass_IntSpace.png", plot = p, dpi = 300)
+p <- DimPlot(obj.m.mouse, reduction = "umap", group.by = "predicted.subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 1/Mouse-P38_V1_All_UMAP_PredictedSubclass_IntSpace.svg", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 1/Mouse-P38_V1_All_UMAP_PredictedSubclass_IntSpace.png", plot = p, dpi = 300)
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum, reduction = "umap", group.by = "sample", label = FALSE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum, reduction = "umap", group.by = "type", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+obj.opossum$subclass.IT <- obj.opossum$subclass
+obj.opossum$subclass.IT[obj.opossum$subclass %in% c("IT_A", "IT_B", "IT_C", "IT_D", "IT_E")] <-  "IT"
+p <- DimPlot(obj.opossum, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 1/Opossum_V1_All_UMAP_Subclass_FullSpace.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 1/Opossum_V1_All_UMAP_Subclass_FullSpace.svg", plot = p, dpi = 300)
+p <- DimPlot(obj.opossum, reduction = "umap", group.by = "subclass.IT", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 1/Opossum_V1_All_UMAP_SubclassIT_FullSpace.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 1/Opossum_V1_All_UMAP_SubclassIT_FullSpace.svg", plot = p, dpi = 300)
+
+```
+
+
+```{r}
+
+DimPlot(obj.m.opossum, reduction = "umap", group.by = "sample", label = FALSE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.m.opossum, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.m.opossum, reduction = "umap", group.by = "predicted.subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.m.opossum, reduction = "umap", group.by = "type", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+p <- DimPlot(obj.m.opossum, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 1/Opossum_V1_All_UMAP_Subclass_IntSpace.svg", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 1/Opossum_V1_All_UMAP_Subclass_IntSpace.png", plot = p, dpi = 300)
+p <- DimPlot(obj.m.opossum, reduction = "umap", group.by = "predicted.subclass", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 1/Opossum_V1_All_UMAP_PredictedSubclass_IntSpace.svg", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 1/Opossum_V1_All_UMAP_PredictedSubclass_IntSpace.png", plot = p, dpi = 300)
+
+```
+
+
+```{r}
+
+PlotMapping(list(objs.m.mouse[[1]], objs.m.opossum[[1]]), ident.order = c("IT", "L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"))
+
+```
+
+
+```{r}
+
+PlotMapping(list(objs.m.mouse[[2]], objs.m.opossum[[2]]), ident.order = c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac", "Meis2"))
+
+```
+
+
+```{r}
+
+PlotMapping(list(objs.m.mouse[[3]], objs.m.opossum[[3]]), ident.order = c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC"))
+
+```
+
+
+```{r}
+
+Idents(objs.m.opossum[[1]]) <- "subclass"
+levels(objs.m.opossum[[1]]) <- c("IT_A", "IT_B", "IT_C", "IT_D", "IT_E", "L5NP", "L5PT", "L6CT", "L6b")
+VlnPlot(objs.m.opossum[[1]], "predicted.subclass.score") + NoLegend()
+
+```
+
+
+```{r}
+
+Idents(objs.m.opossum[[2]]) <- "subclass"
+levels(objs.m.opossum[[2]]) <- c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Meis2")
+VlnPlot(objs.m.opossum[[2]], "predicted.subclass.score") + theme(legend.spacing.x = unit(2.0, 'cm'))
+
+```
+
+
+```{r}
+
+Idents(objs.m.opossum[[3]]) <- "subclass"
+levels(objs.m.opossum[[3]]) <- c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC")
+VlnPlot(objs.m.opossum[[3]], "predicted.subclass.score") + theme(legend.spacing.x = unit(2.0, 'cm'))
+
+```
+
+
+```{r}
+
+Idents(obj.m.opossum) <- "subclass"
+levels(obj.m.opossum) <- c("IT_A", "IT_B", "IT_C", "IT_D", "IT_E", "L5NP", "L5PT", "L6CT", "L6b", 
+                               "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Meis2", 
+                               "Astro", "Micro", "OD", "OPC", "Endo", "VLMC")
+VlnPlot(obj.m.opossum, "predicted.subclass.score") + NoLegend()
+
+```
+
+
+```{r}
+
+saveRDS(obj.mouse, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_mouse.rds")
+saveRDS(obj.opossum, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_opossum.rds")
+saveRDS(objs.i.mouse, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_i_mouse.rds")
+saveRDS(objs.i.opossum, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_i_opossum.rds")
+saveRDS(objs.m.mouse, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/objs_m_mouse.rds")
+saveRDS(objs.m.opossum, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/objs_m_opossum.rds")
+saveRDS(obj.m.mouse, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_m_mouse.rds")
+saveRDS(obj.m.opossum, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_m_opossum.rds")
+
+```
+
