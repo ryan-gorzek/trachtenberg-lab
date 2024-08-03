@@ -90,10 +90,12 @@ MapObjects <- function(seurat_obj1, seurat_obj2, idents, assay = "SCT") {
       return(x)
     })
   } else if (assay == "SCT") {
-    x <- SCTransform(x, vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE) %>%
-         RunPCA(npcs = 30, verbose = FALSE) %>%
-         RunUMAP(reduction = "pca", dims = 1:30, return.model = TRUE, verbose = FALSE)
-    return(x)
+    objs <- lapply(objs, function(x) {
+      x <- SCTransform(x, vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE) %>%
+           RunPCA(npcs = 30, verbose = FALSE) %>%
+           RunUMAP(reduction = "pca", dims = 1:30, return.model = TRUE, verbose = FALSE)
+      return(x)
+    })
   }
   objs.idx <- list(qry = c(1, 2), ref = c(2, 1))
   objs.mapped <- list()

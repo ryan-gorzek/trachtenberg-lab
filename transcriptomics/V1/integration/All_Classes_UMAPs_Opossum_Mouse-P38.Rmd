@@ -171,6 +171,9 @@ Idents(obj.opossum) <- "subclass.plot"
 levels(obj.opossum) <- opossum.subclass.plot.levels
 colors <- as.character(colors_list[opossum.subclass.plot.levels])
 DimPlot(obj.opossum, reduction = "umap", label = TRUE, raster = FALSE, shuffle = TRUE, cols = colors) + NoLegend() + xlim(-17, 13) + ylim(-13, 17) + coord_equal()
+p <- DimPlot(obj.opossum, reduction = "umap", label = TRUE, raster = FALSE, shuffle = TRUE, cols = colors) + NoLegend() + xlim(-17, 13) + ylim(-13, 17) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 1/Opossum_V1_All_UMAP_SubclassIT_FullSpace.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 1/Opossum_V1_All_UMAP_SubclassIT_FullSpace.svg", plot = p, dpi = 300)
 
 ```
 
@@ -221,6 +224,9 @@ Idents(obj.mouse) <- "subclass.plot"
 levels(obj.mouse) <- mouse.subclass.plot.levels
 colors <- as.character(colors_list[mouse.subclass.plot.levels])
 DimPlot(obj.mouse, reduction = "umap", label = TRUE, raster = FALSE, shuffle = TRUE, cols = colors) + NoLegend() + xlim(-16, 16) + ylim(-17, 15) + coord_equal()
+p <- DimPlot(obj.mouse, reduction = "umap", label = TRUE, raster = FALSE, shuffle = TRUE, cols = colors) + NoLegend() + xlim(-16, 16) + ylim(-17, 15) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 1/Mouse-P38_V1_All_UMAP_SubclassIT_FullSpace.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 1/Mouse-P38_V1_All_UMAP_SubclassIT_FullSpace.svg", plot = p, dpi = 300)
 
 ```
 

@@ -1,0 +1,138 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(SeuratWrappers)
+library(monocle3)
+library(pheatmap)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
+obj.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+
+```
+
+
+```{r}
+
+colors_list <- list(
+              # Glutamatergic
+              IT = "#FF6C88",
+              IT_A = "#FFB3B3",
+              `L2/3` = "#FFB3B3",
+              IT_B = "#FFA07A",
+              L4 = "#FF7F50",
+              IT_C = "#FF7F50",
+              L5IT = "#FFA07A",
+              IT_D = "#FF6347",
+              L6IT = "#FF6347",
+              L5NP = "#FF4500",
+              L5PT = "#32a852", 
+              L6CT = "#7de89a",
+              L6b = "#206633",
+            
+              # GABAergic
+              Pvalb = "#1E90FF",
+              Sst = "#87CEEB",
+              Vip = "#87CEFA",
+              Lamp5 = "#4682B4",
+              Frem1 = "#ADD8E6",
+              Stac = "#5F9EA0",
+            
+              # Non-neuronal
+              Astro = "#8C8C8C",
+              Micro = "#A0A0A0",
+              OD = "#B4B4B4",
+              OPC = "#C8C8C8",
+              Endo = "#505050",
+              VLMC = "#B4B4B4"
+)
+
+```
+
+
+```{r}
+
+obj.opossum.glutamatergic <- ClusterSCT(obj.opossum.glutamatergic, resolutions = c(1))
+obj.mouse.glutamatergic <- ClusterSCT(obj.mouse.glutamatergic, resolutions = c(1))
+
+```
+
+
+```{r}
+
+obj.mouse.glutamatergic$species <- "Mouse"
+objs <- list(obj.opossum.glutamatergic, obj.mouse.glutamatergic)
+obj.integrated <- IntegrateObjects(objs[[1]], objs[[2]], resolutions = c(1, 2), nfeatures = 5000, subsample = TRUE)
+objs.i <- SplitObject(obj.integrated, split.by = "species")
+objs.m <- MapObjects(objs.i[[1]], objs.i[[2]], c("subclass", "type"), assay = "integrated")
+
+```
+
+
+```{r}
+
+subclasses <- c("IT_A", "IT_C", "IT_B", "IT_D", "IT_E", "L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b")
+PlotIntegration(obj.integrated, "species", c("integrated_snn_res.1", "integrated_snn_res.2"), subclasses)
+
+```
+
+
+```{r}
+
+DimPlot(obj.integrated, reduction = "umap", group.by = "species", cols = c("#aaaaaa", "#c692b8"), label = FALSE, raster = FALSE, shuffle = TRUE) + xlim(-16, 12) + ylim(-16, 12) + coord_equal()
+Idents(obj.integrated) <- "subclass"
+subclasses <- c("IT_A", "IT_C", "IT_B", "IT_D", "IT_E", "L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b")
+levels(obj.integrated) <- subclasses
+DimPlot(obj.integrated, reduction = "umap", split.by = "species", cols = colors_list[subclasses], label = TRUE, raster = FALSE) + NoLegend() + xlim(-16, 12) + ylim(-16, 12) + coord_equal()
+DimPlot(obj.integrated, reduction = "umap", split.by = "species", group.by = "sample", raster = FALSE) + NoLegend() + xlim(-16, 12) + ylim(-16, 12) + coord_equal()
+FeaturePlot(obj.integrated, "nCount_RNA", reduction = "umap", split.by = "species") + NoLegend() + xlim(-16, 12) + ylim(-16, 12) + coord_equal()
+
+```
+
+
+```{r}
+
+PlotMapping(objs.m, ident.order = c("IT_A", "IT_C", "IT_B", "IT_D", "IT_E", "L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"))
+
+```
+
+
+```{r, fig.width=15, fig.height=6}
+
+sbcl_conf_plots <- PlotSubclassCrossConfusionMatrices(objs.i[[1]], objs.i[[2]], 
+                                                      "Opossum", "Mouse", 
+                                                      assay = "integrated",
+                                                      c("IT_A", "IT_B", "IT_C", "IT_D", "IT_E", "L2/3", "L4", "L5IT", "L6IT"), n_iters = 5, all.genes = FALSE, upsample = TRUE)
+
+```
+
+
+```{r}
+
+print(sbcl_conf_plots[[1]])
+print(sbcl_conf_plots[[2]])
+
+```
+

@@ -145,15 +145,40 @@ obj.opossum.nonneuronal <- subset(obj.opossum, idents = c("Astro", "Micro", "OD"
 ```
 
 
-```{r, fig.width=10, fig.height=8}
+```{r, fig.width=8, fig.height=8}
 
 Idents(obj.combined) <- "subclass.plot"
 levels(obj.combined) <- rev(c("IT", "L5NP", "L5PT", "L6CT", "L6b",
                               "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac", 
                               "Astro", "Micro", "OD", "OPC", "Endo", "VLMC"))
-DotPlot(obj.combined, assay = "RNA", features = c("Snap25", "Sv2b", "Cux2", "Rorb", "Deptor", "Etv1", "Trpc4", "Foxp2", "Lin28b", 
-                                                  "Gad1", "Myo5b", "Sst", "Vip", "Lamp5", "Frem1", "Stac", 
-                                                  "Aldh1l1", "Cx3cr1", "Mog", "Pdgfra", "Flt1", "Slc47a1"), cols = c("#a6a6a6", "#c692b8"), split.by = "species", scale = TRUE) + theme(axis.text.x=element_text(angle = 90, vjust = 0.4))
+DotPlot(obj.combined, assay = "RNA", features = c("Syt14", "Satb2", "Nxph3", "Fezf2", "Foxp2", "Drd1", 
+                                                  "Gad1", "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac", 
+                                                  "Aldh1l1", "Csf1r", "Mog", "Pdgfra", "Flt1", "Slc47a1"), 
+                                     cols = c("#aaaaaa", "#c692b8"), split.by = "species", scale = T, scale.by = "radius", scale.max = 50, col.max = 2) + 
+                      theme(axis.text.x=element_text(angle = 90, vjust = 0.4))
+
+p <- DotPlot(obj.combined, assay = "RNA", features = c("Syt14", "Satb2", "Nxph3", "Fezf2", "Foxp2", "Drd1", 
+                                                  "Gad1", "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac", 
+                                                  "Aldh1l1", "Csf1r", "Mog", "Pdgfra", "Flt1", "Slc47a1"), 
+                                     cols = c("#aaaaaa", "#c692b8"), split.by = "species", scale = T, scale.by = "radius", scale.max = 50, col.max = 2) + 
+                      theme(axis.text.x=element_text(angle = 90, vjust = 0.4))
+
+ggsave("E:/Opossum_Paper/Figure 1/Opossum_Mouse-P38_DotPlot.svg", plot = p, width = 8, height = 8, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 1/Opossum_Mouse-P38_DotPlot.png", plot = p, width = 8, height = 8, dpi = 300)
+
+```
+
+
+```{r}
+
+obj.combined <- PrepSCTFindMarkers(obj.combined)
+
+```
+
+
+```{r}
+
+markers.Neuronal <- FindConservedMarkers(obj.combined, ident.1 = c("IT", "L5NP", "L5PT", "L6CT", "L6b", "Pvalb", "Sst", "Vip", "Frem1"), grouping.var = "species")
 
 ```
 
@@ -190,6 +215,35 @@ DoHeatmap(obj.opossum.glutamatergic, features = c("Ccbe1", "Mdga1", "Stard8", "C
                                                   "Erg", "Reln", 
                                                   "Foxp2", "Syt6", 
                                                   "Inpp4b", "Svil"), 
+                                     slot = "scale.data", 
+                                     group.colors = as.character(colors_list[opossum.levels]), 
+                                     size = 3, disp.min = 0, disp.max = 3) + scale_fill_viridis(option = "A")
+
+```
+
+
+```{r}
+
+library(viridisLite)
+
+DefaultAssay(obj.mouse.glutamatergic) <- "SCT"
+Idents(obj.mouse.glutamatergic) <- "subclass"
+mouse.levels <- c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b")
+levels(obj.mouse.glutamatergic) <- mouse.levels
+DoHeatmap(obj.mouse.glutamatergic, features = c("Cux1", "Cux2", "Satb2", "Satb1", "Plxnd1", "Otof", "Rspo1", 
+                                                "Nrp1", "Tle4", "Sox5", "Osr1", 
+                                                "Foxp2", "Tbr1", "Fezf2"), 
+                                     slot = "scale.data", 
+                                     group.colors = as.character(colors_list[mouse.levels]), 
+                                     size = 3, disp.min = 0, disp.max = 3) + scale_fill_viridis(option = "A")
+
+DefaultAssay(obj.opossum.glutamatergic) <- "SCT"
+Idents(obj.opossum.glutamatergic) <- "subclass"
+opossum.levels <- c("IT_A", "IT_C", "IT_B", "IT_D", "L5NP", "L5PT", "L6CT", "L6b")
+levels(obj.opossum.glutamatergic) <- opossum.levels
+DoHeatmap(obj.opossum.glutamatergic, features = c("Cux1", "Cux2", "Satb2", "Satb1", "Pou3f3", "Plxnd1", "Otof", "Rspo1", 
+                                                  "Bcl11b", "Nrp1", "Tle4", "Sox5", "Osr1", 
+                                                  "Foxp2", "Tbr1", "Fezf2"), 
                                      slot = "scale.data", 
                                      group.colors = as.character(colors_list[opossum.levels]), 
                                      size = 3, disp.min = 0, disp.max = 3) + scale_fill_viridis(option = "A")

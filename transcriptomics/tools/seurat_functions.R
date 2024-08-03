@@ -138,6 +138,18 @@ ClusterSCT <- function(obj, resolutions) {
   
 }
 
+NormalizePCA <- function(obj, nfeatures = 3000) {
+  
+  DefaultAssay(obj) <- "RNA"
+  obj <- NormalizeData(obj, normalization.method = "LogNormalize", scale.factor = 10000)
+  obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = nfeatures)
+  all.genes <- rownames(obj)
+  obj <- ScaleData(obj, features = all.genes)
+  obj <- RunPCA(obj, features = VariableFeatures(object = obj))
+  return(obj)
+  
+}
+
 PlotClusters <- function(obj, group.id) {
   
   if (!missing(group.id)) {
@@ -959,4 +971,71 @@ PlotSubclassGeneCountCDF_AtPoints <- function(de_df, all_genes, sample.name, sub
       axis.text.x = element_text(size = 12),  # Increase x-axis tick label size
       axis.text.y = element_text(size = 12)   # Increase y-axis tick label size
     )
+}
+
+ShuffleExpression <- function(seurat_obj, metadata_column, assay = "RNA", ignore_group = FALSE) {
+  # Check if the metadata_column exists in the Seurat object metadata
+  if (!(metadata_column %in% colnames(seurat_obj@meta.data))) {
+    stop(paste("Column", metadata_column, "not found in Seurat object metadata"))
+  }
+  
+  # Create a copy of the expression data from the counts slot
+  expr_data <- as.matrix(GetAssayData(seurat_obj, assay = assay, slot = "counts"))
+  
+  DefaultAssay(seurat_obj) <- assay
+  Idents(seurat_obj) <- metadata_column
+  
+  if (ignore_group) {
+    # Shuffle expression values across all cells
+    shuffled_expr <- t(apply(expr_data, 1, function(x) x[sample(length(x))]))
+    colnames(shuffled_expr) <- colnames(expr_data)
+    
+    # Create a new Seurat object to ensure the original remains unchanged
+    seurat_obj_copy <- seurat_obj
+    seurat_obj_copy <- SetAssayData(seurat_obj_copy, assay = assay, slot = "counts", new.data = as(shuffled_expr, "dgCMatrix"))
+    
+    return(seurat_obj_copy)
+  } else {
+    # Get unique categories
+    categories <- unique(seurat_obj@meta.data[[metadata_column]])
+    
+    # Initialize a list to store shuffled expression matrices
+    shuffled_expr_list <- list()
+    cell_names_list <- list()
+    
+    # Loop through each category and shuffle expression values within that category
+    for (category in categories) {
+      print(category)
+      
+      # Get the cells belonging to the current category
+      category_cells <- WhichCells(seurat_obj, idents = category)
+      
+      # Get the expression matrix for the current category cells
+      category_expr <- expr_data[, category_cells]
+      
+      # Shuffle expression values for each gene within the current category
+      shuffled_expr <- t(apply(category_expr, 1, function(x) x[sample(length(x))]))
+      
+      # Add the shuffled expression matrix to the list
+      shuffled_expr_list[[category]] <- shuffled_expr
+      cell_names_list[[category]] <- colnames(category_expr)
+    }
+    
+    # Concatenate the shuffled expression matrices
+    shuffled_expr_concat <- do.call(cbind, shuffled_expr_list)
+    
+    # Combine the cell names to maintain order
+    all_cell_names <- unlist(cell_names_list)
+    
+    # Reorder the columns to match the original cell names
+    cell_order <- colnames(expr_data)
+    shuffled_expr_final <- shuffled_expr_concat[, match(cell_order, all_cell_names)]
+    colnames(shuffled_expr_final) <- cell_order
+    
+    # Create a new Seurat object to ensure the original remains unchanged
+    seurat_obj_copy <- seurat_obj
+    seurat_obj_copy <- SetAssayData(seurat_obj_copy, assay = assay, slot = "counts", new.data = as(shuffled_expr_final, "dgCMatrix"))
+    
+    return(seurat_obj_copy)
+  }
 }
