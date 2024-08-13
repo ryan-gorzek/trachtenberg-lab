@@ -138,14 +138,14 @@ ClusterSCT <- function(obj, resolutions) {
   
 }
 
-NormalizePCA <- function(obj, nfeatures = 3000) {
+NormalizePCA <- function(obj, nfeatures = 3000, npcs = 30) {
   
   DefaultAssay(obj) <- "RNA"
   obj <- NormalizeData(obj, normalization.method = "LogNormalize", scale.factor = 10000)
   obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = nfeatures)
   all.genes <- rownames(obj)
   obj <- ScaleData(obj, features = all.genes)
-  obj <- RunPCA(obj, features = VariableFeatures(object = obj))
+  obj <- RunPCA(obj, features = VariableFeatures(object = obj), npcs = npcs)
   return(obj)
   
 }
@@ -1038,4 +1038,55 @@ ShuffleExpression <- function(seurat_obj, metadata_column, assay = "RNA", ignore
     
     return(seurat_obj_copy)
   }
+}
+
+SubsampleObject <- function(seurat_obj, metadata_col, cells_per_category) {
+  # Extract metadata
+  metadata <- seurat_obj@meta.data
+  
+  # Get unique values in the specified metadata column
+  unique_values <- unique(metadata[[metadata_col]])
+  
+  # Initialize a list to store subsampled cell names
+  subsampled_cells <- list()
+  
+  # Loop through each unique value in the metadata column
+  for (value in unique_values) {
+    # Get cells that belong to the current metadata category
+    cells_in_category <- rownames(metadata[metadata[[metadata_col]] == value, ])
+    
+    # Determine the number of cells to sample
+    n_cells_to_sample <- min(length(cells_in_category), cells_per_category)
+    
+    # Sample cells
+    sampled_cells <- sample(cells_in_category, n_cells_to_sample)
+    
+    # Add sampled cells to the list
+    subsampled_cells <- c(subsampled_cells, sampled_cells)
+  }
+  
+  # Subset the Seurat object to include only the subsampled cells
+  subsampled_seurat_obj <- subset(seurat_obj, cells = as.character(subsampled_cells))
+  
+  return(subsampled_seurat_obj)
+}
+
+SplitObjectHalf <- function(seurat_object, seed = 123) {
+  # Get the number of cells
+  num_cells <- ncol(seurat_object)
+  
+  # Generate a random split
+  set.seed(seed)  # Setting seed for reproducibility
+  random_split <- sample(1:num_cells, num_cells, replace = FALSE)
+  
+  # Split into two groups
+  half1 <- random_split[1:(num_cells %/% 2)]
+  half2 <- random_split[((num_cells %/% 2) + 1):num_cells]
+  
+  # Subset the Seurat object into two halves
+  seurat_half1 <- subset(seurat_object, cells = colnames(seurat_object)[half1])
+  seurat_half2 <- subset(seurat_object, cells = colnames(seurat_object)[half2])
+  
+  # Return a list containing the two halves
+  return(list(obj1 = seurat_half1, obj2 = seurat_half2))
 }

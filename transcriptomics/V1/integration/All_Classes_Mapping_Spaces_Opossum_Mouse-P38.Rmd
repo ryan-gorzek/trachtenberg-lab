@@ -26,38 +26,28 @@ source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R"
 source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
 
 classes <- c("Glutamatergic", "GABAergic", "Nonneuronal")
-objs.mouse <- c()
-objs.opossum <- c()
-objs.i.mouse <- c()
-objs.i.opossum <- c()
-objs.m.mouse <- c()
-objs.m.opossum <- c()
 
 for (cl in classes) {
 
   obj.opossum <- readRDS(paste0("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_", tolower(cl), "_processed.rds"))
   obj.opossum$species <- "Opossum"
-  obj.mouse.P38 <- readRDS(paste0("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_", tolower(cl), "_processed.rds"))
-  obj.mouse.P38$species <- "Mouse"
-  obj.opossum <- SubsampleObject(obj.opossum, "subclass", 200)
-  obj.mouse.P38 <- SubsampleObject(obj.mouse.P38, "subclass", 200)
-  objs <- list(obj.opossum, obj.mouse.P38)
-  obj.integrated <- IntegrateObjects(objs[[1]], objs[[2]], resolutions = c(1, 2), nfeatures = 3000, subsample = TRUE)
-  objs.i <- SplitObject(obj.integrated, split.by = "species")
-  objs.m <- MapObjects(objs[["Opossum"]], objs[["Mouse"]], c("subclass", "type"), assay = "integrated")
-  objs.mouse <- append(objs.mouse, objs[[2]])
-  objs.opossum <- append(objs.opossum, objs[[1]])
-  objs.i.mouse <- append(objs.i.mouse, objs.i[["Mouse"]])
-  objs.i.opossum <- append(objs.i.opossum, objs.i[["Opossum"]])
-  objs.m.mouse <- append(objs.m.mouse, objs.m[[2]])
-  objs.m.opossum <- append(objs.m.opossum, objs.m[[1]])
+  obj.mouse <- readRDS(paste0("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_", tolower(cl), "_processed.rds"))
+  obj.mouse$species <- "Mouse"
+  shared.genes <- intersect(rownames(obj.opossum), rownames(obj.mouse))
+  obj.opossum.full <- obj.opossum
+  obj.mouse.full <- obj.mouse
+  obj.opossum.int <- obj.opossum[shared.genes,]
+  obj.mouse.int <- obj.mouse[shared.genes,]
+  objs.opossum.full <- SplitObjectHalf(obj.opossum.full)
+  objs.mouse.full <- SplitObjectHalf(obj.mouse.full)
+  objs.opossum.int <- SplitObjectHalf(obj.opossum.int)
+  objs.mouse.int <- SplitObjectHalf(obj.mouse.int)
+  objs.opossum.full.m <- MapObjects(objs.opossum.full[[1]], objs.opossum.full[[2]], c("subclass"), assay = "SCT")
+  objs.mouse.full.m <- MapObjects(objs.mouse.full[[1]], objs.mouse.full[[2]], c("subclass"), assay = "SCT")
+  objs.opossum.int.m <- MapObjects(objs.opossum.int[[1]], objs.opossum.int[[2]], c("subclass"), assay = "SCT")
+  objs.mouse.int.m <- MapObjects(objs.mouse.int[[1]], objs.mouse.int[[2]], c("subclass"), assay = "SCT")
   
 }
-
-obj.mouse <- merge(objs.mouse[[1]], y = c(objs.mouse[[2]], objs.mouse[[3]]))
-obj.opossum <- merge(objs.opossum[[1]], y = c(objs.opossum[[2]], objs.opossum[[3]]))
-obj.m.mouse <- merge(objs.m.mouse[[1]], y = c(objs.m.mouse[[2]], objs.m.mouse[[3]]))
-obj.m.opossum <- merge(objs.m.opossum[[1]], y = c(objs.m.opossum[[2]], objs.m.opossum[[3]]))
 
 ```
 

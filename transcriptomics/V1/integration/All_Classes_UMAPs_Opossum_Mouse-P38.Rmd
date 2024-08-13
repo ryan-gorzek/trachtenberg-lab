@@ -188,6 +188,9 @@ Idents(obj.m.opossum) <- "subclass"
 levels(obj.m.opossum) <- opossum.subclass.levels
 colors <- as.character(colors_list[opossum.subclass.levels])
 DimPlot(obj.m.opossum, reduction = "umap", label = TRUE, raster = FALSE, shuffle = TRUE, cols = colors) + NoLegend() + xlim(-16, 13) + ylim(-12, 17) + coord_equal()
+p <- DimPlot(obj.m.opossum, reduction = "umap", label = TRUE, raster = FALSE, shuffle = TRUE, cols = colors) + NoLegend() + xlim(-16, 13) + ylim(-12, 17) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_V1_All_UMAP_Subclass_IntSpace.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_V1_All_UMAP_Subclass_IntSpace.svg", plot = p, dpi = 300)
 
 ```
 
@@ -202,6 +205,9 @@ Idents(obj.m.opossum) <- "predicted.subclass"
 levels(obj.m.opossum) <- mouse.subclass.levels
 colors <- as.character(colors_list[mouse.subclass.levels])
 DimPlot(obj.m.opossum, reduction = "umap", label = TRUE, raster = FALSE, shuffle = TRUE, cols = colors) + NoLegend() + xlim(-16, 13) + ylim(-12, 17) + coord_equal()
+p <- DimPlot(obj.m.opossum, reduction = "umap", label = TRUE, raster = FALSE, shuffle = TRUE, cols = colors) + NoLegend() + xlim(-16, 13) + ylim(-12, 17) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_V1_All_UMAP_PredictedSubclass_IntSpace.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_V1_All_UMAP_PredictedSubclass_IntSpace.svg", plot = p, dpi = 300)
 
 ```
 
@@ -241,6 +247,9 @@ Idents(obj.m.mouse) <- "subclass"
 levels(obj.m.mouse) <- mouse.subclass.levels
 colors <- as.character(colors_list[mouse.subclass.levels])
 DimPlot(obj.m.mouse, reduction = "umap", label = TRUE, raster = FALSE, shuffle = TRUE, cols = colors) + NoLegend() + xlim(-14, 18) + ylim(-16, 16) + coord_equal()
+p <- DimPlot(obj.m.mouse, reduction = "umap", label = TRUE, raster = FALSE, shuffle = TRUE, cols = colors) + NoLegend() + xlim(-14, 18) + ylim(-16, 16) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 2/Mouse_V1_All_UMAP_Subclass_IntSpace.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Mouse_V1_All_UMAP_Subclass_IntSpace.svg", plot = p, dpi = 300)
 
 ```
 

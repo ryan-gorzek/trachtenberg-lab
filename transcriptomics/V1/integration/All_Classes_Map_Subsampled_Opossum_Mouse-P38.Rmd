@@ -1,0 +1,154 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+classes <- c("Glutamatergic", "GABAergic", "Nonneuronal")
+objs.opossum = list()
+objs.mouse = list()
+mapping.data = list("subclass" = c(), "predicted.subclass" = c(), "predicted.subclass.score" = c())
+mapping.classes = list("Glutamatergic" = mapping.data, "GABAergic" = mapping.data, "Nonneuronal" = mapping.data)
+objs.opossum$Glutamatergic <- readRDS(paste0("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds"))
+objs.mouse$Glutamatergic <- readRDS(paste0("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds"))
+objs.opossum$GABAergic <- readRDS(paste0("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_gabaergic_processed.rds"))
+objs.mouse$GABAergic <- readRDS(paste0("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_gabaergic_processed.rds"))
+objs.opossum$Nonneuronal <- readRDS(paste0("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_nonneuronal_processed.rds"))
+objs.mouse$Nonneuronal <- readRDS(paste0("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_nonneuronal_processed.rds"))
+
+for (cl in classes) {
+  for (it in 1:10) {
+
+    obj.opossum <- objs.opossum[[cl]]
+    obj.opossum$species <- "Opossum"
+    obj.mouse <- objs.mouse[[cl]]
+    obj.mouse$species <- "Mouse"
+    obj.opossum <- SubsampleObject(obj.opossum, "subclass", 200)
+    obj.mouse <- SubsampleObject(obj.mouse, "subclass", 200)
+    objs <- list(obj.opossum, obj.mouse)
+    objs.m <- MapObjects(objs[[1]], objs[[2]], c("subclass"), assay = "SCT")
+    mapping.classes[[cl]][["subclass"]] <- c(mapping.classes[[cl]][["subclass"]], as.character(objs.m[[1]]$subclass))
+    mapping.classes[[cl]][["predicted.subclass"]] <- c(mapping.classes[[cl]][["predicted.subclass"]], as.character(objs.m[[1]]$predicted.subclass))
+    mapping.classes[[cl]][["predicted.subclass.score"]] <- c(mapping.classes[[cl]][["predicted.subclass.score"]], as.numeric(objs.m[[1]]$predicted.subclass.score))
+  
+  }
+}
+
+```
+
+
+```{r, fig.width=6, fig.height=5}
+
+PlotSubsampledMappedLabelsHeatmap(mapping.classes$Glutamatergic$subclass, mapping.classes$Glutamatergic$predicted.subclass, 
+                                  c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"), normalize = "row", 
+                                  ident.order = c("IT_A", "IT_C", "IT_B", "IT_D", "L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"))
+
+```
+
+
+```{r}
+
+data <- data.frame(Subclass = mapping.classes$Glutamatergic$subclass, Score = mapping.classes$Glutamatergic$predicted.subclass.score)
+ggplot(data, aes(x = Subclass, y = Score)) +
+  geom_violin(trim = FALSE) +
+  geom_jitter(width = 0.2, alpha = 0.5) +
+  theme_minimal() +
+  labs(title = "Prediction Scores by Subclass", x = "Subclass", y = "Prediction Score")
+
+```
+
+
+```{r, fig.width=5, fig.height=4.5}
+
+PlotSubsampledMappedLabelsHeatmap(mapping.classes$GABAergic$subclass, mapping.classes$GABAergic$predicted.subclass, 
+                                  c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1"), normalize = "row", 
+                                  ident.order = c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac"))
+
+```
+
+
+```{r}
+
+data <- data.frame(Subclass = mapping.classes$GABAergic$subclass, Score = mapping.classes$GABAergic$predicted.subclass.score)
+ggplot(data, aes(x = Subclass, y = Score)) +
+  geom_violin(trim = FALSE) +
+  geom_jitter(width = 0.2, alpha = 0.5) +
+  theme_minimal() +
+  labs(title = "Prediction Scores by Subclass", x = "Subclass", y = "Prediction Score")
+
+```
+
+
+```{r, fig.width=5, fig.height=4.5}
+
+PlotSubsampledMappedLabelsHeatmap(mapping.classes$Nonneuronal$subclass, mapping.classes$Nonneuronal$predicted.subclass, 
+                                  c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC"), normalize = "row", 
+                                  ident.order = c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC"))
+
+```
+
+
+```{r}
+
+opossum.glutamatergic.levels <- c("IT_A", "IT_B", "IT_C", "IT_D", "L5NP", "L5PT", "L6CT", "L6b")
+Idents(objs.m.opossum[[1]]) <- "subclass"
+levels(objs.m.opossum[[1]]) <- opossum.glutamatergic.levels
+VlnPlot(objs.m.opossum[[1]], "predicted.subclass.score", cols = colors_list[opossum.glutamatergic.levels]) + theme(legend.spacing.x = unit(3.0, 'cm'))
+
+```
+
+
+```{r}
+
+opossum.gabaergic.levels <- c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1")
+Idents(objs.m.opossum[[2]]) <- "subclass"
+levels(objs.m.opossum[[2]]) <- opossum.gabaergic.levels
+VlnPlot(objs.m.opossum[[2]], "predicted.subclass.score", cols = colors_list[opossum.gabaergic.levels]) + theme(legend.spacing.x = unit(6.5, 'cm'))
+
+```
+
+
+```{r}
+
+opossum.nonneuronal.levels <- c("Astro", "Micro", "OD", "OPC", "Endo")
+Idents(objs.m.opossum[[3]]) <- "subclass"
+levels(objs.m.opossum[[3]]) <- opossum.nonneuronal.levels
+VlnPlot(objs.m.opossum[[3]], "predicted.subclass.score", cols = colors_list[opossum.nonneuronal.levels]) + theme(legend.spacing.x = unit(6.5, 'cm'))
+
+```
+
+
+```{r}
+
+saveRDS(obj.mouse, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_mouse.rds")
+saveRDS(obj.opossum, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_opossum.rds")
+saveRDS(objs.i.mouse, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_i_mouse.rds")
+saveRDS(objs.i.opossum, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_i_opossum.rds")
+saveRDS(objs.m.mouse, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/objs_m_mouse.rds")
+saveRDS(objs.m.opossum, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/objs_m_opossum.rds")
+saveRDS(obj.m.mouse, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_m_mouse.rds")
+saveRDS(obj.m.opossum, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_m_opossum.rds")
+
+```
+

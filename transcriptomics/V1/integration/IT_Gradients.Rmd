@@ -128,67 +128,185 @@ obj.mouse.IT.SHA <- NormalizePCA(obj.mouse.IT.SHA)
 
 ```{r}
 
-source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
-
-DimPlot(obj.mouse.IT, reduction = "pca", group.by = "sample", pt.size = 1, shuffle = TRUE, raster = FALSE) + xlim(-30, 35) + ylim(-45, 20) + coord_equal()
-subclasses.mouse <- c("L2/3", "L4", "L5IT", "L6IT")
-Idents(obj.mouse.IT) <- "subclass"
-levels(obj.mouse.IT) <- subclasses.mouse
-pl <- DimPlot(obj.mouse.IT, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-30, 35) + ylim(-45, 20) + coord_equal()
-pl[[1]]$layers[[1]]$aes_params$alpha =  0.8
-pl
-FeaturePlot(obj.mouse.IT, "nCount_RNA", reduction = "pca", pt.size = 2, raster = FALSE) + NoLegend() + xlim(-30, 35) + ylim(-45, 20) + coord_equal()
-
-DimPlot(obj.mouse.IT.SH, reduction = "pca", group.by = "sample", pt.size = 1, shuffle = TRUE, raster = FALSE) + xlim(-30, 35) + ylim(-45, 20) + coord_equal()
-subclasses.mouse <- c("L2/3", "L4", "L5IT", "L6IT")
-Idents(obj.mouse.IT.SH) <- "subclass"
-levels(obj.mouse.IT.SH) <- subclasses.mouse
-pl <- DimPlot(obj.mouse.IT.SH, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-30, 35) + ylim(-45, 20) + coord_equal()
-pl[[1]]$layers[[1]]$aes_params$alpha =  0.8
-pl
-FeaturePlot(obj.mouse.IT.SH, "nCount_RNA", reduction = "pca", pt.size = 2, raster = FALSE) + NoLegend() + xlim(-30, 35) + ylim(-45, 20) + coord_equal()
-
-DimPlot(obj.mouse.IT.SHA, reduction = "pca", group.by = "sample", pt.size = 1, shuffle = TRUE, raster = FALSE) + xlim(-30, 35) + ylim(-45, 20) + coord_equal()
-subclasses.mouse <- c("L2/3", "L4", "L5IT", "L6IT")
-Idents(obj.mouse.IT.SHA) <- "subclass"
-levels(obj.mouse.IT.SHA) <- subclasses.mouse
-pl <- DimPlot(obj.mouse.IT.SHA, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-30, 35) + ylim(-45, 20) + coord_equal()
-pl[[1]]$layers[[1]]$aes_params$alpha =  0.8
-pl
-FeaturePlot(obj.mouse.IT.SHA, "nCount_RNA", reduction = "pca", pt.size = 2, raster = FALSE) + NoLegend() + xlim(-30, 35) + ylim(-45, 20) + coord_equal()
-
-DimPlot(obj.opossum.IT, reduction = "pca", group.by = "sample", pt.size = 1, shuffle = TRUE, raster = FALSE) + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
-subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D")
-Idents(obj.opossum.IT) <- "subclass"
-levels(obj.opossum.IT) <- subclasses.opossum
-pl <- DimPlot(obj.opossum.IT, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
-pl[[1]]$layers[[1]]$aes_params$alpha =  0.8
-pl
-FeaturePlot(obj.opossum.IT, "nCount_RNA", reduction = "pca", pt.size = 2, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
-
-DimPlot(obj.opossum.IT.SH, reduction = "pca", group.by = "sample", pt.size = 1, shuffle = TRUE, raster = FALSE) + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
-subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D")
-Idents(obj.opossum.IT.SH) <- "subclass"
-levels(obj.opossum.IT.SH) <- subclasses.opossum
-pl <- DimPlot(obj.opossum.IT.SH, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
-pl[[1]]$layers[[1]]$aes_params$alpha =  0.8
-pl
-FeaturePlot(obj.opossum.IT.SH, "nCount_RNA", reduction = "pca", pt.size = 2, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
-
-DimPlot(obj.opossum.IT.SHA, reduction = "pca", group.by = "sample", pt.size = 1, shuffle = TRUE, raster = FALSE) + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
-subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D")
-Idents(obj.opossum.IT.SHA) <- "subclass"
-levels(obj.opossum.IT.SHA) <- subclasses.opossum
-pl <- DimPlot(obj.opossum.IT.SHA, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
-pl[[1]]$layers[[1]]$aes_params$alpha =  0.8
-pl
-FeaturePlot(obj.opossum.IT.SHA, "nCount_RNA", reduction = "pca", pt.size = 2, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+opossum.pcs <- obj.opossum.IT@reductions$pca@cell.embeddings[, 1:2]
+write.table(opossum.pcs, "E:/Transcriptomics_V1/Integration/opossum_pcs.txt", sep = " ", col.names = FALSE, row.names = FALSE)
+mouse.pcs <- obj.mouse.IT@reductions$pca@cell.embeddings[, 1:2]
+write.table(mouse.pcs, "E:/Transcriptomics_V1/Integration/mouse_pcs.txt", sep = " ", col.names = FALSE, row.names = FALSE)
 
 ```
 
 
-MAP THESE SHUFFLED GROUPS?
+```{r}
 
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+
+# DimPlot(obj.mouse.IT, reduction = "pca", group.by = "sample", pt.size = 1, shuffle = TRUE, raster = FALSE) + xlim(-16, 18) + ylim(-20, 14) + coord_equal()
+subclasses.mouse <- c("L2/3", "L4", "L5IT", "L6IT")
+Idents(obj.mouse.IT) <- "subclass"
+levels(obj.mouse.IT) <- subclasses.mouse
+pl <- DimPlot(obj.mouse.IT, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-16, 18) + ylim(-20, 14) + coord_equal()
+ggsave("E:/Opossum_Paper/Mouse_PC.png", plot = pl, dpi = 300)
+ggsave("E:/Opossum_Paper/Mouse_PC.svg", plot = pl, dpi = 300)
+# FeaturePlot(obj.mouse.IT, "nCount_RNA", reduction = "pca", pt.size = 2, raster = FALSE) + NoLegend() + xlim(-16, 18) + ylim(-20, 14) + coord_equal()
+
+# DimPlot(obj.mouse.IT.SH, reduction = "pca", group.by = "sample", pt.size = 1, shuffle = TRUE, raster = FALSE) + xlim(-30, 35) + ylim(-45, 20) + coord_equal()
+# subclasses.mouse <- c("L2/3", "L4", "L5IT", "L6IT")
+# Idents(obj.mouse.IT.SH) <- "subclass"
+# levels(obj.mouse.IT.SH) <- subclasses.mouse
+# pl <- DimPlot(obj.mouse.IT.SH, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-30, 35) + ylim(-45, 20) + coord_equal()
+# pl[[1]]$layers[[1]]$aes_params$alpha =  0.8
+# pl
+# FeaturePlot(obj.mouse.IT.SH, "nCount_RNA", reduction = "pca", pt.size = 2, raster = FALSE) + NoLegend() + xlim(-30, 35) + ylim(-45, 20) + coord_equal()
+# 
+# DimPlot(obj.mouse.IT.SHA, reduction = "pca", group.by = "sample", pt.size = 1, shuffle = TRUE, raster = FALSE) + xlim(-30, 35) + ylim(-45, 20) + coord_equal()
+# subclasses.mouse <- c("L2/3", "L4", "L5IT", "L6IT")
+# Idents(obj.mouse.IT.SHA) <- "subclass"
+# levels(obj.mouse.IT.SHA) <- subclasses.mouse
+# pl <- DimPlot(obj.mouse.IT.SHA, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-30, 35) + ylim(-45, 20) + coord_equal()
+# pl[[1]]$layers[[1]]$aes_params$alpha =  0.8
+# pl
+# FeaturePlot(obj.mouse.IT.SHA, "nCount_RNA", reduction = "pca", pt.size = 2, raster = FALSE) + NoLegend() + xlim(-30, 35) + ylim(-45, 20) + coord_equal()
+
+# DimPlot(obj.opossum.IT, reduction = "pca", group.by = "sample", pt.size = 1, shuffle = TRUE, raster = FALSE) + xlim(-20, 20) + ylim(-18, 22) + coord_equal()
+subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D")
+Idents(obj.opossum.IT) <- "subclass"
+levels(obj.opossum.IT) <- subclasses.opossum
+pl <- DimPlot(obj.opossum.IT, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-18, 22) + coord_equal()
+ggsave("E:/Opossum_Paper/Opossum_PC.png", plot = pl, dpi = 300)
+ggsave("E:/Opossum_Paper/Opossum_PC.svg", plot = pl, dpi = 300)
+# FeaturePlot(obj.opossum.IT, "nCount_RNA", reduction = "pca", pt.size = 2, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-18, 22) + coord_equal()
+
+# DimPlot(obj.opossum.IT.SH, reduction = "pca", group.by = "sample", pt.size = 1, shuffle = TRUE, raster = FALSE) + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+# subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D")
+# Idents(obj.opossum.IT.SH) <- "subclass"
+# levels(obj.opossum.IT.SH) <- subclasses.opossum
+# pl <- DimPlot(obj.opossum.IT.SH, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+# pl[[1]]$layers[[1]]$aes_params$alpha =  0.8
+# pl
+# FeaturePlot(obj.opossum.IT.SH, "nCount_RNA", reduction = "pca", pt.size = 2, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+# 
+# DimPlot(obj.opossum.IT.SHA, reduction = "pca", group.by = "sample", pt.size = 1, shuffle = TRUE, raster = FALSE) + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+# subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D")
+# Idents(obj.opossum.IT.SHA) <- "subclass"
+# levels(obj.opossum.IT.SHA) <- subclasses.opossum
+# pl <- DimPlot(obj.opossum.IT.SHA, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+# pl[[1]]$layers[[1]]$aes_params$alpha =  0.8
+# pl
+# FeaturePlot(obj.opossum.IT.SHA, "nCount_RNA", reduction = "pca", pt.size = 2, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+
+```
+
+
+```{r}
+
+mouse.polygon <- read.csv("E:/Transcriptomics_V1/Integration/mouse_polygon.csv")
+mouse.polygon <- mouse.polygon[c(1, 3, 4, 2), ]
+mouse.polygon <- rbind(mouse.polygon, mouse.polygon[1, ])
+subclasses.mouse <- c("L2/3", "L4", "L5IT", "L6IT")
+Idents(obj.mouse.IT) <- "subclass"
+levels(obj.mouse.IT) <- subclasses.mouse
+pl <- DimPlot(obj.mouse.IT, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-16, 20) + ylim(-22, 14) + coord_equal() + geom_point(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+  geom_path(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+ggsave("E:/Opossum_Paper/Mouse_PC.png", plot = pl, dpi = 300)
+ggsave("E:/Opossum_Paper/Mouse_PC.svg", plot = pl, dpi = 300)
+
+opossum.polygon <- read.csv("E:/Transcriptomics_V1/Integration/opossum_polygon.csv")
+opossum.polygon <- rbind(opossum.polygon, opossum.polygon[1, ])
+subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D")
+Idents(obj.opossum.IT) <- "subclass"
+levels(obj.opossum.IT) <- subclasses.opossum
+pl <- DimPlot(obj.opossum.IT, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-18, 24) + coord_equal() +     geom_point(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+  geom_path(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+ggsave("E:/Opossum_Paper/Opossum_PC.png", plot = pl, dpi = 300)
+ggsave("E:/Opossum_Paper/Opossum_PC.svg", plot = pl, dpi = 300)
+
+```
+
+
+```{r}
+
+subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D")
+Idents(obj.opossum.IT) <- "subclass"
+levels(obj.opossum.IT) <- subclasses.opossum
+obj.opossum.IT.nA <- subset(obj.opossum.IT, idents = "IT_A", invert = TRUE)
+pl <- DimPlot(obj.opossum.IT.nA, reduction = "pca", cols = c("#6a6c6d", "#6a6c6d", "#6a6c6d"), pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-18, 22) + coord_equal()
+ggsave("E:/Opossum_Paper/Opossum_PC_IT_A_Gray.png", plot = pl, dpi = 300)
+ggsave("E:/Opossum_Paper/Opossum_PC_IT_A_Gray.svg", plot = pl, dpi = 300)
+
+subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D")
+Idents(obj.opossum.IT) <- "subclass"
+levels(obj.opossum.IT) <- subclasses.opossum
+obj.opossum.IT.A <- subset(obj.opossum.IT, idents = "IT_A")
+pl <- DimPlot(obj.opossum.IT.A, reduction = "pca", cols = colors_list[["IT_A"]], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-18, 22) + coord_equal()
+ggsave("E:/Opossum_Paper/Opossum_PC_IT_A.png", plot = pl, dpi = 300)
+ggsave("E:/Opossum_Paper/Opossum_PC_IT_A.svg", plot = pl, dpi = 300)
+
+```
+
+
+```{r}
+
+subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D")
+Idents(obj.opossum.IT) <- "subclass"
+levels(obj.opossum.IT) <- subclasses.opossum
+obj.opossum.IT.nB <- subset(obj.opossum.IT, idents = "IT_B", invert = TRUE)
+pl <- DimPlot(obj.opossum.IT.nB, reduction = "pca", cols = c("#6a6c6d", "#6a6c6d", "#6a6c6d"), pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-18, 22) + coord_equal()
+ggsave("E:/Opossum_Paper/Opossum_PC_IT_B_Gray.png", plot = pl, dpi = 300)
+ggsave("E:/Opossum_Paper/Opossum_PC_IT_B_Gray.svg", plot = pl, dpi = 300)
+
+subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D")
+Idents(obj.opossum.IT) <- "subclass"
+levels(obj.opossum.IT) <- subclasses.opossum
+obj.opossum.IT.B <- subset(obj.opossum.IT, idents = "IT_B")
+pl <- DimPlot(obj.opossum.IT.B, reduction = "pca", cols = colors_list[["IT_B"]], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-18, 22) + coord_equal()
+ggsave("E:/Opossum_Paper/Opossum_PC_IT_B.png", plot = pl, dpi = 300)
+ggsave("E:/Opossum_Paper/Opossum_PC_IT_B.svg", plot = pl, dpi = 300)
+
+```
+
+
+```{r}
+
+subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D")
+Idents(obj.opossum.IT) <- "subclass"
+levels(obj.opossum.IT) <- subclasses.opossum
+obj.opossum.IT.nC <- subset(obj.opossum.IT, idents = "IT_C", invert = TRUE)
+pl <- DimPlot(obj.opossum.IT.nC, reduction = "pca", cols = c("#6a6c6d", "#6a6c6d", "#6a6c6d"), pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-18, 22) + coord_equal()
+ggsave("E:/Opossum_Paper/Opossum_PC_IT_C_Gray.png", plot = pl, dpi = 300)
+ggsave("E:/Opossum_Paper/Opossum_PC_IT_C_Gray.svg", plot = pl, dpi = 300)
+
+subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D")
+Idents(obj.opossum.IT) <- "subclass"
+levels(obj.opossum.IT) <- subclasses.opossum
+obj.opossum.IT.C <- subset(obj.opossum.IT, idents = "IT_C")
+pl <- DimPlot(obj.opossum.IT.C, reduction = "pca", cols = colors_list[["IT_C"]], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-18, 22) + coord_equal()
+ggsave("E:/Opossum_Paper/Opossum_PC_IT_C.png", plot = pl, dpi = 300)
+ggsave("E:/Opossum_Paper/Opossum_PC_IT_C.svg", plot = pl, dpi = 300)
+
+```
+
+
+```{r}
+
+subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D")
+Idents(obj.opossum.IT) <- "subclass"
+levels(obj.opossum.IT) <- subclasses.opossum
+obj.opossum.IT.nD <- subset(obj.opossum.IT, idents = "IT_D", invert = TRUE)
+pl <- DimPlot(obj.opossum.IT.nD, reduction = "pca", cols = c("#6a6c6d", "#6a6c6d", "#6a6c6d"), pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-18, 22) + coord_equal()
+ggsave("E:/Opossum_Paper/Opossum_PC_IT_D_Gray.png", plot = pl, dpi = 300)
+ggsave("E:/Opossum_Paper/Opossum_PC_IT_D_Gray.svg", plot = pl, dpi = 300)
+
+subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D")
+Idents(obj.opossum.IT) <- "subclass"
+levels(obj.opossum.IT) <- subclasses.opossum
+obj.opossum.IT.D <- subset(obj.opossum.IT, idents = "IT_D")
+pl <- DimPlot(obj.opossum.IT.D, reduction = "pca", cols = colors_list[["IT_D"]], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-18, 22) + coord_equal()
+ggsave("E:/Opossum_Paper/Opossum_PC_IT_D.png", plot = pl, dpi = 300)
+ggsave("E:/Opossum_Paper/Opossum_PC_IT_D.svg", plot = pl, dpi = 300)
+
+```
+
+MAP THESE SHUFFLED GROUPS?
 
 ```{r}
 
@@ -237,7 +355,7 @@ DimPlot(obj.mouse.IT.SVF, reduction = "pca", group.by = "sample", pt.size = 1, s
 subclasses.mouse <- c("L2/3", "L4", "L5IT", "L6IT")
 Idents(obj.mouse.IT.SVF) <- "subclass"
 levels(obj.mouse.IT.SVF) <- subclasses.mouse
-pl <- DimPlot(obj.mouse.IT.SVF, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-30, 35) + ylim(-45, 20) + coord_equal()
+pl <- DimPlot(obj.mouse.IT.SVF, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-30, 25) + ylim(-20, 35) + coord_equal()
 pl[[1]]$layers[[1]]$aes_params$alpha =  0.8
 pl
 FeaturePlot(obj.mouse.IT.SVF, "nCount_RNA", reduction = "pca", pt.size = 2, raster = FALSE) + NoLegend() + xlim(-30, 35) + ylim(-45, 20) + coord_equal()
@@ -313,20 +431,21 @@ GRADIENT GENES
 
 ```{r}
 
-
+Idents(obj.opossum.IT) <- "subclass"
+markers.opossum.IT <- FindAllMarkers(obj.opossum.IT, assay = "SCT", logfc.threshold = 0.8, only.pos = TRUE)
 
 ```
 
 
 ```{r}
 
-gene_list <- shared.HVFs
+gene_list <- rownames(markers.opossum.IT)
 
 # Subset the Seurat object to include only the genes of interest
 DefaultAssay(obj.opossum.IT) <- "RNA"
 seurat_subset <- subset(obj.opossum.IT, features = gene_list)
 
-data <- GetAssayData(object = seurat_subset, slot = "counts")
+data <- GetAssayData(object = seurat_subset, slot = "data")
 celldata <- as.data.frame(seurat_subset@meta.data)
 genedata <- as.data.frame(x = row.names(data), row.names = row.names(data))
 colnames(genedata) <- "gene_short_name"
@@ -352,9 +471,9 @@ ordered_cells <- pseudotime_df$cell
 
 # Extract expression matrix for the specified genes
 # sampled_cells <- ordered_cells[ordered_cells %in% sample(ordered_cells, 2000, replace = FALSE, prob = NULL)]
-expression_matrix <- as.matrix(exprs(cds[gene_list, ordered_cells]))
+expression_matrix <- as.matrix(exprs(cds[gene_list[gene_list %in% rownames(cds)], ordered_cells]))
 
-breaks <- seq(-5, 5, length.out = 101)
+breaks <- seq(-2, 2, length.out = 101)
 colors <- colorRampPalette(c("blue", "white", "red"))(100)
 
 # Generate the heatmap
