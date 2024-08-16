@@ -489,18 +489,22 @@ PlotSubclassDEIntersectionHeatmap <- function(list1, list2, all_genes1, all_gene
   # Extract dataframes
   df1 <- list1$subclass
   df2 <- list2$subclass
-  
-  # Filter by log2FC_threshold
-  df1 <- df1 %>% filter(avg_log2FC > log2FC_threshold & cluster %in% subclass.order)
-  subclasses <- subclass.order[subclass.order %in% df1$cluster]
-  df1$cluster <- factor(df1$cluster, levels = subclasses)
-  df2 <- df2 %>% filter(avg_log2FC > log2FC_threshold & cluster %in% subclass.order)
-  subclasses <- subclass.order[subclass.order %in% df2$cluster]
-  df2$cluster <- factor(df2$cluster, levels = subclasses)
-  
+
   # Find intersecting genes
   intersecting_genes <- intersect(all_genes1, all_genes2)
   
+  # Filter by log2FC_threshold
+  df1 <- df1 %>%
+           filter(gene %in% intersecting_genes) %>%
+           filter(avg_log2FC > log2FC_threshold & cluster %in% subclass.order)
+  subclasses <- subclass.order[subclass.order %in% df1$cluster]
+  df1$cluster <- factor(df1$cluster, levels = subclasses)
+  df2 <- df2 %>%
+           filter(gene %in% intersecting_genes) %>%
+           filter(avg_log2FC > log2FC_threshold & cluster %in% subclass.order)
+  subclasses <- subclass.order[subclass.order %in% df2$cluster]
+  df2$cluster <- factor(df2$cluster, levels = subclasses)
+
   # Create grid
   cluster_combinations <<- expand.grid(
     Cluster1 = unique(df1$cluster), 
@@ -521,14 +525,13 @@ PlotSubclassDEIntersectionHeatmap <- function(list1, list2, all_genes1, all_gene
     
     # Find intersecting DE genes for the specific cluster pair
     intersecting_de_genes <- intersect(df1_filtered$gene, df2_filtered$gene)
-    all_de_genes <- union(df1_filtered$gene[df1_filtered$gene %in% intersecting_genes], df2_filtered$gene[df2_filtered$gene %in% intersecting_genes])
     
     # Count the number of intersecting DE genes
     count <- length(intersecting_de_genes)
     
     if (percentage) {
       # Calculate total intersecting DE genes for percentage calculation
-      total_intersecting_genes <- length(union(intersect(df1_filtered$gene, intersecting_genes), intersect(df2_filtered$gene, intersecting_genes)))
+      total_intersecting_genes <- length(union(df1_filtered$gene, df2_filtered$gene))
       # Calculate percentage
       percent <- (count / total_intersecting_genes) * 100
       intersection_counts <- rbind(intersection_counts, data.frame(Cluster1 = cluster1, Cluster2 = cluster2, Value = percent))
@@ -539,8 +542,8 @@ PlotSubclassDEIntersectionHeatmap <- function(list1, list2, all_genes1, all_gene
     # Save intersecting genes to a text file
     filename <- paste0(output_path, "/", gsub("/", "", cluster1), "_vs_", gsub("/", "", cluster2), "_intersecting_genes.txt")
     write.table(intersecting_de_genes, file = filename, quote = FALSE, row.names = FALSE, col.names = FALSE)
-    filename <- paste0(output_path, "/", gsub("/", "", cluster1), "_vs_", gsub("/", "", cluster2), "_all_genes.txt")
-    write.table(all_de_genes, file = filename, quote = FALSE, row.names = FALSE, col.names = FALSE)
+    # filename <- paste0(output_path, "/", gsub("/", "", cluster1), "_vs_", gsub("/", "", cluster2), "_all_genes.txt")
+    # write.table(all_de_genes, file = filename, quote = FALSE, row.names = FALSE, col.names = FALSE)
   }
   
   fill_label <- if (percentage) "Percentage of DE Genes" else "# DE Genes"
@@ -563,6 +566,97 @@ PlotSubclassDEIntersectionHeatmap <- function(list1, list2, all_genes1, all_gene
     theme_minimal() +
     theme(
       aspect.ratio = 1,
+      axis.text.x = element_text(size = 12, angle = 90, hjust = 1, vjust = 0.5),  # Rotate x-axis tick labels
+      axis.text.y = element_text(size = 12)   # Increase y-axis tick label size
+    ) # Make cells square
+}
+
+PlotSubclassDEIntersectionHeatmap_TopX <- function(list1, list2, all_genes1, all_genes2, sample.name1, sample.name2, subclass.order, top_genes_threshold, output_path, percentage = FALSE) {
+  # Extract dataframes
+  df1 <- list1$subclass
+  df2 <- list2$subclass
+  
+  # Find intersecting genes
+  intersecting_genes <- intersect(all_genes1, all_genes2)
+  
+  # Filter by top X genes
+  df1 <- df1 %>% 
+    filter(gene %in% intersecting_genes) %>%
+    group_by(cluster) %>%
+    top_n(n = top_genes_threshold, wt = avg_log2FC) %>% 
+    filter(cluster %in% subclass.order)
+  subclasses <- subclass.order[subclass.order %in% df1$cluster]
+  df1$cluster <- factor(df1$cluster, levels = subclasses)
+  
+  df2 <- df2 %>% 
+    filter(gene %in% intersecting_genes) %>%
+    group_by(cluster) %>%
+    top_n(n = top_genes_threshold, wt = avg_log2FC) %>% 
+    filter(cluster %in% subclass.order)
+  subclasses <- subclass.order[subclass.order %in% df2$cluster]
+  df2$cluster <- factor(df2$cluster, levels = subclasses)
+
+  # Create grid
+  cluster_combinations <<- expand.grid(
+    Cluster1 = unique(df1$cluster), 
+    Cluster2 = unique(df2$cluster)
+  )
+  
+  # Initialize an empty data frame to store intersection counts or percentages
+  intersection_counts <- data.frame()
+  
+  # Calculate intersections for each cluster pair
+  for (i in 1:nrow(cluster_combinations)) {
+    cluster1 <- cluster_combinations$Cluster1[i]
+    cluster2 <- cluster_combinations$Cluster2[i]
+    
+    # Filter dataframes for the specific cluster pair
+    df1_filtered <- df1 %>% filter(cluster == cluster1)
+    df2_filtered <- df2 %>% filter(cluster == cluster2)
+    
+    # Find intersecting DE genes for the specific cluster pair
+    intersecting_de_genes <- intersect(df1_filtered$gene, df2_filtered$gene)
+    
+    # Count the number of intersecting DE genes
+    count <- length(intersecting_de_genes)
+    
+    if (percentage) {
+      # Calculate total intersecting DE genes for percentage calculation
+      total_intersecting_genes <- length(union(df1_filtered$gene, df2_filtered$gene))
+      # Calculate percentage
+      percent <- (count / total_intersecting_genes) * 100
+      intersection_counts <- rbind(intersection_counts, data.frame(Cluster1 = cluster1, Cluster2 = cluster2, Value = percent))
+    } else {
+      intersection_counts <- rbind(intersection_counts, data.frame(Cluster1 = cluster1, Cluster2 = cluster2, Value = count))
+    }
+    
+    # Save intersecting genes to a text file
+    filename <- paste0(output_path, "/", gsub("/", "", cluster1), "_vs_", gsub("/", "", cluster2), "_intersecting_genes.txt")
+    write.table(intersecting_de_genes, file = filename, quote = FALSE, row.names = FALSE, col.names = FALSE)
+    # filename <- paste0(output_path, "/", gsub("/", "", cluster1), "_vs_", gsub("/", "", cluster2), "_all_genes.txt")
+    # write.table(all_de_genes, file = filename, quote = FALSE, row.names = FALSE, col.names = FALSE)
+  }
+  
+  fill_label <- if (percentage) "Percentage of DE Genes" else "# DE Genes"
+  
+  intersection_counts$Cluster1 <- factor(intersection_counts$Cluster1, levels = rev(sort_by_reference(levels(intersection_counts$Cluster1), subclass.order)))
+  intersection_counts$Cluster2 <- factor(intersection_counts$Cluster2, levels = rev(sort_by_reference(levels(intersection_counts$Cluster2), subclass.order)))
+  
+  # Plot heatmap
+  ggplot(intersection_counts, aes(x = Cluster1, y = Cluster2, fill = Value)) +
+    geom_tile(color = "white", size = 0.5) +
+    geom_text(aes(label = round(Value, 1)), color = "black") +
+    scale_fill_gradient(low = "white", high = "red", limits = c(0, 20), oob = scales::squish) + # max(intersection_counts$Value)
+    scale_y_discrete(limits = rev(levels(factor(intersection_counts$Cluster2)))) + # Reverse y-axis order
+    labs(
+      title = paste0("Shared DE Genes (Top ", top_genes_threshold, " Genes)"), 
+      x = sample.name1,
+      y = sample.name2,
+      fill = fill_label
+    ) +
+    theme_minimal() +
+    theme(
+      aspect.ratio = length(levels(intersection_counts$Cluster2)) / length(levels(intersection_counts$Cluster1)),
       axis.text.x = element_text(size = 12, angle = 90, hjust = 1, vjust = 0.5),  # Rotate x-axis tick labels
       axis.text.y = element_text(size = 12)   # Increase y-axis tick label size
     ) # Make cells square
@@ -652,8 +746,8 @@ PlotSubclassDEIntersectionCDF <- function(list1, list2, all_genes1, all_genes2, 
     cluster2 <- pair[2]
     
     # Filter dataframes for the specific cluster pair
-    df1_filtered <- df1 %>% filter(cluster == cluster1)
-    df2_filtered <- df2 %>% filter(cluster == cluster2)
+    df1_filtered <- df1 %>% filter(cluster == cluster1) %>% filter(gene %in% intersecting_genes)
+    df2_filtered <- df2 %>% filter(cluster == cluster2) %>% filter(gene %in% intersecting_genes)
     
     # Calculate the maximum avg_log2FC value
     max_log2FC <- max(c(df1_filtered$avg_log2FC, df2_filtered$avg_log2FC), na.rm = TRUE)
@@ -661,14 +755,14 @@ PlotSubclassDEIntersectionCDF <- function(list1, list2, all_genes1, all_genes2, 
     # Create a sequence of avg_log2FC values from 0.2 to the maximum or 2 (whichever is smaller)
     log2FC_grid <- seq(0.2, min(max_log2FC, 2), length.out = 50)
     
-    total_intersecting_genes_init <- length(union(intersect(df1_filtered$gene, intersecting_genes), intersect(df2_filtered$gene, intersecting_genes)))
+    total_intersecting_genes_init <- length(union(df1_filtered$gene, df2_filtered$gene))
     
     count <- c()
     for (l in log2FC_grid) {
       de_genes_1 <- df1_filtered$gene[df1_filtered$avg_log2FC > l]
       de_genes_2 <- df2_filtered$gene[df2_filtered$avg_log2FC > l]
       intersecting_de_genes <- intersect(de_genes_1, de_genes_2)
-      total_intersecting_genes <- length(union(intersect(de_genes_1, intersecting_genes), intersect(de_genes_2, intersecting_genes)))
+      total_intersecting_genes <- length(union(de_genes_1, de_genes_2))
       if (normalize.within == TRUE) { 
         count <- c(count, length(intersecting_de_genes) / total_intersecting_genes) }
       else { count <- c(count, length(intersecting_de_genes) / total_intersecting_genes_init) }
@@ -749,7 +843,7 @@ PlotSubclassDEIntersectionCDF_TopX <- function(list1, list2, all_genes1, all_gen
       count = sapply(top_genes_seq, function(x) {
         top_genes1 <- head(df1_filtered$gene, x)
         top_genes2 <- head(df2_filtered$gene, x)
-        length(intersect(top_genes1, top_genes2)) / x
+        length(intersect(top_genes1, top_genes2)) / length(union(top_genes1, top_genes2))
       }),
       Cluster1 = cluster1,
       Cluster2 = cluster2,
@@ -780,6 +874,169 @@ PlotSubclassDEIntersectionCDF_TopX <- function(list1, list2, all_genes1, all_gen
       axis.text.x = element_text(size = 12),  # Increase x-axis tick label size
       axis.text.y = element_text(size = 12)   # Increase y-axis tick label size
     )
+}
+
+PlotSubclassDEIntersectionScatter <- function(list1, list2, sample.name1, sample.name2, subclass.order, cluster_pairs, pair_colors, log2FC_threshold = 0.5) {
+  # Extract dataframes
+  df1 <- list1$subclass
+  df2 <- list2$subclass
+  
+  # Initialize an empty data frame to store counts
+  scatter_data <- data.frame()
+  
+  # Calculate DE gene counts for each specified cluster pair
+  for (i in seq_along(cluster_pairs)) {
+    pair <- cluster_pairs[[i]]
+    cluster1 <- pair[1]
+    cluster2 <- pair[2]
+    
+    # Filter dataframes for the specific cluster pair
+    df1_filtered <- df1 %>% filter(cluster == cluster1)
+    df2_filtered <- df2 %>% filter(cluster == cluster2)
+    
+    # Count DE genes above the specified log2FC threshold
+    de_genes_1_count <- sum(df1_filtered$avg_log2FC > log2FC_threshold, na.rm = TRUE)
+    de_genes_2_count <- sum(df2_filtered$avg_log2FC > log2FC_threshold, na.rm = TRUE)
+    
+    # Store the counts and cluster pair information
+    scatter_data <- rbind(scatter_data, data.frame(
+      Cluster1 = cluster1,
+      Cluster2 = cluster2,
+      DE_Genes_List1 = de_genes_1_count,
+      DE_Genes_List2 = de_genes_2_count,
+      Color = pair_colors[i]
+    ))
+  }
+  
+  scatter_data$Cluster1 <- factor(scatter_data$Cluster1, levels = subclass.order[subclass.order %in% scatter_data$Cluster1])
+  scatter_data$Cluster2 <- factor(scatter_data$Cluster2, levels = subclass.order[subclass.order %in% scatter_data$Cluster2])
+  
+  # Determine the range for the axes
+  max_count <- max(c(scatter_data$DE_Genes_List1, scatter_data$DE_Genes_List2), na.rm = TRUE)
+  
+  # Plot the scatter plot with equal and square axes, and a diagonal line
+  ggplot(scatter_data, aes(x = DE_Genes_List1, y = DE_Genes_List2, color = interaction(Cluster1, Cluster2))) +
+    geom_point(size = 3) + # Adjust point size as needed
+    scale_color_manual(values = setNames(pair_colors, unique(interaction(scatter_data$Cluster1, scatter_data$Cluster2))), guide = guide_legend(reverse = TRUE)) +
+    geom_abline(slope = 1, intercept = 0, linetype = "dotted", color = "black") + # Add diagonal line
+    coord_fixed(ratio = 1) + # Ensure axes are equal and square
+    scale_x_continuous(limits = c(0, max_count)) + 
+    scale_y_continuous(limits = c(0, max_count)) +
+    labs(title = paste0("log2FC > ", log2FC_threshold),
+         x = paste0("Number of DE Genes in ", sample.name1),
+         y = paste0("Number of DE Genes in ", sample.name2),
+         color = "Cluster Pair") +
+    theme_minimal() +
+    theme(
+      axis.title.x = element_text(size = 14),
+      axis.title.y = element_text(size = 14),
+      axis.text.x = element_text(size = 12),
+      axis.text.y = element_text(size = 12)
+    )
+}
+
+PlotSubclassDEIntersectionOverlapScatter <- function(list1, list2, all_genes1, all_genes2, sample.name1, sample.name2, subclass.order, cluster_pairs, pair_colors, log2FC_threshold = 0.5) {
+  # Extract dataframes
+  df1 <- list1$subclass
+  df2 <- list2$subclass
+  
+  # Find intersecting genes
+  intersecting_genes <- intersect(all_genes1, all_genes2)
+  
+  # Initialize an empty data frame to store counts
+  scatter_data_1 <- data.frame()
+  scatter_data_2 <- data.frame()
+  
+  # Calculate DE gene counts for each specified cluster pair
+  for (i in seq_along(cluster_pairs)) {
+    pair <- cluster_pairs[[i]]
+    cluster1 <- pair[1]
+    cluster2 <- pair[2]
+    
+    # Filter dataframes for the specific cluster pair
+    df1_filtered <- df1 %>% filter(cluster == cluster1)
+    df2_filtered <- df2 %>% filter(cluster == cluster2)
+    
+    # Count DE genes above the specified log2FC threshold
+    de_genes_1 <- df1_filtered %>% filter(avg_log2FC > log2FC_threshold) %>% pull(gene)
+    de_genes_2 <- df2_filtered %>% filter(avg_log2FC > log2FC_threshold) %>% pull(gene)
+    
+    de_genes_1_count <- sum(de_genes_1 %in% intersecting_genes)
+    de_genes_2_count <- sum(de_genes_2 %in% intersecting_genes)
+    
+    # Count intersecting DE genes between the two lists
+    intersecting_de_genes_count <- length(intersect(de_genes_1, de_genes_2))
+    
+    # Store the counts and cluster pair information for both lists
+    scatter_data_1 <- rbind(scatter_data_1, data.frame(
+      Cluster1 = cluster1,
+      Cluster2 = cluster2,
+      DE_Genes_List = de_genes_1_count,
+      Intersecting_DE_Genes = intersecting_de_genes_count,
+      Color = pair_colors[i],
+      Sample = sample.name1
+    ))
+    
+    scatter_data_2 <- rbind(scatter_data_2, data.frame(
+      Cluster1 = cluster1,
+      Cluster2 = cluster2,
+      DE_Genes_List = de_genes_2_count,
+      Intersecting_DE_Genes = intersecting_de_genes_count,
+      Color = pair_colors[i],
+      Sample = sample.name2
+    ))
+  }
+  
+  scatter_data_1$Cluster1 <- factor(scatter_data_1$Cluster1, levels = subclass.order[subclass.order %in% scatter_data_1$Cluster1])
+  scatter_data_1$Cluster2 <- factor(scatter_data_1$Cluster2, levels = subclass.order[subclass.order %in% scatter_data_1$Cluster2])
+  
+  scatter_data_2$Cluster1 <- factor(scatter_data_2$Cluster1, levels = subclass.order[subclass.order %in% scatter_data_2$Cluster1])
+  scatter_data_2$Cluster2 <- factor(scatter_data_2$Cluster2, levels = subclass.order[subclass.order %in% scatter_data_2$Cluster2])
+  
+  # Determine the maximum range for the axes
+  max_x <- max(c(scatter_data_1$DE_Genes_List, scatter_data_2$DE_Genes_List), na.rm = TRUE)
+  max_y <- max(c(scatter_data_1$Intersecting_DE_Genes, scatter_data_2$Intersecting_DE_Genes), na.rm = TRUE)
+  max_limit <- max(max_x, max_y)
+  
+  # Plot the scatter plots for both lists
+  plot1 <- ggplot(scatter_data_1, aes(x = DE_Genes_List, y = Intersecting_DE_Genes, color = interaction(Cluster1, Cluster2))) +
+    geom_point(size = 3) + # Adjust point size as needed
+    scale_color_manual(values = setNames(pair_colors, unique(interaction(scatter_data_1$Cluster1, scatter_data_1$Cluster2))), guide = guide_legend(reverse = TRUE)) +
+    coord_fixed(ratio = 1) + # Ensure axes are equal and square
+    scale_x_continuous(limits = c(0, max_limit)) + 
+    scale_y_continuous(limits = c(0, max_limit)) +
+    labs(title = paste0("log2FC > ", log2FC_threshold, ": ", sample.name1),
+         x = paste0("Number of DE Genes in ", sample.name1),
+         y = "Number of Intersecting DE Genes",
+         color = "Cluster Pair") +
+    theme_minimal() +
+    theme(
+      axis.title.x = element_text(size = 14),
+      axis.title.y = element_text(size = 14),
+      axis.text.x = element_text(size = 12),
+      axis.text.y = element_text(size = 12)
+    )
+  
+  plot2 <- ggplot(scatter_data_2, aes(x = DE_Genes_List, y = Intersecting_DE_Genes, color = interaction(Cluster1, Cluster2))) +
+    geom_point(size = 3) + # Adjust point size as needed
+    scale_color_manual(values = setNames(pair_colors, unique(interaction(scatter_data_2$Cluster1, scatter_data_2$Cluster2))), guide = guide_legend(reverse = TRUE)) +
+    coord_fixed(ratio = 1) + # Ensure axes are equal and square
+    scale_x_continuous(limits = c(0, max_limit)) + 
+    scale_y_continuous(limits = c(0, max_limit)) +
+    labs(title = paste0("log2FC > ", log2FC_threshold, ": ", sample.name2),
+         x = paste0("Number of DE Genes in ", sample.name2),
+         y = "Number of Intersecting DE Genes",
+         color = "Cluster Pair") +
+    theme_minimal() +
+    theme(
+      axis.title.x = element_text(size = 14),
+      axis.title.y = element_text(size = 14),
+      axis.text.x = element_text(size = 12),
+      axis.text.y = element_text(size = 12)
+    )
+  
+  # Return the plots as a list
+  list(plot1 = plot1, plot2 = plot2)
 }
 
 PlotIdentCrossConfusionMatrices <- function(obj1, obj2, sample.name1, sample.name2, assay = "SCT", subclass.labels, ident.labels, n_iters = 10, all.genes = FALSE, ident.genes = FALSE, upsample = FALSE, downsample = FALSE) {
@@ -1248,6 +1505,58 @@ PlotMappedLabelsHeatmap <- function(data, column_name, column_levels, normalize 
   }
   
   return(p)
+}
+
+MappingAccuracy <- function(data, column_name) {
+  
+  # Create confusion matrix
+  confusion_matrix <- table(as.character(unlist(data[[column_name]])), as.character(unlist(data[[paste0("predicted.", column_name)]])))
+  confusion_matrix <- as.matrix(confusion_matrix)
+  
+  # Ensure all possible levels are present in the confusion matrix
+  row_levels <- as.character(unlist(unique(data[[column_name]])))
+  
+  # Function to add zeros to the confusion matrix if levels are missing
+  add_zeros_to_table <- function(tbl, new_row_names, new_col_names) {
+    for (row_name in new_row_names) {
+      if (!any(row_name %in% rownames(tbl))) {
+        tbl <- rbind(tbl, setNames(t(rep(0, ncol(tbl))), row_name))
+        orig_names <- rownames(tbl)[rownames(tbl) != ""]
+        rownames(tbl) <- c(orig_names, row_name)
+      }
+    }
+    
+    for (col_name in new_col_names) {
+      if (!any(col_name %in% colnames(tbl))) {
+        tbl <- cbind(tbl, setNames(rep(0, nrow(tbl)), col_name))
+        orig_names <- colnames(tbl)[colnames(tbl) != ""]
+        colnames(tbl) <- c(orig_names, col_name)
+      }
+    }
+    
+    return(tbl)
+  }
+  
+  rows_to_add <- row_levels[row_levels %in% rownames(confusion_matrix) == FALSE]
+  cols_to_add <- row_levels[row_levels %in% colnames(confusion_matrix) == FALSE]  # Using row_levels since column_levels is removed
+  confusion_matrix <- add_zeros_to_table(confusion_matrix, rows_to_add, cols_to_add)
+  
+  # Calculate accuracy for each subclass
+  subclass_accuracy <- sapply(rownames(confusion_matrix), function(subclass) {
+    true_positives <- confusion_matrix[subclass, subclass]
+    total_actual <- sum(confusion_matrix[subclass, ])
+    if (total_actual > 0) {
+      return(true_positives / total_actual)
+    } else {
+      return(NA)  # In case there are no actual instances of the subclass
+    }
+  })
+  
+  # Convert to dataframe
+  accuracy_df <- data.frame(Subclass = names(subclass_accuracy), Accuracy = subclass_accuracy)
+  
+  # Return dataframe
+  return(accuracy_df)
 }
 
 PlotSubsampledMappedLabelsHeatmap <- function(true.labels, pred.labels, column_levels, normalize = NULL, ident.order = NULL, col.low = "white", col.high = "red", x.lab.rot = TRUE) {

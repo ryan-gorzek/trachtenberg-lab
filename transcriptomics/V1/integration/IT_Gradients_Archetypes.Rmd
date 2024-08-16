@@ -1,0 +1,137 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(SeuratWrappers)
+library(monocle3)
+library(pheatmap)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
+obj.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+
+```
+
+
+```{r}
+
+colors_list <- list(
+              # Glutamatergic
+              IT = "#FF6C88",
+              IT_A = "#FFB3B3",
+              `L2/3` = "#FFB3B3",
+              IT_B = "#FFA07A",
+              L4 = "#FF7F50",
+              IT_C = "#FF7F50",
+              L5IT = "#FFA07A",
+              IT_D = "#FF6347",
+              L6IT = "#FF6347",
+              L5NP = "#FF4500",
+              L5PT = "#32a852", 
+              L6CT = "#7de89a",
+              L6b = "#206633",
+            
+              # GABAergic
+              Pvalb = "#1E90FF",
+              Sst = "#87CEEB",
+              Vip = "#87CEFA",
+              Lamp5 = "#4682B4",
+              Frem1 = "#ADD8E6",
+              Stac = "#5F9EA0",
+            
+              # Non-neuronal
+              Astro = "#8C8C8C",
+              Micro = "#A0A0A0",
+              OD = "#B4B4B4",
+              OPC = "#C8C8C8",
+              Endo = "#505050",
+              VLMC = "#B4B4B4"
+)
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.glutamatergic) <- "subclass"
+obj.opossum.IT <- subset(obj.opossum.glutamatergic, idents = c("IT_A", "IT_B", "IT_C", "IT_D"))
+
+Idents(obj.mouse.glutamatergic) <- "subclass"
+obj.mouse.IT <- subset(obj.mouse.glutamatergic, idents = c("L2/3", "L4", "L5IT", "L6IT"))
+
+```
+
+
+```{r}
+
+obj.opossum.IT <- NormalizePCA(obj.opossum.IT)
+obj.mouse.IT <- NormalizePCA(obj.mouse.IT)
+
+```
+
+
+```{r}
+
+mouse.polygon <- read.csv("E:/Transcriptomics_V1/Integration/mouse_polygon.csv")
+opossum.polygon <- read.csv("E:/Transcriptomics_V1/Integration/opossum_polygon.csv")
+
+```
+
+
+```{r}
+
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+
+obj.opossum.IT <- MinDistance(obj.opossum.IT, opossum.polygon)
+
+```
+
+
+```{r}
+
+FeatureScatter(obj.opossum.IT, "min_distance_to_reference", "nCount_RNA")
+
+```
+
+
+```{r}
+
+obj.m.opossum <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_m_opossum.rds")
+obj.m.opossum.IT <- obj.m.opossum[, colnames(obj.m.opossum) %in% colnames(obj.opossum.IT)]
+obj.opossum.IT.MP <- obj.opossum.IT[, colnames(obj.opossum.IT) %in% colnames(obj.m.opossum.IT)]
+obj.opossum.IT.MP <- obj.opossum.IT.MP[, match(colnames(obj.opossum.IT.MP), colnames(obj.m.opossum.IT))]
+obj.opossum.IT.MP$predicted.subclass.score <- obj.m.opossum.IT$predicted.subclass.score
+obj.opossum.IT.MP$predicted.subclass <- obj.m.opossum.IT$predicted.subclass
+
+DimPlot(obj.opossum.IT.MP, reduction = "pca", group.by = "predicted.subclass", pt.size = 1, shuffle = TRUE, raster = FALSE) + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+FeaturePlot(obj.opossum.IT.MP, "predicted.subclass.score", reduction = "pca", pt.size = 1, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+
+```
+
+
+
+
+
+
+

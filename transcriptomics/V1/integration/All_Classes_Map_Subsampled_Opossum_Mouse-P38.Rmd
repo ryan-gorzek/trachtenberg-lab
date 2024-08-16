@@ -26,9 +26,10 @@ source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R"
 source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
 
 classes <- c("Glutamatergic", "GABAergic", "Nonneuronal")
+iters <- c()
 objs.opossum = list()
 objs.mouse = list()
-mapping.data = list("subclass" = c(), "predicted.subclass" = c(), "predicted.subclass.score" = c())
+mapping.data = list("cell.id" = c(), "subclass" = c(), "predicted.subclass" = c(), "predicted.subclass.score" = c())
 mapping.classes = list("Glutamatergic" = mapping.data, "GABAergic" = mapping.data, "Nonneuronal" = mapping.data)
 objs.opossum$Glutamatergic <- readRDS(paste0("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds"))
 objs.mouse$Glutamatergic <- readRDS(paste0("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds"))
@@ -37,17 +38,26 @@ objs.mouse$GABAergic <- readRDS(paste0("E:/Transcriptomics_V1/Mouse/seurat/mouse
 objs.opossum$Nonneuronal <- readRDS(paste0("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_nonneuronal_processed.rds"))
 objs.mouse$Nonneuronal <- readRDS(paste0("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_nonneuronal_processed.rds"))
 
+iteration.list = list("Opossum" = list(), "Mouse" = list())
 for (cl in classes) {
-  for (it in 1:10) {
+  iteration.list$Opossum[[cl]] <- SubsampleObjectMultipleIterations(objs.opossum[[cl]], "subclass", 100, 100)
+  iteration.list$Mouse[[cl]] <- SubsampleObjectMultipleIterations(objs.mouse[[cl]], "subclass", 100, 100)
+}
+
+for (cl in classes) {
+  for (it in 1:100) {
 
     obj.opossum <- objs.opossum[[cl]]
     obj.opossum$species <- "Opossum"
     obj.mouse <- objs.mouse[[cl]]
     obj.mouse$species <- "Mouse"
-    obj.opossum <- SubsampleObject(obj.opossum, "subclass", 200)
-    obj.mouse <- SubsampleObject(obj.mouse, "subclass", 200)
+    # obj.opossum <- SubsampleObject(obj.opossum, "subclass", 200)
+    obj.opossum <- subset(obj.opossum, cells = as.character(iteration.list$Opossum[[cl]][[it]]))
+    # obj.mouse <- SubsampleObject(obj.mouse, "subclass", 200)
+    obj.mouse <- subset(obj.mouse, cells = as.character(iteration.list$Mouse[[cl]][[it]]))
     objs <- list(obj.opossum, obj.mouse)
     objs.m <- MapObjects(objs[[1]], objs[[2]], c("subclass"), assay = "SCT")
+    mapping.classes[[cl]][["cell.id"]] <- c(mapping.classes[[cl]][["cell.id"]], as.character(colnames(objs.m[[1]])))
     mapping.classes[[cl]][["subclass"]] <- c(mapping.classes[[cl]][["subclass"]], as.character(objs.m[[1]]$subclass))
     mapping.classes[[cl]][["predicted.subclass"]] <- c(mapping.classes[[cl]][["predicted.subclass"]], as.character(objs.m[[1]]$predicted.subclass))
     mapping.classes[[cl]][["predicted.subclass.score"]] <- c(mapping.classes[[cl]][["predicted.subclass.score"]], as.numeric(objs.m[[1]]$predicted.subclass.score))
@@ -58,11 +68,74 @@ for (cl in classes) {
 ```
 
 
+```{r}
+
+saveRDS(mapping.classes, "E:/Transcriptomics_V1/Integration/opossum_subsampled_mapping_100it.rds")
+
+```
+
+
+```{r}
+
+objs.opossum = list()
+objs.mouse = list()
+objs.opossum$Glutamatergic <- readRDS(paste0("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds"))
+objs.mouse$Glutamatergic <- readRDS(paste0("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds"))
+objs.opossum$GABAergic <- readRDS(paste0("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_gabaergic_processed.rds"))
+objs.mouse$GABAergic <- readRDS(paste0("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_gabaergic_processed.rds"))
+objs.opossum$Nonneuronal <- readRDS(paste0("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_nonneuronal_processed.rds"))
+objs.mouse$Nonneuronal <- readRDS(paste0("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_nonneuronal_processed.rds"))
+mapping.classes <- readRDS("E:/Transcriptomics_V1/Integration/opossum_subsampled_mapping_100it.rds")
+
+```
+
+
+```{r}
+
+colors_list <- list(
+              # Glutamatergic
+              IT = "#FF6C88",
+              IT_A = "#FFB3B3",
+              `L2/3` = "#FFB3B3",
+              IT_B = "#FFA07A",
+              L4 = "#FF7F50",
+              IT_C = "#FF7F50",
+              L5IT = "#FFA07A",
+              IT_D = "#FF6347",
+              L6IT = "#FF6347",
+              L5NP = "#FF4500",
+              L5PT = "#FF8C69",
+              L6CT = "#FFA07A",
+              L6b = "#FF6347",
+              Projection = "#128e27",
+            
+              # GABAergic
+              Pvalb = "#1E90FF",
+              Sst = "#87CEEB",
+              Vip = "#87CEFA",
+              Lamp5 = "#4682B4",
+              Frem1 = "#ADD8E6",
+              Stac = "#5F9EA0",
+            
+              # Non-neuronal
+              Astro = "#8C8C8C",
+              Micro = "#A0A0A0",
+              OD = "#B4B4B4",
+              OPC = "#C8C8C8",
+              Endo = "#505050",
+              VLMC = "#B4B4B4"
+)
+
+```
+
+
 ```{r, fig.width=6, fig.height=5}
 
 PlotSubsampledMappedLabelsHeatmap(mapping.classes$Glutamatergic$subclass, mapping.classes$Glutamatergic$predicted.subclass, 
                                   c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"), normalize = "row", 
                                   ident.order = c("IT_A", "IT_C", "IT_B", "IT_D", "L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"))
+# ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Confusion_Subsampled_Glutamatergic.png", plot = p, width = 6, height = 5, dpi = 300)
+# ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Confusion_Subsampled_Glutamatergic.svg", plot = p, width = 6, height = 5, dpi = 300)
 
 ```
 
@@ -70,20 +143,37 @@ PlotSubsampledMappedLabelsHeatmap(mapping.classes$Glutamatergic$subclass, mappin
 ```{r}
 
 data <- data.frame(Subclass = mapping.classes$Glutamatergic$subclass, Score = mapping.classes$Glutamatergic$predicted.subclass.score)
-ggplot(data, aes(x = Subclass, y = Score)) +
-  geom_violin(trim = FALSE) +
-  geom_jitter(width = 0.2, alpha = 0.5) +
-  theme_minimal() +
-  labs(title = "Prediction Scores by Subclass", x = "Subclass", y = "Prediction Score")
+
+# Create a Seurat object with fake expression data
+fake_expression_data <- matrix(rnorm(2000), nrow = 5, ncol = nrow(data))  # 20 genes, 100 cells
+rownames(fake_expression_data) <- paste0("Gene", 1:5)
+colnames(fake_expression_data) <- paste0("Cell", 1:nrow(data))
+
+# Initialize Seurat object
+seurat_obj <- CreateSeuratObject(counts = fake_expression_data)
+
+# Add subclass and prediction scores to metadata
+seurat_obj <- AddMetaData(seurat_obj, metadata = data$Subclass, col.name = "Subclass")
+seurat_obj <- AddMetaData(seurat_obj, metadata = data$Score, col.name = "PredictionScore")
+
+# Use VlnPlot to create violin plots
+opossum.glutamatergic.levels <- c("IT_A", "IT_C", "IT_B", "IT_D", "L5NP", "L5PT", "L6CT", "L6b")
+Idents(seurat_obj) <- "Subclass"
+levels(seurat_obj) <- opossum.glutamatergic.levels
+p <- VlnPlot(seurat_obj, features = "PredictionScore", cols = colors_list[opossum.glutamatergic.levels], pt.size = 0.5) + ylim(0, 1) + theme(legend.spacing.x = unit(3.0, 'cm'))
+ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Quality_Subsampled_Glutamatergic.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Quality_Subsampled_Glutamatergic.svg", plot = p, dpi = 300)
 
 ```
 
 
 ```{r, fig.width=5, fig.height=4.5}
 
-PlotSubsampledMappedLabelsHeatmap(mapping.classes$GABAergic$subclass, mapping.classes$GABAergic$predicted.subclass, 
+p <- PlotSubsampledMappedLabelsHeatmap(mapping.classes$GABAergic$subclass, mapping.classes$GABAergic$predicted.subclass, 
                                   c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1"), normalize = "row", 
                                   ident.order = c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac"))
+ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Confusion_Subsampled_GABAergic.png", plot = p, width = 5, height = 4.5, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Confusion_Subsampled_GABAergic.svg", plot = p, width = 5, height = 4.5, dpi = 300)
 
 ```
 
@@ -91,64 +181,376 @@ PlotSubsampledMappedLabelsHeatmap(mapping.classes$GABAergic$subclass, mapping.cl
 ```{r}
 
 data <- data.frame(Subclass = mapping.classes$GABAergic$subclass, Score = mapping.classes$GABAergic$predicted.subclass.score)
-ggplot(data, aes(x = Subclass, y = Score)) +
-  geom_violin(trim = FALSE) +
-  geom_jitter(width = 0.2, alpha = 0.5) +
-  theme_minimal() +
-  labs(title = "Prediction Scores by Subclass", x = "Subclass", y = "Prediction Score")
+
+# Create a Seurat object with fake expression data
+fake_expression_data <- matrix(rnorm(2000), nrow = 5, ncol = nrow(data))  # 20 genes, 100 cells
+rownames(fake_expression_data) <- paste0("Gene", 1:5)
+colnames(fake_expression_data) <- paste0("Cell", 1:nrow(data))
+
+# Initialize Seurat object
+seurat_obj <- CreateSeuratObject(counts = fake_expression_data)
+
+# Add subclass and prediction scores to metadata
+seurat_obj <- AddMetaData(seurat_obj, metadata = data$Subclass, col.name = "Subclass")
+seurat_obj <- AddMetaData(seurat_obj, metadata = data$Score, col.name = "PredictionScore")
+
+# Use VlnPlot to create violin plots
+opossum.gabaergic.levels <- c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1")
+Idents(seurat_obj) <- "Subclass"
+levels(seurat_obj) <- opossum.gabaergic.levels
+p <- VlnPlot(seurat_obj, features = "PredictionScore", cols = colors_list[opossum.gabaergic.levels], pt.size = 0.5) + ylim(0, 1) + theme(legend.spacing.x = unit(3.0, 'cm'))
+ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Quality_Subsampled_GABAergic.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Quality_Subsampled_GABAergic.svg", plot = p, dpi = 300)
 
 ```
 
 
 ```{r, fig.width=5, fig.height=4.5}
 
-PlotSubsampledMappedLabelsHeatmap(mapping.classes$Nonneuronal$subclass, mapping.classes$Nonneuronal$predicted.subclass, 
+p <- PlotSubsampledMappedLabelsHeatmap(mapping.classes$Nonneuronal$subclass, mapping.classes$Nonneuronal$predicted.subclass, 
                                   c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC"), normalize = "row", 
                                   ident.order = c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC"))
+ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Confusion_Subsampled_Nonneuronal.png", plot = p, width = 5, height = 4.5, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Confusion_Subsampled_Nonneuronal.svg", plot = p, width = 5, height = 4.5, dpi = 300)
 
 ```
 
 
-```{r}
-
-opossum.glutamatergic.levels <- c("IT_A", "IT_B", "IT_C", "IT_D", "L5NP", "L5PT", "L6CT", "L6b")
-Idents(objs.m.opossum[[1]]) <- "subclass"
-levels(objs.m.opossum[[1]]) <- opossum.glutamatergic.levels
-VlnPlot(objs.m.opossum[[1]], "predicted.subclass.score", cols = colors_list[opossum.glutamatergic.levels]) + theme(legend.spacing.x = unit(3.0, 'cm'))
-
-```
-
 
 ```{r}
 
-opossum.gabaergic.levels <- c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1")
-Idents(objs.m.opossum[[2]]) <- "subclass"
-levels(objs.m.opossum[[2]]) <- opossum.gabaergic.levels
-VlnPlot(objs.m.opossum[[2]], "predicted.subclass.score", cols = colors_list[opossum.gabaergic.levels]) + theme(legend.spacing.x = unit(6.5, 'cm'))
+data <- data.frame(Subclass = mapping.classes$Nonneuronal$subclass, Score = mapping.classes$Nonneuronal$predicted.subclass.score)
 
-```
+# Create a Seurat object with fake expression data
+fake_expression_data <- matrix(rnorm(2000), nrow = 5, ncol = nrow(data))  # 20 genes, 100 cells
+rownames(fake_expression_data) <- paste0("Gene", 1:5)
+colnames(fake_expression_data) <- paste0("Cell", 1:nrow(data))
 
+# Initialize Seurat object
+seurat_obj <- CreateSeuratObject(counts = fake_expression_data)
 
-```{r}
+# Add subclass and prediction scores to metadata
+seurat_obj <- AddMetaData(seurat_obj, metadata = data$Subclass, col.name = "Subclass")
+seurat_obj <- AddMetaData(seurat_obj, metadata = data$Score, col.name = "PredictionScore")
 
+# Use VlnPlot to create violin plots
 opossum.nonneuronal.levels <- c("Astro", "Micro", "OD", "OPC", "Endo")
-Idents(objs.m.opossum[[3]]) <- "subclass"
-levels(objs.m.opossum[[3]]) <- opossum.nonneuronal.levels
-VlnPlot(objs.m.opossum[[3]], "predicted.subclass.score", cols = colors_list[opossum.nonneuronal.levels]) + theme(legend.spacing.x = unit(6.5, 'cm'))
+Idents(seurat_obj) <- "Subclass"
+levels(seurat_obj) <- opossum.nonneuronal.levels
+p <- VlnPlot(seurat_obj, features = "PredictionScore", cols = colors_list[opossum.nonneuronal.levels], pt.size = 0.5) + ylim(0, 1) + theme(legend.spacing.x = unit(3.0, 'cm'))
+ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Quality_Subsampled_Nonneuronal.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Quality_Subsampled_Nonneuronal.svg", plot = p, dpi = 300)
 
 ```
 
 
 ```{r}
 
-saveRDS(obj.mouse, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_mouse.rds")
-saveRDS(obj.opossum, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_opossum.rds")
-saveRDS(objs.i.mouse, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_i_mouse.rds")
-saveRDS(objs.i.opossum, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_i_opossum.rds")
-saveRDS(objs.m.mouse, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/objs_m_mouse.rds")
-saveRDS(objs.m.opossum, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/objs_m_opossum.rds")
-saveRDS(obj.m.mouse, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_m_mouse.rds")
-saveRDS(obj.m.opossum, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_m_opossum.rds")
+Idents(objs.opossum$Glutamatergic) <- "subclass"
+obj.opossum.IT <- subset(objs.opossum$Glutamatergic, idents = c("IT_A", "IT_B", "IT_C"))
+df <- data.frame("cell.names" = mapping.classes$Glutamatergic$cell.id, 
+                 "prediction.scores" = mapping.classes$Glutamatergic$predicted.subclass.score, 
+                 "predicted.subclass" = mapping.classes$Glutamatergic$predicted.subclass)
+get_mode <- function(x) {
+  uniq_x <- unique(x)
+  uniq_x[which.max(tabulate(match(x, uniq_x)))]
+}
+prediction.scores_aggregated <- aggregate(prediction.scores ~ cell.names, data = df, FUN = mean, na.rm = TRUE)
+predicted.subclass_aggregated <- aggregate(predicted.subclass ~ cell.names, data = df, FUN = get_mode)
+df_agg <- merge(prediction.scores_aggregated, predicted.subclass_aggregated, by = "cell.names")
+df_agg <- df_agg[df_agg$cell.names %in% colnames(obj.opossum.IT),]
+obj.opossum.IT <- subset(obj.opossum.IT, cells = as.character(df_agg$cell.names))
+obj.opossum.IT <- NormalizePCA(obj.opossum.IT)
+obj.opossum.IT$predicted.subclass.score <- NA
+obj.opossum.IT@meta.data[df_agg$cell.names,]$predicted.subclass.score <- df_agg$prediction.scores
+obj.opossum.IT$predicted.subclass <- NA
+obj.opossum.IT@meta.data[df_agg$cell.names,]$predicted.subclass <- df_agg$predicted.subclass
+obj.opossum.IT@reductions$pca@cell.embeddings[, 1:2] <- obj.opossum.IT@reductions$pca@cell.embeddings[, 1:2] * -1
+opossum.pcs <- obj.opossum.IT@reductions$pca@cell.embeddings[, 1:2]
+write.table(opossum.pcs, "E:/Transcriptomics_V1/Integration/opossum_pcs_subsample.txt", sep = " ", col.names = FALSE, row.names = FALSE)
 
 ```
+
+
+```{r}
+
+opossum.polygon <- read.csv("E:/Transcriptomics_V1/Integration/opossum_polygon_subsample.csv")
+opossum.polygon <- rbind(opossum.polygon, opossum.polygon[1, ])
+subclasses.opossum <- c("IT_A", "IT_B", "IT_C")
+Idents(obj.opossum.IT) <- "subclass"
+levels(obj.opossum.IT) <- subclasses.opossum
+p <- DimPlot(obj.opossum.IT, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal() +
+  geom_point(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+  geom_path(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Subclass_Subsampled.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Subclass_Subsampled.svg", plot = p, dpi = 300)
+subclasses.opossum <- c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b")
+Idents(obj.opossum.IT) <- "predicted.subclass"
+levels(obj.opossum.IT) <- subclasses.opossum
+p <- DimPlot(obj.opossum.IT, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal() +
+  geom_point(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+  geom_path(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Predicted_Subclass_Subsampled.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Predicted_Subclass_Subsampled.svg", plot = p, dpi = 300)
+p <- FeaturePlot(obj.opossum.IT, "predicted.subclass.score", reduction = "pca", pt.size = 1, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal() +
+  geom_point(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+  geom_path(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Mapping_Quality_Subsampled.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Mapping_Quality_Subsampled.svg", plot = p, dpi = 300)
+
+```
+
+
+```{r}
+
+library(ggpubr)
+
+obj.opossum.IT <- MinDistance(obj.opossum.IT, opossum.polygon)
+
+# Extract metadata
+metadata <- FetchData(obj.opossum.IT, vars = c("min_distance_to_reference", "predicted.subclass.score", "subclass"))
+
+# Convert subclass to a factor for consistent coloring
+metadata$subclass <- factor(metadata$subclass)
+
+# Create the scatterplots split by subclass
+ggplot(metadata, aes(x = min_distance_to_reference, y = predicted.subclass.score, color = subclass)) +
+  geom_point(alpha = 0.2, shape = 16) +
+  geom_smooth(method = "lm", se = FALSE, color = "black", linetype = "dashed") +
+  # stat_cor(
+  #   aes(label = paste("R =", round(..r.., 2), ", p =", format.pval(..p.., digits = 2))),
+  #   method = "pearson", label.x = 0.1, label.y = 0.9, parse = FALSE, output.type = "text",
+  #   color = "black"
+  # ) +  # Adds both the correlation coefficient and p-value
+  scale_color_manual(values = colors_list[levels(metadata$subclass)]) +
+  labs(x = "Distance to Nearest Vertex", y = "Predicted Subclass Score", color = "Group") +
+  facet_wrap(~ subclass, scales = "free_x") +
+  ylim(0, 1) +
+  theme_classic() +
+  theme(aspect.ratio = 1)
+# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Quality_Distance_Correlation_Subsampled.png", plot = p, dpi = 300)
+# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Quality_Distance_Correlation_Subsampled.svg", plot = p, dpi = 300)
+
+```
+
+
+```{r}
+
+# Extract metadata
+metadata <- FetchData(obj.opossum.IT, vars = c("min_distance_to_reference", "nFeature_RNA", "subclass"))
+
+# Convert subclass to a factor for consistent coloring
+metadata$subclass <- factor(metadata$subclass)
+
+# Create the scatterplots split by subclass
+ggplot(metadata, aes(x = min_distance_to_reference, y = nFeature_RNA, color = subclass)) +
+  geom_point(alpha = 0.2, shape = 16) +
+  geom_smooth(method = "lm", se = FALSE, color = "black", linetype = "dashed") +
+  # stat_cor(
+  #   aes(label = paste("R =", round(..r.., 2), ", p =", format.pval(..p.., digits = 2))),
+  #   method = "pearson", label.x = 0.1, label.y = 0.9, parse = FALSE, output.type = "text",
+  #   color = "black"
+  # ) +  # Adds both the correlation coefficient and p-value
+  scale_color_manual(values = colors_list[levels(metadata$subclass)]) +
+  labs(x = "Distance to Nearest Vertex", y = "nFeature_RNA", color = "Group") +
+  facet_wrap(~ subclass, scales = "free_x") +
+  theme_classic() +
+  theme(aspect.ratio = 1)
+# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Quality_Distance_Correlation_Subsampled.png", plot = p, dpi = 300)
+# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Quality_Distance_Correlation_Subsampled.svg", plot = p, dpi = 300)
+
+```
+
+
+```{r}
+
+# Extract metadata
+metadata <- FetchData(obj.opossum.IT, vars = c("min_distance_to_reference", "nCount_RNA", "subclass"))
+
+# Convert subclass to a factor for consistent coloring
+metadata$subclass <- factor(metadata$subclass)
+
+# Create the scatterplots split by subclass
+ggplot(metadata, aes(x = min_distance_to_reference, y = nCount_RNA, color = subclass)) +
+  geom_point(alpha = 0.2, shape = 16) +
+  geom_smooth(method = "lm", se = FALSE, color = "black", linetype = "dashed") +
+  # stat_cor(
+  #   aes(label = paste("R =", round(..r.., 2), ", p =", format.pval(..p.., digits = 2))),
+  #   method = "pearson", label.x = 0.1, label.y = 0.9, parse = FALSE, output.type = "text",
+  #   color = "black"
+  # ) +  # Adds both the correlation coefficient and p-value
+  scale_color_manual(values = colors_list[levels(metadata$subclass)]) +
+  labs(x = "Distance to Nearest Vertex", y = "nCount_RNA", color = "Group") +
+  facet_wrap(~ subclass, scales = "free_x") +
+  theme_classic() +
+  theme(aspect.ratio = 1)
+# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Quality_Distance_Correlation_Subsampled.png", plot = p, dpi = 300)
+# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Quality_Distance_Correlation_Subsampled.svg", plot = p, dpi = 300)
+
+```
+
+
+```{r}
+
+# Extract metadata
+metadata <- FetchData(obj.opossum.IT, vars = c("nFeature_RNA", "predicted.subclass.score", "subclass"))
+
+# Convert subclass to a factor for consistent coloring
+metadata$subclass <- factor(metadata$subclass)
+
+# Create the scatterplots split by subclass
+ggplot(metadata, aes(x = nFeature_RNA, y = predicted.subclass.score, color = subclass)) +
+  geom_point(alpha = 0.2, shape = 16) +
+  geom_smooth(method = "lm", se = FALSE, color = "black", linetype = "dashed") +
+  # stat_cor(
+  #   aes(label = paste("R =", round(..r.., 2), ", p =", format.pval(..p.., digits = 2))),
+  #   method = "pearson", label.x = 0.1, label.y = 0.9, parse = FALSE, output.type = "text",
+  #   color = "black"
+  # ) +  # Adds both the correlation coefficient and p-value
+  scale_color_manual(values = colors_list[levels(metadata$subclass)]) +
+  labs(x = "nFeature_RNA", y = "Predicted Subclass Score", color = "Group") +
+  facet_wrap(~ subclass, scales = "free_x") +
+  ylim(0, 1) +
+  theme_classic() +
+  theme(aspect.ratio = 1)
+# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Quality_Distance_Correlation_Subsampled.png", plot = p, dpi = 300)
+# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Quality_Distance_Correlation_Subsampled.svg", plot = p, dpi = 300)
+
+```
+
+
+```{r}
+
+# Extract metadata
+metadata <- FetchData(obj.opossum.IT, vars = c("nCount_RNA", "predicted.subclass.score", "subclass"))
+
+# Convert subclass to a factor for consistent coloring
+metadata$subclass <- factor(metadata$subclass)
+
+# Create the scatterplots split by subclass
+ggplot(metadata, aes(x = nCount_RNA, y = predicted.subclass.score, color = subclass)) +
+  geom_point(alpha = 0.2, shape = 16) +
+  geom_smooth(method = "lm", se = FALSE, color = "black", linetype = "dashed") +
+  # stat_cor(
+  #   aes(label = paste("R =", round(..r.., 2), ", p =", format.pval(..p.., digits = 2))),
+  #   method = "pearson", label.x = 0.1, label.y = 0.9, parse = FALSE, output.type = "text",
+  #   color = "black"
+  # ) +  # Adds both the correlation coefficient and p-value
+  scale_color_manual(values = colors_list[levels(metadata$subclass)]) +
+  labs(x = "nCount_RNA", y = "Predicted Subclass Score", color = "Group") +
+  facet_wrap(~ subclass, scales = "free_x") +
+  ylim(0, 1) +
+  theme_classic() +
+  theme(aspect.ratio = 1)
+# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Quality_Distance_Correlation_Subsampled.png", plot = p, dpi = 300)
+# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Quality_Distance_Correlation_Subsampled.svg", plot = p, dpi = 300)
+
+```
+
+
+```{r}
+
+# Load necessary libraries
+library(dplyr)
+library(purrr)
+library(broom)
+
+# Example dataframe
+df <- FetchData(obj.opossum.IT, vars = c("nFeature_RNA", "nCount_RNA", "min_distance_to_reference", "predicted.subclass.score", "subclass"))
+
+# Split data by subclass
+df_split <- df %>% split(.$subclass)
+
+# Function to fit models and compare them with detailed metrics
+fit_models <- function(data) {
+  # Fit the model with only nFeature_RNA
+  model_1 <- lm(predicted.subclass.score ~ nFeature_RNA + nCount_RNA, data = data)
+  
+  # Fit the model with both nFeature_RNA and min_distance_to_reference
+  model_2 <- lm(predicted.subclass.score ~ nFeature_RNA + nCount_RNA + min_distance_to_reference, data = data)
+  
+  # Perform an ANOVA to compare models
+  comparison <- anova(model_1, model_2)
+  
+  # Extract adjusted R-squared values
+  adj_r_squared_1 <- summary(model_1)$adj.r.squared
+  adj_r_squared_2 <- summary(model_2)$adj.r.squared
+  
+  # Extract residual sum of squares (RSS)
+  rss_1 <- sum(residuals(model_1)^2)
+  rss_2 <- sum(residuals(model_2)^2)
+  
+  # Return relevant metrics
+  list(
+    subclass = unique(data$subclass),
+    model_1_summary = tidy(model_1),
+    model_2_summary = tidy(model_2),
+    model_comparison = comparison,
+    adj_r_squared_1 = adj_r_squared_1,
+    adj_r_squared_2 = adj_r_squared_2,
+    rss_1 = rss_1,
+    rss_2 = rss_2
+  )
+}
+
+# Apply the function to each subclass
+results <- map(df_split, fit_models)
+
+# Extract adjusted R-squared and RSS into a dataframe
+comparison_df <- map_df(results, function(res) {
+  data.frame(
+    subclass = res$subclass,
+    model_type = c("nFeature + nCount", "nFeature + nCount + Distance"),
+    adj_r_squared = c(res$adj_r_squared_1, res$adj_r_squared_2),
+    rss = c(res$rss_1, res$rss_2)
+  )
+})
+
+comparison_df$model_type <- factor(comparison_df$model_type, levels = c("nFeature + nCount", "nFeature + nCount + Distance"))
+
+# Adjusted R-squared Bar Plot
+ggplot(comparison_df, aes(x = subclass, y = adj_r_squared, fill = model_type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = c("nFeature + nCount" = "gray70", "nFeature + nCount + Distance" = "#0384fc")) +
+  labs(title = "Adjusted R-squared",
+       x = "Subclass",
+       y = "Adjusted R-squared",
+       fill = "Model Type") +
+  theme_minimal()
+
+```
+
+
+
+
+```{r}
+
+Idents(objs.opossum$Glutamatergic) <- "subclass"
+obj.opossum.IT.A <- subset(objs.opossum$Glutamatergic, idents = c("IT_A"))
+obj.opossum.IT.A <- NormalizePCA(obj.opossum.IT.A)
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.IT.A, reduction = "pca", cols = colors_list["IT_A"], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-22, 22) + ylim(-22, 22) + coord_equal()
+DimPlot(obj.opossum.IT.A, reduction = "pca", group.by = "type", pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-22, 22) + ylim(-22, 22) + coord_equal()
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

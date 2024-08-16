@@ -1071,6 +1071,78 @@ SubsampleObject <- function(seurat_obj, metadata_col, cells_per_category) {
   return(subsampled_seurat_obj)
 }
 
+SubsampleObjectMultipleIterations <- function(seurat_obj, metadata_col, cells_per_category, iterations) {
+  # Extract metadata
+  metadata <- seurat_obj@meta.data
+  
+  # Get unique values in the specified metadata column
+  unique_values <- unique(metadata[[metadata_col]])
+  
+  # Initialize a list to store sampled cells for each iteration
+  iterations_list <- vector("list", iterations)
+  
+  # Initialize a list to keep track of already sampled cells
+  sampled_cells_overall <- vector("list", iterations)
+  
+  for (iter in 1:iterations) {
+    # Initialize a vector to store sampled cells for this iteration
+    subsampled_cells <- c()
+    
+    # Initialize a list to track sampled cells for this iteration
+    sampled_cells_iter <- list()
+    
+    for (value in unique_values) {
+      # Get cells that belong to the current metadata category
+      cells_in_category <- rownames(metadata[metadata[[metadata_col]] == value, ])
+      
+      # Exclude cells that have already been sampled in previous iterations
+      previously_sampled <- unlist(lapply(sampled_cells_overall, function(x) if (!is.null(x[[value]])) x[[value]] else c()))
+      available_cells <- setdiff(cells_in_category, subsampled_cells) # Ensure no duplicates within iteration
+      
+      # Check if there are available cells to sample
+      if (length(available_cells) > 0) {
+        if (length(available_cells) >= cells_per_category) {
+          # Sample without replacement
+          sampled_cells <- sample(available_cells, cells_per_category, replace = FALSE)
+        } else {
+          # Sample all available cells
+          sampled_cells <- available_cells
+          
+          # If needed, sample additional cells from the entire pool
+          remaining_needed <- cells_per_category - length(available_cells)
+          
+          # Sample from the previously used cells plus the remaining available cells
+          additional_pool <- setdiff(cells_in_category, sampled_cells)
+          
+          # Check if additional_pool is non-empty before sampling
+          if (length(additional_pool) > 0) {
+            additional_cells <- sample(additional_pool, remaining_needed, replace = FALSE)
+            # Combine the available and additional sampled cells
+            sampled_cells <- c(sampled_cells, additional_cells)
+          }
+        }
+      } else {
+        # If no available cells, sample with replacement from the entire category
+        sampled_cells <- sample(cells_in_category, cells_per_category, replace = FALSE)
+      }
+      
+      # Add sampled cells to the subsampled_cells vector
+      subsampled_cells <- c(subsampled_cells, sampled_cells)
+      
+      # Store sampled cells for this category in the tracker for this iteration
+      sampled_cells_iter[[value]] <- sampled_cells
+    }
+    
+    # Store the subsampled cells for this iteration
+    iterations_list[[iter]] <- subsampled_cells
+    
+    # Store the sampled cells for this iteration in the overall tracker
+    sampled_cells_overall[[iter]] <- sampled_cells_iter
+  }
+  
+  return(iterations_list)
+}
+
 SplitObjectHalf <- function(seurat_object, seed = 123) {
   # Get the number of cells
   num_cells <- ncol(seurat_object)
@@ -1089,4 +1161,30 @@ SplitObjectHalf <- function(seurat_object, seed = 123) {
   
   # Return a list containing the two halves
   return(list(obj1 = seurat_half1, obj2 = seurat_half2))
+}
+
+MinDistance <- function(seurat_obj, reference_df, pc1_colname = "PC_1", pc2_colname = "PC_2") {
+  # Extract PC1 and PC2 coordinates from the Seurat object
+  cell_coords <- as.data.frame(Embeddings(seurat_obj, "pca")[, c(pc1_colname, pc2_colname)])
+  
+  # Function to calculate the Euclidean distance between two points
+  euclidean_dist <- function(x1, y1, x2, y2) {
+    sqrt((x1 - x2)^2 + (y1 - y2)^2)
+  }
+  
+  # Initialize a vector to store the minimum distances
+  min_distances <- numeric(nrow(cell_coords))
+  
+  # Calculate the minimum distance for each cell
+  for (i in 1:nrow(cell_coords)) {
+    distances <- apply(reference_df, 1, function(ref_point) {
+      euclidean_dist(cell_coords[i, "PC_1"], cell_coords[i, "PC_2"], ref_point["X..X"], ref_point["Y"])
+    })
+    min_distances[i] <- min(distances)
+  }
+  
+  # Add the distances to the Seurat object's metadata
+  seurat_obj <- AddMetaData(seurat_obj, metadata = min_distances, col.name = "min_distance_to_reference")
+  
+  return(seurat_obj)
 }

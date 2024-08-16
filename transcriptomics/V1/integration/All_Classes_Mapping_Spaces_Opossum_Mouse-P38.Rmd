@@ -26,6 +26,10 @@ source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R"
 source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
 
 classes <- c("Glutamatergic", "GABAergic", "Nonneuronal")
+classes.list <- list("Glutamatergic" = NA, "GABAergic" = NA, "Nonneuronal" = NA)
+objs.m.list <- list("Opossum" = list("Full" = classes.list, "Int" = classes.list), 
+                    "Mouse" = list("Full" = classes.list, "Int" = classes.list))
+objs.m.merge <- objs.m.list
 
 for (cl in classes) {
 
@@ -42,11 +46,11 @@ for (cl in classes) {
   objs.mouse.full <- SplitObjectHalf(obj.mouse.full)
   objs.opossum.int <- SplitObjectHalf(obj.opossum.int)
   objs.mouse.int <- SplitObjectHalf(obj.mouse.int)
-  objs.opossum.full.m <- MapObjects(objs.opossum.full[[1]], objs.opossum.full[[2]], c("subclass"), assay = "SCT")
-  objs.mouse.full.m <- MapObjects(objs.mouse.full[[1]], objs.mouse.full[[2]], c("subclass"), assay = "SCT")
-  objs.opossum.int.m <- MapObjects(objs.opossum.int[[1]], objs.opossum.int[[2]], c("subclass"), assay = "SCT")
-  objs.mouse.int.m <- MapObjects(objs.mouse.int[[1]], objs.mouse.int[[2]], c("subclass"), assay = "SCT")
-  
+  objs.m.list$Opossum$Full[[cl]] <- MapObjects(objs.opossum.full[[1]], objs.opossum.full[[2]], c("subclass"), assay = "SCT")
+  objs.m.list$Mouse$Full[[cl]] <- MapObjects(objs.mouse.full[[1]], objs.mouse.full[[2]], c("subclass"), assay = "SCT")
+  objs.m.list$Opossum$Int[[cl]] <- MapObjects(objs.opossum.int[[1]], objs.opossum.int[[2]], c("subclass"), assay = "SCT")
+  objs.m.list$Mouse$Int[[cl]] <- MapObjects(objs.mouse.int[[1]], objs.mouse.int[[2]], c("subclass"), assay = "SCT")
+
 }
 
 ```
@@ -54,24 +58,15 @@ for (cl in classes) {
 
 ```{r}
 
-obj.mouse <- ClusterSCT(obj.mouse, c(1))
-obj.m.mouse <- ClusterSCT(obj.m.mouse, c(1))
-obj.opossum <- ClusterSCT(obj.opossum, c(1))
-obj.m.opossum <- ClusterSCT(obj.m.opossum, c(1))
-
-```
-
-
-```{r}
-
-obj.mouse <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_mouse.rds")
-obj.opossum <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_opossum.rds")
-objs.i.mouse <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_i_mouse.rds")
-objs.i.opossum <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_i_opossum.rds")
-objs.m.mouse <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/objs_m_mouse.rds")
-objs.m.opossum <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/objs_m_opossum.rds")
-obj.m.mouse <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_m_mouse.rds")
-obj.m.opossum <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_m_opossum.rds")
+for (sp in c("Opossum", "Mouse")) {
+  for (sc in c("Full", "Int")) {
+    for (cl in classes) {
+      objs.m.merge[[sp]][[sc]][[cl]] <- merge(objs.m.list[[sp]][[sc]][[cl]][[1]], objs.m.list[[sp]][[sc]][[cl]][[2]])
+      objs.m.merge[[sp]][[sc]][[cl]]$class <- lower(cl)
+    }
+    objs.m.merge[[sp]][[sc]]$All <- merge(objs.m.merge[[sp]][[sc]]$Glutamatergic, c(objs.m.merge[[sp]][[sc]]$GABAergic, objs.m.merge[[sp]][[sc]]$Nonneuronal))
+  }
+}
 
 ```
 
@@ -115,76 +110,212 @@ colors_list <- list(
 ```
 
 
-```{r, fig.width=6, fig.height=5}
+```{r}
 
-# PlotMapping(list(objs.m.mouse[[1]], objs.m.opossum[[1]]), ident.order = c("IT_A", "IT_B", "IT_C", "IT_D", "L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"))
-PlotMappedLabelsHeatmap(objs.m.opossum[[1]], "subclass", c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"), normalize = "row", 
-                        ident.order = c("IT_A", "IT_C", "IT_B", "IT_D", "L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"))
-# p <- PlotMappedLabelsHeatmap(objs.m.opossum[[1]], "subclass", c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"), normalize = "row", 
-#                         ident.order = c("IT_A", "IT_C", "IT_B", "IT_D", "L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"))
-# ggsave("E:/Opossum_Paper/Figure 2/Opossum_Mouse_Mapping_Confusion_Glutamatergic.png", plot = p, height = 5, width = 6, dpi = 300)
-# ggsave("E:/Opossum_Paper/Figure 2/Opossum_Mouse_Mapping_Confusion_Glutamatergic.svg", plot = p, height = 5, width = 6, dpi = 300)
+mapping.data = list("cell.id" = c(), "subclass" = c(), "predicted.subclass" = c(), "predicted.subclass.score" = c())
+mapping.classes = list("Glutamatergic" = mapping.data, "GABAergic" = mapping.data, "Nonneuronal" = mapping.data)
+mapping.full <- list("Opossum" = list("Full" = mapping.classes, "Int" = mapping.classes), 
+                     "Mouse" = list("Full" = mapping.classes, "Int" = mapping.classes))
 
-```
-
-
-```{r, fig.width=5, fig.height=4.5}
-
-# PlotMapping(list(objs.m.mouse[[2]], objs.m.opossum[[2]]), ident.order = c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac"))
-PlotMappedLabelsHeatmap(objs.m.opossum[[2]], "subclass", c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1"), normalize = "row", 
-                        ident.order = c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac"))
-# p <- PlotMappedLabelsHeatmap(objs.m.opossum[[2]], "subclass", c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1"), normalize = "row", 
-#                         ident.order = c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac"))
-# ggsave("E:/Opossum_Paper/Figure 2/Opossum_Mouse_Mapping_Confusion_GABAergic.png", plot = p, height = 4.5, width = 5, dpi = 300)
-# ggsave("E:/Opossum_Paper/Figure 2/Opossum_Mouse_Mapping_Confusion_GABAergic.svg", plot = p, height = 4.5, width = 5, dpi = 300)
-
-```
+for (sp in c("Opossum", "Mouse")) {
+  for (sc in c("Full", "Int")) {
+    for (cl in classes) {
+      mapping.full[[sp]][[sc]][[cl]][["cell.id"]] <- c(mapping.classes[[cl]][["cell.id"]], as.character(colnames(objs.m.merge[[sp]][[sc]][[cl]])))
+      mapping.full[[sp]][[sc]][[cl]][["subclass"]] <- c(mapping.classes[[cl]][["subclass"]], as.character(objs.m.merge[[sp]][[sc]][[cl]]$subclass))
+      mapping.full[[sp]][[sc]][[cl]][["predicted.subclass"]] <- c(mapping.classes[[cl]][["predicted.subclass"]], as.character(objs.m.merge[[sp]][[sc]][[cl]]$predicted.subclass))
+      mapping.full[[sp]][[sc]][[cl]][["predicted.subclass.score"]] <- c(mapping.classes[[cl]][["predicted.subclass.score"]], as.numeric(objs.m.merge[[sp]][[sc]][[cl]]$predicted.subclass.score))
+    }
+  }
+}
 
 
-```{r, fig.width=5, fig.height=4.5}
-
-# PlotMapping(list(objs.m.mouse[[3]], objs.m.opossum[[3]]), ident.order = c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC"))
-PlotMappedLabelsHeatmap(objs.m.opossum[[3]], "subclass", c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC"), normalize = "row", 
-                        ident.order = c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC"))
-# p <- PlotMappedLabelsHeatmap(objs.m.opossum[[3]], "subclass", c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC"), normalize = "row", 
-#                         ident.order = c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC"))
-# ggsave("E:/Opossum_Paper/Figure 2/Opossum_Mouse_Mapping_Confusion_Nonneuronal.png", plot = p, height = 4.5, width = 5, dpi = 300)
-# ggsave("E:/Opossum_Paper/Figure 2/Opossum_Mouse_Mapping_Confusion_Nonneuronal.svg", plot = p, height = 4.5, width = 5, dpi = 300)
 
 ```
 
 
 ```{r}
+
+opossum.acc <- c()
+mouse.acc <- c()
+for (sc in c("Full", "Shared")) {
+  for (cl in classes) {
+    opossum.acc.df <- MappingAccuracy(objs.m.merge$Opossum[[sc]][[cl]], "subclass")
+    opossum.acc.df$Space <- sc
+    opossum.acc <- rbind(opossum.acc, acc.df)
+    mouse.acc.df <- MappingAccuracy(objs.m.merge$Mouse[[sc]][[cl]], "subclass")
+    mouse.acc.df$Space <- sc
+    mouse.acc <- rbind(mouse.acc, acc.df)
+  }
+}
+
+```
+
+
+```{r}
+
+# Prepare the data for plotting
+df_full <- opossum.acc[opossum.acc$Space == "Full", ]
+df_shared <- opossum.acc[opossum.acc$Space == "Shared", ]
+
+# Merge the data to have Accuracy in Full and Shared spaces side by side
+df_plot <- merge(df_full, df_shared, by = "Subclass", suffixes = c("_Full", "_Shared"))
+
+# Create the plot
+pl <- ggplot(df_plot, aes(x = Accuracy_Full, y = Accuracy_Shared, color = Subclass)) +
+  geom_point(size = 4) +  # Set the size of the points
+  scale_color_manual(values = colors_list) +  # Set colors from colors_list
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "black", size = 1) +  # Thicker diagonal line
+  xlim(0.9, 1.0) + ylim(0.9, 1.0) +  # Set the X and Y limits
+  labs(x = "Accuracy in Full Space", y = "Accuracy in Shared Space") +  # Label axes
+  coord_fixed() +  # Make the plot square
+  theme_classic()  # Apply the classic theme
+
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_Full_vs_Shared_Accuracy.png", plot = pl, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_Full_vs_Shared_Accuracy.svg", plot = pl, dpi = 300)
+
+```
+
+
+```{r}
+
+# Prepare the data for plotting
+df_full <- mouse.acc[mouse.acc$Space == "Full", ]
+df_shared <- mouse.acc[mouse.acc$Space == "Shared", ]
+
+# Merge the data to have Accuracy in Full and Shared spaces side by side
+df_plot <- merge(df_full, df_shared, by = "Subclass", suffixes = c("_Full", "_Shared"))
+
+# Create the plot
+pl <- ggplot(df_plot, aes(x = Accuracy_Full, y = Accuracy_Shared, color = Subclass)) +
+  geom_point(size = 4) +  # Set the size of the points
+  scale_color_manual(values = colors_list) +  # Set colors from colors_list
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "black", size = 1) +  # Thicker diagonal line
+  xlim(0.9, 1.0) + ylim(0.9, 1.0) +  # Set the X and Y limits
+  labs(x = "Accuracy in Full Space", y = "Accuracy in Shared Space") +  # Label axes
+  coord_fixed() +  # Make the plot square
+  theme_classic()  # Apply the classic theme
+
+ggsave("E:/Opossum_Paper/Figure 2/Mouse_Full_vs_Shared_Accuracy.png", plot = pl, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Mouse_Full_vs_Shared_Accuracy.svg", plot = pl, dpi = 300)
+
+```
+
+
+```{r, fig.width = 2, fig.height = 4}
+
+Idents(objs.m.merge$Opossum$Int$All) <- "class"
+levels(objs.m.merge$Opossum$Int$All) <- c("glutamatergic", "gabaergic", "nonneuronal")
+pl <- VlnPlot(objs.m.merge$Opossum$Int$All, "predicted.subclass.score", cols = c("#FF4500", "#1E90FF", "#8C8C8C")) + NoLegend() + ylim(0, 1)
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_Shared_Prediction_Score.png", plot = pl, width = 2, height = 4, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_Shared_Prediction_Score.svg", plot = pl, width = 2, height = 4, dpi = 300)
+
+```
+
+
+```{r, fig.width = 3, fig.height = 3}
 
 opossum.glutamatergic.levels <- c("IT_A", "IT_C", "IT_B", "IT_D", "L5NP", "L5PT", "L6CT", "L6b")
-Idents(objs.m.opossum[[1]]) <- "subclass"
-levels(objs.m.opossum[[1]]) <- opossum.glutamatergic.levels
-p <- VlnPlot(objs.m.opossum[[1]], "predicted.subclass.score", cols = colors_list[opossum.glutamatergic.levels]) + ylim(0, 1) + theme(legend.spacing.x = unit(3.0, 'cm'))
-ggsave("E:/Opossum_Paper/Figure 2/Opossum_Mouse_Mapping_Quality_Glutamatergic.png", plot = p, dpi = 300)
-ggsave("E:/Opossum_Paper/Figure 2/Opossum_Mouse_Mapping_Quality_Glutamatergic.svg", plot = p, dpi = 300)
+Idents(objs.m.merge$Opossum$Int$Glutamatergic) <- "subclass"
+levels(objs.m.merge$Opossum$Int$Glutamatergic) <- opossum.glutamatergic.levels
+pl <- VlnPlot(objs.m.merge$Opossum$Int$Glutamatergic, "predicted.subclass.score", cols = colors_list[opossum.glutamatergic.levels]) + NoLegend() + ylim(0, 1)
+ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mapping_Quality_Glutamatergic.png", plot = pl, width = 3, height = 3, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mapping_Quality_Glutamatergic.svg", plot = pl, width = 3, height = 3, dpi = 300)
+
+```
+
+
+```{r, fig.width = 3, fig.height = 3}
+
+opossum.gabaergic.levels <- c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1")
+Idents(objs.m.merge$Opossum$Int$GABAergic) <- "subclass"
+levels(objs.m.merge$Opossum$Int$GABAergic) <- opossum.gabaergic.levels
+pl <- VlnPlot(objs.m.merge$Opossum$Int$GABAergic, "predicted.subclass.score", cols = colors_list[opossum.gabaergic.levels]) + NoLegend() + ylim(0, 1)
+ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mapping_Quality_GABAergic.png", plot = pl, width = 3, height = 3, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mapping_Quality_GABAergic.svg", plot = pl, width = 3, height = 3, dpi = 300)
+
+```
+
+
+```{r, fig.width = 3, fig.height = 3}
+
+opossum.nonneuronal.levels <- c("Astro", "Micro", "OD", "OPC", "Endo")
+Idents(objs.m.merge$Opossum$Int$Nonneuronal) <- "subclass"
+levels(objs.m.merge$Opossum$Int$Nonneuronal) <- opossum.nonneuronal.levels
+pl <- VlnPlot(objs.m.merge$Opossum$Int$Nonneuronal, "predicted.subclass.score", cols = colors_list[opossum.nonneuronal.levels]) + NoLegend() + ylim(0, 1)
+ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mapping_Quality_Nonneuronal.png", plot = pl, width = 3, height = 3, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mapping_Quality_Nonneuronal.svg", plot = pl, width = 3, height = 3, dpi = 300)
+
+```
+
+
+```{r, fig.width = 2, fig.height = 4}
+
+Idents(objs.m.merge$Mouse$Int$All) <- "class"
+levels(objs.m.merge$Mouse$Int$All) <- c("glutamatergic", "gabaergic", "nonneuronal")
+pl <- VlnPlot(objs.m.merge$Mouse$Int$All, "predicted.subclass.score", cols = c("#FF4500", "#1E90FF", "#8C8C8C")) + NoLegend() + ylim(0, 1)
+ggsave("E:/Opossum_Paper/Figure 2/Mouse_Shared_Prediction_Score.png", plot = pl, width = 2, height = 4, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Mouse_Shared_Prediction_Score.svg", plot = pl, width = 2, height = 4, dpi = 300)
+
+```
+
+
+```{r, fig.width = 3, fig.height = 3}
+
+mouse.glutamatergic.levels <- c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b")
+Idents(objs.m.merge$Mouse$Int$Glutamatergic) <- "subclass"
+levels(objs.m.merge$Mouse$Int$Glutamatergic) <- mouse.glutamatergic.levels
+pl <- VlnPlot(objs.m.merge$Mouse$Int$Glutamatergic, "predicted.subclass.score", cols = colors_list[mouse.glutamatergic.levels]) + NoLegend() + ylim(0, 1)
+ggsave("E:/Opossum_Paper/Figure S2/Mouse_Mapping_Quality_Glutamatergic.png", plot = pl, width = 3, height = 3, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure S2/Mouse_Mapping_Quality_Glutamatergic.svg", plot = pl, width = 3, height = 3, dpi = 300)
+
+```
+
+
+```{r, fig.width = 3, fig.height = 3}
+
+mouse.gabaergic.levels <- c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")
+Idents(objs.m.merge$Mouse$Int$GABAergic) <- "subclass"
+levels(objs.m.merge$Mouse$Int$GABAergic) <- mouse.gabaergic.levels
+pl <- VlnPlot(objs.m.merge$Mouse$Int$GABAergic, "predicted.subclass.score", cols = colors_list[mouse.gabaergic.levels]) + NoLegend() + ylim(0, 1)
+ggsave("E:/Opossum_Paper/Figure S2/Mouse_Mapping_Quality_GABAergic.png", plot = pl, width = 3, height = 3, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure S2/Mouse_Mapping_Quality_GABAergic.svg", plot = pl, width = 3, height = 3, dpi = 300)
+
+```
+
+
+```{r, fig.width = 3, fig.height = 3}
+
+mouse.nonneuronal.levels <- c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC")
+Idents(objs.m.merge$Mouse$Int$Nonneuronal) <- "subclass"
+levels(objs.m.merge$Mouse$Int$Nonneuronal) <- mouse.nonneuronal.levels
+pl <- VlnPlot(objs.m.merge$Mouse$Int$Nonneuronal, "predicted.subclass.score", cols = colors_list[mouse.nonneuronal.levels]) + NoLegend() + ylim(0, 1)
+ggsave("E:/Opossum_Paper/Figure S2/Mouse_Mapping_Quality_Nonneuronal.png", plot = pl, width = 3, height = 3, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure S2/Mouse_Mapping_Quality_Nonneuronal.svg", plot = pl, width = 3, height = 3, dpi = 300)
+
+```
+
+
+TEST MAPPING QUALITY
+
+
+```{r}
+
+objs.m.opossum <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/objs_m_opossum.rds")
 
 ```
 
 
 ```{r}
 
-objs.m.opossum[[1]]$subclass.proj <- objs.m.opossum[[1]]$subclass
-objs.m.opossum[[1]]$subclass.proj[objs.m.opossum[[1]]$subclass.proj %in% c("L5PT", "L6CT", "L6b")] <- "Projection"
-opossum.glutamatergic.levels <- c("IT_A", "IT_C", "IT_B", "IT_D", "L5NP", "Projection")
-Idents(objs.m.opossum[[1]]) <- "subclass.proj"
-levels(objs.m.opossum[[1]]) <- opossum.glutamatergic.levels
-p <- VlnPlot(objs.m.opossum[[1]], "predicted.subclass.score", cols = colors_list[opossum.glutamatergic.levels]) + ylim(0, 1) + theme(legend.spacing.x = unit(6.0, 'cm'))
-ggsave("E:/Opossum_Paper/Opossum_Mouse_Mapping_Quality_Glutamatergic_Proj.png", plot = p, dpi = 300)
-ggsave("E:/Opossum_Paper/Opossum_Mouse_Mapping_Quality_Glutamatergic_Proj.svg", plot = p, dpi = 300)
+dataset <- c(rep("Cross", ncol(objs.m.opossum[[1]])), rep("Within", ncol(objs.opossum.full.m.glut)))
+subclass <- c(objs.m.opossum[[1]]$subclass, objs.opossum.full.m.glut$subclass)
+prediction.score <- c(objs.m.opossum[[1]]$predicted.subclass.score, objs.opossum.full.m.glut$predicted.subclass.score)
 
 # Extract the data
-data <- data.frame(
-  subclass = objs.m.opossum[[1]]$subclass.proj, 
-  prediction_score = objs.m.opossum[[1]]$predicted.subclass.score
-)
+data <- data.frame(dataset, subclass, prediction.score)
 
 # Perform ANOVA
-anova_result <- aov(prediction_score ~ subclass, data = data)
+anova_result <- aov(prediction.score ~ subclass * dataset, data = data)
 
 # Summary of ANOVA
 summary(anova_result)
@@ -200,38 +331,66 @@ print(tukey_result)
 
 ```{r}
 
-opossum.gabaergic.levels <- c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1")
-Idents(objs.m.opossum[[2]]) <- "subclass"
-levels(objs.m.opossum[[2]]) <- opossum.gabaergic.levels
-p <- VlnPlot(objs.m.opossum[[2]], "predicted.subclass.score", cols = colors_list[opossum.gabaergic.levels]) + ylim(0, 1) + theme(legend.spacing.x = unit(3, 'cm'))
-ggsave("E:/Opossum_Paper/Figure 2/Opossum_Mouse_Mapping_Quality_GABAergic.png", plot = p, dpi = 300)
-ggsave("E:/Opossum_Paper/Figure 2/Opossum_Mouse_Mapping_Quality_GABAergic.svg", plot = p, dpi = 300)
+dataset <- c(rep("Cross", ncol(objs.m.opossum[[2]])), rep("Within", ncol(objs.opossum.full.m.gaba)))
+subclass <- c(objs.m.opossum[[2]]$subclass, objs.opossum.full.m.gaba$subclass)
+prediction.score <- c(objs.m.opossum[[2]]$predicted.subclass.score, objs.opossum.full.m.gaba$predicted.subclass.score)
+
+# Extract the data
+data <- data.frame(dataset, subclass, prediction.score)
+
+# Perform ANOVA
+anova_result <- aov(prediction.score ~ subclass * dataset, data = data)
+
+# Summary of ANOVA
+summary(anova_result)
+
+# Perform Tukey's HSD test if ANOVA is significant
+tukey_result <- TukeyHSD(anova_result)
+
+# View the Tukey's test result
+print(tukey_result)
 
 ```
 
 
 ```{r}
 
-opossum.nonneuronal.levels <- c("Astro", "Micro", "OD", "OPC", "Endo")
-Idents(objs.m.opossum[[3]]) <- "subclass"
-levels(objs.m.opossum[[3]]) <- opossum.nonneuronal.levels
-p <- VlnPlot(objs.m.opossum[[3]], "predicted.subclass.score", cols = colors_list[opossum.nonneuronal.levels]) + ylim(0, 1) + theme(legend.spacing.x = unit(3, 'cm'))
-ggsave("E:/Opossum_Paper/Figure 2/Opossum_Mouse_Mapping_Quality_Nonneuronal.png", plot = p, dpi = 300)
-ggsave("E:/Opossum_Paper/Figure 2/Opossum_Mouse_Mapping_Quality_Nonneuronal.svg", plot = p, dpi = 300)
+dataset <- c(rep("Cross", ncol(objs.m.opossum[[3]])), rep("Within", ncol(objs.opossum.full.m.non)))
+subclass <- c(objs.m.opossum[[3]]$subclass, objs.opossum.full.m.non$subclass)
+prediction.score <- c(objs.m.opossum[[3]]$predicted.subclass.score, objs.opossum.full.m.non$predicted.subclass.score)
+
+# Extract the data
+data <- data.frame(dataset, subclass, prediction.score)
+
+# Perform ANOVA
+anova_result <- aov(prediction.score ~ subclass * dataset, data = data)
+
+# Summary of ANOVA
+summary(anova_result)
+
+# Perform Tukey's HSD test if ANOVA is significant
+tukey_result <- TukeyHSD(anova_result)
+
+# View the Tukey's test result
+print(tukey_result)
 
 ```
 
 
-```{r}
 
-saveRDS(obj.mouse, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_mouse.rds")
-saveRDS(obj.opossum, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_opossum.rds")
-saveRDS(objs.i.mouse, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_i_mouse.rds")
-saveRDS(objs.i.opossum, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_i_opossum.rds")
-saveRDS(objs.m.mouse, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/objs_m_mouse.rds")
-saveRDS(objs.m.opossum, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/objs_m_opossum.rds")
-saveRDS(obj.m.mouse, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_m_mouse.rds")
-saveRDS(obj.m.opossum, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_m_opossum.rds")
 
-```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
