@@ -1,0 +1,420 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(SeuratWrappers)
+library(monocle3)
+library(pheatmap)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.opossum.gabaergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_gabaergic_processed.rds")
+obj.mouse.gabaergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_gabaergic_processed.rds")
+
+```
+
+
+```{r}
+
+colors_list <- list(
+              # Glutamatergic
+              CGE = "#FF6C88",
+              CGE_A = "#FFB3B3",
+              `L2/3` = "#FFB3B3",
+              CGE_B = "#FFA07A",
+              L4 = "#FF7F50",
+              CGE_C = "#FF7F50",
+              L5CGE = "#FFA07A",
+              CGE_D = "#FF6347",
+              L6CGE = "#FF6347",
+              L5NP = "#FF4500",
+              L5PT = "#32a852", 
+              L6CT = "#7de89a",
+              L6b = "#206633",
+            
+              # GABAergic
+              Pvalb = "#1E90FF",
+              Sst = "#87CEEB",
+              Vip = "#87CEFA",
+              Lamp5 = "#4682B4",
+              Frem1 = "#ADD8E6",
+              Stac = "#5F9EA0",
+            
+              # Non-neuronal
+              Astro = "#8C8C8C",
+              Micro = "#A0A0A0",
+              OD = "#B4B4B4",
+              OPC = "#C8C8C8",
+              Endo = "#505050",
+              VLMC = "#B4B4B4"
+)
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.gabaergic) <- "subclass"
+obj.opossum.CGE <- subset(obj.opossum.gabaergic, idents = c("Vip", "Lamp5", "Frem1"))
+
+Idents(obj.mouse.gabaergic) <- "subclass"
+obj.mouse.CGE <- subset(obj.mouse.gabaergic, idents = c("Vip", "Lamp5", "Frem1", "Stac"))
+
+```
+
+
+```{r}
+
+obj.opossum.CGE <- NormalizePCA(obj.opossum.CGE)
+obj.mouse.CGE <- NormalizePCA(obj.mouse.CGE)
+
+```
+
+
+```{r}
+
+opossum.pcs <- obj.opossum.CGE@reductions$pca@cell.embeddings[, 1:2]
+write.table(opossum.pcs, "E:/Transcriptomics_V1/Integration/opossum_cge_pcs.txt", sep = " ", col.names = FALSE, row.names = FALSE)
+mouse.pcs <- obj.mouse.CGE@reductions$pca@cell.embeddings[, c(1, 3)]
+write.table(mouse.pcs, "E:/Transcriptomics_V1/Integration/mouse_cge_pcs.txt", sep = " ", col.names = FALSE, row.names = FALSE)
+
+```
+
+
+```{r}
+
+mouse.polygon <- read.csv("E:/Transcriptomics_V1/Integration/mouse_cge_polygon.csv")
+mouse.polygon <- rbind(mouse.polygon, mouse.polygon[1, ])
+subclasses.mouse <- c("Vip", "Lamp5", "Frem1", "Stac")
+Idents(obj.mouse.CGE) <- "subclass"
+levels(obj.mouse.CGE) <- subclasses.mouse
+DimPlot(obj.mouse.CGE, reduction = "pca", dims = c(1, 3), cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal() +
+  geom_point(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", size = 2) +
+  geom_path(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+# ggsave("E:/Opossum_Paper/Mouse_PC.png", plot = pl, dpi = 300)
+# ggsave("E:/Opossum_Paper/Mouse_PC.svg", plot = pl, dpi = 300)
+
+# Idents(obj.mouse.CGE) <- "sample"
+# DimPlot(obj.mouse.CGE, reduction = "pca", pt.size = 1, shuffle = TRUE, raster = FALSE) + xlim(-16, 20) + ylim(-22, 14) + coord_equal() +
+#   geom_point(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+#   geom_path(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+# 
+# FeaturePlot(obj.mouse.CGE, "nFeature_RNA", reduction = "pca", pt.size = 1, max.cutoff = 6000, raster = FALSE) + xlim(-16, 20) + ylim(-22, 14) + coord_equal() +
+#   geom_point(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+#   geom_path(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+# 
+# FeaturePlot(obj.mouse.CGE, "nCount_RNA", reduction = "pca", pt.size = 1, max.cutoff = 30000, raster = FALSE) + xlim(-16, 20) + ylim(-22, 14) + coord_equal() +
+#   geom_point(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+#   geom_path(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+
+opossum.polygon <- read.csv("E:/Transcriptomics_V1/Integration/opossum_cge_polygon.csv")
+opossum.polygon <- rbind(opossum.polygon, opossum.polygon[1, ])
+subclasses.opossum <- c("Vip", "Lamp5", "Frem1")
+Idents(obj.opossum.CGE) <- "subclass"
+levels(obj.opossum.CGE) <- subclasses.opossum
+DimPlot(obj.opossum.CGE, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal() +
+  geom_point(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", size = 2) +
+  geom_path(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+# ggsave("E:/Opossum_Paper/Opossum_PC.png", plot = pl, dpi = 300)
+# ggsave("E:/Opossum_Paper/Opossum_PC.svg", plot = pl, dpi = 300)
+
+# Idents(obj.opossum.CGE) <- "sample"
+# DimPlot(obj.opossum.CGE, reduction = "pca", pt.size = 1, shuffle = TRUE, raster = FALSE) + xlim(-20, 22) + ylim(-18, 24) + coord_equal() +
+#   geom_point(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+#   geom_path(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+# 
+# FeaturePlot(obj.opossum.CGE, "nFeature_RNA", reduction = "pca", pt.size = 1, max.cutoff = 6000, raster = FALSE) + xlim(-20, 22) + ylim(-18, 24) + coord_equal() +
+#   geom_point(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+#   geom_path(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+# 
+# FeaturePlot(obj.opossum.CGE, "nCount_RNA", reduction = "pca", pt.size = 1, max.cutoff = 30000, raster = FALSE) + xlim(-20, 22) + ylim(-18, 24) + coord_equal() +
+#   geom_point(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+#   geom_path(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+
+```
+
+
+```{r}
+
+subclasses.opossum <- c("CGE_A", "CGE_B", "CGE_C", "CGE_D")
+Idents(obj.opossum.CGE) <- "subclass"
+levels(obj.opossum.CGE) <- subclasses.opossum
+obj.opossum.CGE.nA <- subset(obj.opossum.CGE, idents = "CGE_A", invert = TRUE)
+pl <- DimPlot(obj.opossum.CGE.nA, reduction = "pca", cols = c("#6a6c6d", "#6a6c6d", "#6a6c6d"), pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-18, 22) + coord_equal()
+ggsave("E:/Opossum_Paper/Opossum_PC_CGE_A_Gray.png", plot = pl, dpi = 300)
+ggsave("E:/Opossum_Paper/Opossum_PC_CGE_A_Gray.svg", plot = pl, dpi = 300)
+
+subclasses.opossum <- c("CGE_A", "CGE_B", "CGE_C", "CGE_D")
+Idents(obj.opossum.CGE) <- "subclass"
+levels(obj.opossum.CGE) <- subclasses.opossum
+obj.opossum.CGE.A <- subset(obj.opossum.CGE, idents = "CGE_A")
+pl <- DimPlot(obj.opossum.CGE.A, reduction = "pca", cols = colors_list[["CGE_A"]], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-18, 22) + coord_equal()
+ggsave("E:/Opossum_Paper/Opossum_PC_CGE_A.png", plot = pl, dpi = 300)
+ggsave("E:/Opossum_Paper/Opossum_PC_CGE_A.svg", plot = pl, dpi = 300)
+
+```
+
+
+```{r}
+
+subclasses.opossum <- c("CGE_A", "CGE_B", "CGE_C", "CGE_D")
+Idents(obj.opossum.CGE) <- "subclass"
+levels(obj.opossum.CGE) <- subclasses.opossum
+obj.opossum.CGE.nB <- subset(obj.opossum.CGE, idents = "CGE_B", invert = TRUE)
+pl <- DimPlot(obj.opossum.CGE.nB, reduction = "pca", cols = c("#6a6c6d", "#6a6c6d", "#6a6c6d"), pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-18, 22) + coord_equal()
+ggsave("E:/Opossum_Paper/Opossum_PC_CGE_B_Gray.png", plot = pl, dpi = 300)
+ggsave("E:/Opossum_Paper/Opossum_PC_CGE_B_Gray.svg", plot = pl, dpi = 300)
+
+subclasses.opossum <- c("CGE_A", "CGE_B", "CGE_C", "CGE_D")
+Idents(obj.opossum.CGE) <- "subclass"
+levels(obj.opossum.CGE) <- subclasses.opossum
+obj.opossum.CGE.B <- subset(obj.opossum.CGE, idents = "CGE_B")
+pl <- DimPlot(obj.opossum.CGE.B, reduction = "pca", cols = colors_list[["CGE_B"]], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-18, 22) + coord_equal()
+ggsave("E:/Opossum_Paper/Opossum_PC_CGE_B.png", plot = pl, dpi = 300)
+ggsave("E:/Opossum_Paper/Opossum_PC_CGE_B.svg", plot = pl, dpi = 300)
+
+```
+
+
+```{r}
+
+subclasses.opossum <- c("CGE_A", "CGE_B", "CGE_C", "CGE_D")
+Idents(obj.opossum.CGE) <- "subclass"
+levels(obj.opossum.CGE) <- subclasses.opossum
+obj.opossum.CGE.nC <- subset(obj.opossum.CGE, idents = "CGE_C", invert = TRUE)
+pl <- DimPlot(obj.opossum.CGE.nC, reduction = "pca", cols = c("#6a6c6d", "#6a6c6d", "#6a6c6d"), pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-18, 22) + coord_equal()
+ggsave("E:/Opossum_Paper/Opossum_PC_CGE_C_Gray.png", plot = pl, dpi = 300)
+ggsave("E:/Opossum_Paper/Opossum_PC_CGE_C_Gray.svg", plot = pl, dpi = 300)
+
+subclasses.opossum <- c("CGE_A", "CGE_B", "CGE_C", "CGE_D")
+Idents(obj.opossum.CGE) <- "subclass"
+levels(obj.opossum.CGE) <- subclasses.opossum
+obj.opossum.CGE.C <- subset(obj.opossum.CGE, idents = "CGE_C")
+pl <- DimPlot(obj.opossum.CGE.C, reduction = "pca", cols = colors_list[["CGE_C"]], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-18, 22) + coord_equal()
+ggsave("E:/Opossum_Paper/Opossum_PC_CGE_C.png", plot = pl, dpi = 300)
+ggsave("E:/Opossum_Paper/Opossum_PC_CGE_C.svg", plot = pl, dpi = 300)
+
+```
+
+
+```{r}
+
+subclasses.opossum <- c("CGE_A", "CGE_B", "CGE_C", "CGE_D")
+Idents(obj.opossum.CGE) <- "subclass"
+levels(obj.opossum.CGE) <- subclasses.opossum
+obj.opossum.CGE.nD <- subset(obj.opossum.CGE, idents = "CGE_D", invert = TRUE)
+pl <- DimPlot(obj.opossum.CGE.nD, reduction = "pca", cols = c("#6a6c6d", "#6a6c6d", "#6a6c6d"), pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-18, 22) + coord_equal()
+ggsave("E:/Opossum_Paper/Opossum_PC_CGE_D_Gray.png", plot = pl, dpi = 300)
+ggsave("E:/Opossum_Paper/Opossum_PC_CGE_D_Gray.svg", plot = pl, dpi = 300)
+
+subclasses.opossum <- c("CGE_A", "CGE_B", "CGE_C", "CGE_D")
+Idents(obj.opossum.CGE) <- "subclass"
+levels(obj.opossum.CGE) <- subclasses.opossum
+obj.opossum.CGE.D <- subset(obj.opossum.CGE, idents = "CGE_D")
+pl <- DimPlot(obj.opossum.CGE.D, reduction = "pca", cols = colors_list[["CGE_D"]], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-18, 22) + coord_equal()
+ggsave("E:/Opossum_Paper/Opossum_PC_CGE_D.png", plot = pl, dpi = 300)
+ggsave("E:/Opossum_Paper/Opossum_PC_CGE_D.svg", plot = pl, dpi = 300)
+
+```
+
+MAP THESE SHUFFLED GROUPS?
+
+```{r}
+
+obj.m.opossum <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_m_opossum.rds")
+obj.m.opossum.CGE <- obj.m.opossum[, colnames(obj.m.opossum) %in% colnames(obj.opossum.CGE)]
+obj.opossum.CGE.MP <- obj.opossum.CGE[, colnames(obj.opossum.CGE) %in% colnames(obj.m.opossum.CGE)]
+obj.opossum.CGE.MP <- obj.opossum.CGE.MP[, match(colnames(obj.opossum.CGE.MP), colnames(obj.m.opossum.CGE))]
+obj.opossum.CGE.MP$predicted.subclass.score <- obj.m.opossum.CGE$predicted.subclass.score
+obj.opossum.CGE.MP$predicted.subclass <- obj.m.opossum.CGE$predicted.subclass
+
+DimPlot(obj.opossum.CGE.MP, reduction = "pca", group.by = "predicted.subclass", pt.size = 1, shuffle = TRUE, raster = FALSE) + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+FeaturePlot(obj.opossum.CGE.MP, "predicted.subclass.score", reduction = "pca", pt.size = 1, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+
+```
+
+
+```{r}
+
+objs.m.CGE <- MapObjects(obj.opossum.CGE.SS, obj.mouse.CGE, c("subclass", "type"), assay = "SCT")
+
+DimPlot(objs.m.CGE[[1]], reduction = "pca", group.by = "predicted.subclass", pt.size = 1, shuffle = TRUE, raster = FALSE) + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+FeaturePlot(objs.m.CGE[[1]], "predicted.subclass.score", reduction = "pca", pt.size = 1, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+FeaturePlot(objs.m.CGE[[1]], "Rorb", reduction = "pca", pt.size = 1, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+
+```
+
+
+```{r}
+
+shared.HVFs <- SelectIntegrationFeatures(object.list = c(obj.mouse.CGE, obj.opossum.CGE), nfeatures = 3000)
+
+obj.mouse.CGE.SVF <- SCTransform(obj.mouse.CGE, vst.flavor = "v2", residual.features = shared.HVFs, return.only.var.genes = FALSE, verbose = FALSE) %>%
+                    RunPCA(npcs = 30, verbose = FALSE)
+
+obj.opossum.CGE.SVF <- SCTransform(obj.opossum.CGE, vst.flavor = "v2", residual.features = shared.HVFs, return.only.var.genes = FALSE, verbose = FALSE) %>%
+                      RunPCA(npcs = 30, verbose = FALSE)
+
+```
+
+
+```{r}
+
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+
+DimPlot(obj.mouse.CGE.SVF, reduction = "pca", group.by = "sample", pt.size = 1, shuffle = TRUE, raster = FALSE) + xlim(-30, 35) + ylim(-45, 20) + coord_equal()
+subclasses.mouse <- c("L2/3", "L4", "L5CGE", "L6CGE")
+Idents(obj.mouse.CGE.SVF) <- "subclass"
+levels(obj.mouse.CGE.SVF) <- subclasses.mouse
+pl <- DimPlot(obj.mouse.CGE.SVF, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-30, 25) + ylim(-20, 35) + coord_equal()
+pl[[1]]$layers[[1]]$aes_params$alpha =  0.8
+pl
+FeaturePlot(obj.mouse.CGE.SVF, "nCount_RNA", reduction = "pca", pt.size = 2, raster = FALSE) + NoLegend() + xlim(-30, 35) + ylim(-45, 20) + coord_equal()
+
+DimPlot(obj.opossum.CGE.SVF, reduction = "pca", group.by = "sample", pt.size = 1, shuffle = TRUE, raster = FALSE) + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+subclasses.opossum <- c("CGE_A", "CGE_B", "CGE_C", "CGE_D")
+Idents(obj.opossum.CGE.SVF) <- "subclass"
+levels(obj.opossum.CGE.SVF) <- subclasses.opossum
+pl <- DimPlot(obj.opossum.CGE.SVF, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+pl[[1]]$layers[[1]]$aes_params$alpha =  0.8
+pl
+FeaturePlot(obj.opossum.CGE.SVF, "nCount_RNA", reduction = "pca", pt.size = 2, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+
+```
+
+
+```{r}
+
+shared.HVFs <- SelectIntegrationFeatures(object.list = c(obj.mouse.CGE, obj.opossum.CGE), nfeatures = 3000)
+obj.opossum.CGE.SS <- obj.opossum.CGE[, sample(colnames(obj.opossum.CGE), length(colnames(obj.mouse.CGE)))]
+obj.mouse.CGE$species <- "Mouse"
+obj.combined.CGE <- merge(obj.mouse.CGE, obj.opossum.CGE.SS)
+obj.combined.CGE <- SCTransform(obj.combined.CGE, vst.flavor = "v2", residual.features = shared.HVFs, return.only.var.genes = FALSE, verbose = FALSE) %>%
+                    RunPCA(npcs = 30, verbose = FALSE)
+
+```
+
+
+```{r}
+
+DimPlot(obj.combined.CGE, reduction = "pca", dims = c(2, 4), group.by = "species", pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+DimPlot(obj.combined.CGE, reduction = "pca", dims = c(2, 4), split.by = "species", group.by = "subclass", pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+FeaturePlot(obj.combined.CGE, "nCount_RNA", reduction = "pca", dims = c(2, 4), pt.size = 2, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+
+```
+
+
+```{r}
+
+objs <- list(obj.opossum.CGE, obj.mouse.CGE)
+obj.integrated.CGE <- IntegrateObjects(objs[[1]], objs[[2]], resolutions = c(1, 2), nfeatures = 3000, subsample = TRUE)
+objs.i.CGE <- SplitObject(obj.integrated.CGE, split.by = "species")
+objs.im.CGE <- MapObjects(objs.i.CGE[["Opossum"]], objs.i.CGE[["Mouse"]], c("subclass", "type"), assay = "integrated")
+
+```
+
+
+```{r}
+
+DimPlot(objs.im.CGE[[1]], reduction = "pca", group.by = "subclass", pt.size = 1, shuffle = TRUE, raster = FALSE) + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+DimPlot(objs.im.CGE[[1]], reduction = "pca", group.by = "predicted.subclass", pt.size = 1, shuffle = TRUE, raster = FALSE) + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+FeaturePlot(objs.im.CGE[[1]], "predicted.subclass.score", reduction = "pca", pt.size = 1, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.im.opossum.CGE <- objs.im.CGE[[1]]
+obj.im.opossum.CGE.SS <- obj.im.opossum.CGE[, colnames(obj.im.opossum.CGE) %in% colnames(obj.opossum.CGE)]
+obj.opossum.CGE.IMP <- obj.opossum.CGE[, colnames(obj.opossum.CGE) %in% colnames(obj.im.opossum.CGE)]
+obj.opossum.CGE.IMP <- obj.opossum.CGE.IMP[, match(colnames(obj.opossum.CGE.IMP), colnames(obj.im.opossum.CGE))]
+obj.opossum.CGE.IMP$predicted.subclass.score <- obj.im.opossum.CGE$predicted.subclass.score
+obj.opossum.CGE.IMP$predicted.subclass <- obj.im.opossum.CGE$predicted.subclass
+
+DimPlot(obj.opossum.CGE.IMP, reduction = "pca", group.by = "predicted.subclass", pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+FeaturePlot(obj.opossum.CGE.IMP, "predicted.subclass.score", reduction = "pca", pt.size = 1, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
+
+```
+
+
+GRADIENT GENES
+
+
+```{r}
+
+Idents(obj.opossum.CGE) <- "subclass"
+markers.opossum.CGE <- FindAllMarkers(obj.opossum.CGE, assay = "SCT", logfc.threshold = 0.8, only.pos = TRUE)
+
+```
+
+
+```{r}
+
+gene_list <- rownames(markers.opossum.CGE)
+
+# Subset the Seurat object to include only the genes of interest
+DefaultAssay(obj.opossum.CGE) <- "RNA"
+seurat_subset <- subset(obj.opossum.CGE, features = gene_list)
+
+data <- GetAssayData(object = seurat_subset, slot = "data")
+celldata <- as.data.frame(seurat_subset@meta.data)
+genedata <- as.data.frame(x = row.names(data), row.names = row.names(data))
+colnames(genedata) <- "gene_short_name"
+cds <- new_cell_data_set(data, cell_metadata = celldata, gene_metadata = genedata)
+cds <- estimate_size_factors(cds)
+
+# Learn the graph and order cells by pseudotime on the subset CDS
+cds <- preprocess_cds(cds, method = "PCA")
+cds <- reduce_dimension(cds, reduction_method = "UMAP")
+cds <- cluster_cells(cds)
+cds <- learn_graph(cds)
+cds <- order_cells(cds)
+
+# Extract the pseudotime information from the subset CDS
+pseudotime_data <- pseudotime(cds)
+
+# Create a data frame with pseudotime and cell names
+pseudotime_df <- data.frame(cell = colnames(cds), pseudotime = pseudotime_data)
+# Order the data frame by pseudotime
+pseudotime_df <- pseudotime_df[order(pseudotime_df$pseudotime), ]
+# Extract ordered cell names
+ordered_cells <- pseudotime_df$cell
+
+# Extract expression matrix for the specified genes
+# sampled_cells <- ordered_cells[ordered_cells %in% sample(ordered_cells, 2000, replace = FALSE, prob = NULL)]
+expression_matrix <- as.matrix(exprs(cds[gene_list[gene_list %in% rownames(cds)], ordered_cells]))
+
+breaks <- seq(-2, 2, length.out = 101)
+colors <- colorRampPalette(c("blue", "white", "red"))(100)
+
+# Generate the heatmap
+pheatmap(expression_matrix, cluster_rows = FALSE, cluster_cols = FALSE,
+         show_rownames = FALSE, show_colnames = FALSE,
+         scale = "column", 
+         color = colors,
+         breaks = breaks,
+         main = "Gene Expression Heatmap Ordered by Pseudotime")
+
+```
+

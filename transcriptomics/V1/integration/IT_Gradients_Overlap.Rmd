@@ -1,0 +1,242 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(SeuratWrappers)
+library(monocle3)
+library(pheatmap)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
+obj.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+
+```
+
+
+```{r}
+
+colors_list <- list(
+              # Glutamatergic
+              IT = "#FF6C88",
+              IT_A = "#FFB3B3",
+              `L2/3` = "#FFB3B3",
+              IT_B = "#FFA07A",
+              L4 = "#FF7F50",
+              IT_C = "#FF7F50",
+              L5IT = "#FFA07A",
+              IT_D = "#FF6347",
+              L6IT = "#FF6347",
+              L5NP = "#FF4500",
+              L5PT = "#32a852", 
+              L6CT = "#7de89a",
+              L6b = "#206633",
+            
+              # GABAergic
+              Pvalb = "#1E90FF",
+              Sst = "#87CEEB",
+              Vip = "#87CEFA",
+              Lamp5 = "#4682B4",
+              Frem1 = "#ADD8E6",
+              Stac = "#5F9EA0",
+            
+              # Non-neuronal
+              Astro = "#8C8C8C",
+              Micro = "#A0A0A0",
+              OD = "#B4B4B4",
+              OPC = "#C8C8C8",
+              Endo = "#505050",
+              VLMC = "#B4B4B4"
+)
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.glutamatergic) <- "subclass"
+obj.opossum.IT <- subset(obj.opossum.glutamatergic, idents = c("IT_A", "IT_B", "IT_C", "IT_D"))
+obj.opossum.IT <- NormalizePCA(obj.opossum.IT)
+
+Idents(obj.mouse.glutamatergic) <- "subclass"
+obj.mouse.IT <- subset(obj.mouse.glutamatergic, idents = c("L2/3", "L4", "L5IT", "L6IT"))
+obj.mouse.IT <- NormalizePCA(obj.mouse.IT)
+
+opossum.VFs <- VariableFeatures(obj.opossum.IT)
+mouse.VFs <- VariableFeatures(obj.mouse.IT)
+shared.VFs <- intersect(opossum.VFs, mouse.VFs)
+
+```
+
+
+```{r}
+
+# Function to binarize gene expression for all genes in a Seurat object without looping
+binarize_all_genes_vectorized <- function(seurat_obj, genes = NA, count_threshold = 1, fraction_threshold = 0.1, subclass_group = "subclass") {
+  # Get the expression matrix
+  expr_matrix <- GetAssayData(seurat_obj, slot = "counts")
+  if (!all(is.na(genes))) {
+    expr_matrix <- expr_matrix[genes,]
+  }
+  
+  # Get the metadata subclass group
+  metadata <- seurat_obj@meta.data[[subclass_group]]
+  
+  # Convert metadata into a factor with levels corresponding to unique subclasses
+  metadata_factor <- factor(metadata, levels = unique(metadata))
+  
+  # Initialize a matrix to store results
+  gene_expression_matrix <- matrix(0, nrow = nrow(expr_matrix), ncol = length(levels(metadata_factor)))
+  rownames(gene_expression_matrix) <- rownames(expr_matrix)
+  colnames(gene_expression_matrix) <- levels(metadata_factor)
+  
+  # Split expression matrix by subclass
+  subclass_split <- split(seq_along(metadata_factor), metadata_factor)
+  
+  # Vectorized operation across all subclasses
+  for (subclass in levels(metadata_factor)) {
+    # Get cells belonging to the current subclass
+    cells_in_subclass <- subclass_split[[subclass]]
+    
+    # Calculate the fraction of cells expressing each gene above the threshold
+    fraction_expressed <- rowSums(expr_matrix[, cells_in_subclass] > count_threshold) / length(cells_in_subclass)
+    
+    # Determine if the fraction exceeds the threshold for expression
+    gene_expression_matrix[, subclass] <- as.numeric(fraction_expressed > fraction_threshold)
+  }
+  
+  return(gene_expression_matrix)
+}
+
+# Function to process a Seurat object and prepare data for barplot
+process_seurat_for_barplot <- function(seurat_obj, species_name, count_threshold = 1, fraction_threshold = 0.1, subclass_group = "subclass") {
+  # Apply the binarization function
+  binarized_gene_matrix <- binarize_all_genes_vectorized(
+    seurat_obj = seurat_obj, 
+    genes = shared.VFs,
+    count_threshold = count_threshold, 
+    fraction_threshold = fraction_threshold, 
+    subclass_group = subclass_group
+  )
+  
+  # Calculate the number of subclasses in which each gene is expressed
+  genes_expressed_in_n_subclasses <- rowSums(binarized_gene_matrix)
+  
+  # Filter out genes that are not expressed in any subclass
+  filtered_genes_expressed <- genes_expressed_in_n_subclasses[genes_expressed_in_n_subclasses > 0 & genes_expressed_in_n_subclasses < 4]
+  
+  # Create a table of counts for the number of subclasses each gene is expressed in
+  subclass_counts <- table(filtered_genes_expressed)
+  
+  # Normalize by the total number of genes for this species
+  total_genes <- length(filtered_genes_expressed)
+  normalized_fraction <- subclass_counts / total_genes
+  
+  # Create a data frame for plotting
+  plot_data <- data.frame(
+    subclasses = as.numeric(names(subclass_counts)),
+    species = species_name,
+    normalized_fraction = as.numeric(normalized_fraction),
+    subclass.counts = as.numeric(subclass_counts)
+  )
+  
+  return(plot_data)
+}
+
+# Process both the mouse and opossum Seurat objects
+mouse_data <- process_seurat_for_barplot(
+  seurat_obj = obj.mouse.IT, # Replace with your mouse Seurat object
+  species_name = "Mouse",
+  count_threshold = 1,
+  fraction_threshold = 0.5,
+  subclass_group = "subclass"
+)
+
+opossum_data <- process_seurat_for_barplot(
+  seurat_obj = obj.opossum.IT, # Replace with your opossum Seurat object
+  species_name = "Opossum",
+  count_threshold = 1,
+  fraction_threshold = 0.5,
+  subclass_group = "subclass"
+)
+
+# Combine the data for both species
+combined_data <- rbind(mouse_data, opossum_data)
+
+# Plot the grouped barplot with raw counts
+ggplot(combined_data, aes(x = subclasses, y = subclass.counts, fill = species)) +
+  geom_bar(stat = "identity", position = "dodge", color = "black") +
+  scale_fill_manual(values = c("skyblue", "lightgreen")) +
+  labs(
+    title = "Gene Expression Across Subclasses for Mouse and Opossum",
+    x = "Number of Subclasses in Which a Gene is Expressed",
+    y = "Number of Genes"
+  ) +
+  theme_minimal()
+
+# Plot the normalized grouped barplot
+ggplot(combined_data, aes(x = subclasses, y = normalized_fraction, fill = species)) +
+  geom_bar(stat = "identity", position = "dodge", color = "black") +
+  scale_fill_manual(values = c("skyblue", "lightgreen")) +
+  labs(
+    title = "Normalized Gene Expression Across Subclasses for Mouse and Opossum",
+    x = "Number of Subclasses in Which a Gene is Expressed",
+    y = "Fraction of Genes"
+  ) +
+  theme_minimal()
+
+```
+
+
+```{r}
+
+opossum.VFs <- VariableFeatures(obj.opossum.IT)
+mouse.VFs <- VariableFeatures(obj.mouse.IT)
+shared.VFs <- intersect(opossum.VFs, mouse.VFs)
+obj.opossum.IT.SVF <- NormalizePCA(obj.opossum.IT, features = shared.VFs)
+obj.mouse.IT.SVF <- NormalizePCA(obj.mouse.IT, features = shared.VFs)
+
+```
+
+
+```{r}
+
+library(lisi)
+opossum.lisi <- compute_lisi(obj.opossum.IT@reductions$pca@cell.embeddings[,1:2], obj.opossum.IT@meta.data, c("subclass"))
+opossum.lisi$species <- "Opossum"
+mouse.lisi <- compute_lisi(obj.mouse.IT@reductions$pca@cell.embeddings[,1:2], obj.mouse.IT@meta.data, c("subclass"))
+mouse.lisi$species <- "Mouse"
+
+# Combine the dataframes
+df_combined <- bind_rows(opossum.lisi, mouse.lisi)
+
+# Plot the CDF
+ggplot(df_combined, aes(x = subclass, color = species)) +
+  stat_ecdf(geom = "step", size = 1.2) +
+  labs(x = "LISI Score", y = "Cumulative Proportion", 
+       title = "CDF of LISI Scores by Species") +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+
+```
+

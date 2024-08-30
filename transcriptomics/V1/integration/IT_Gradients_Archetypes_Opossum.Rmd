@@ -458,7 +458,11 @@ Idents(obj.opossum.IT) <- "subclass"
 all_markers <- FindAllMarkers(obj.opossum.IT, only.pos = TRUE, logfc.threshold = 0.2, min.pct = 0.2, test.use = "wilcox")
 
 # Filter markers by p-value < 10^-10
-filtered_markers <- all_markers %>% filter(p_val_adj < 1e-10)
+filtered_markers <- all_markers %>% 
+                      filter(p_val_adj < 1e-10) %>%
+                      group_by(gene) %>%
+                      slice_max(order_by = avg_log2FC, n = 1) %>%
+                      ungroup()
 
 # Get the list of significant genes
 significant_genes <- filtered_markers$gene
@@ -469,19 +473,19 @@ obj.opossum.IT <- ScaleData(obj.opossum.IT, features = significant_genes)
 # Extract the z-scored gene expression data
 z_scored_data <- GetAssayData(obj.opossum.IT, slot = "scale.data")[significant_genes, ]
 
-# Perform k-means clustering on the genes
-set.seed(123) # For reproducibility
-wss <- sapply(1:15, function(k) {
-  kmeans(z_scored_data, centers = k, nstart = 20)$tot.withinss
-})
-
-# Plot the elbow method to determine the optimal number of clusters
-plot(1:15, wss, type = "b", pch = 19, frame = FALSE,
-     xlab = "Number of Clusters (k)",
-     ylab = "Total Within-Cluster Sum of Squares")
+# # Perform k-means clustering on the genes
+# set.seed(123) # For reproducibility
+# wss <- sapply(1:15, function(k) {
+#   kmeans(z_scored_data, centers = k, nstart = 20)$tot.withinss
+# })
+# 
+# # Plot the elbow method to determine the optimal number of clusters
+# plot(1:15, wss, type = "b", pch = 19, frame = FALSE,
+#      xlab = "Number of Clusters (k)",
+#      ylab = "Total Within-Cluster Sum of Squares")
 
 # Assuming the elbow plot suggests k=7
-optimal_k <- 6
+optimal_k <- 5
 kmeans_result <- kmeans(z_scored_data, centers = optimal_k, nstart = 20)
 
 # Add k-means cluster assignments to the genes
@@ -489,19 +493,156 @@ filtered_markers$kmeans_cluster <- kmeans_result$cluster[match(filtered_markers$
 
 # Average the expression of genes in each k-means cluster across subclasses
 average_expression <- AverageExpression(obj.opossum.IT, features = significant_genes, group.by = "subclass", assays = "RNA")$RNA
-cluster_averages <- sapply(unique(filtered_markers$kmeans_cluster), function(cluster) {
+cluster_averages <- sapply(sort(unique(filtered_markers$kmeans_cluster)), function(cluster) {
   colMeans(average_expression[rownames(average_expression) %in% filtered_markers$gene[filtered_markers$kmeans_cluster == cluster], ])
 })
 
 # Convert to a matrix for heatmap plotting
 heatmap_data <- t(cluster_averages)
+rownames(heatmap_data) <- c(1:optimal_k)
 
 # Plot the heatmap
 my_palette <- colorRampPalette(c("blue", "white", "red"))(100)
-pheatmap::pheatmap(heatmap_data, cluster_rows = TRUE, cluster_cols = TRUE,
+pheatmap::pheatmap(heatmap_data, cluster_rows = FALSE, cluster_cols = FALSE,
                    show_rownames = TRUE, show_colnames = TRUE,
                    scale = "row", main = "K-means Cluster Expression Patterns Across Subclasses", 
                    color = my_palette)
+
+ortho.genes <- intersect(rownames(obj.opossum.glutamatergic), rownames(obj.mouse.glutamatergic))
+
+# Determine the number of intersecting and non-intersecting genes per cluster
+cluster_counts <- lapply(unique(filtered_markers$kmeans_cluster), function(cluster) {
+  genes_in_cluster <- filtered_markers$gene[filtered_markers$kmeans_cluster == cluster]
+  intersecting_genes <- length(intersect(genes_in_cluster, ortho.genes))
+  non_intersecting_genes <- length(genes_in_cluster) - intersecting_genes
+  return(data.frame(
+    cluster = cluster,
+    intersecting = intersecting_genes,
+    non_intersecting = non_intersecting_genes
+  ))
+})
+
+# Combine the counts into a single dataframe
+cluster_counts_df <- do.call(rbind, cluster_counts)
+
+# Convert the data to long format for ggplot2
+cluster_counts_long <- tidyr::pivot_longer(cluster_counts_df, cols = c("intersecting", "non_intersecting"),
+                                           names_to = "gene_type", values_to = "count")
+
+# Plot the stacked barplot
+ggplot(cluster_counts_long, aes(x = as.factor(cluster), y = count, fill = gene_type)) +
+  geom_bar(stat = "identity") +
+  labs(x = "K-means Cluster", y = "Number of Genes", fill = "Gene Type",
+       title = "Number of Genes in Each K-means Cluster") +
+  scale_fill_manual(values = c("intersecting" = "dodgerblue", "non_intersecting" = "lightgray")) +
+  theme_minimal()
+
+```
+
+
+```{r}
+
+SaveFeaturePlotsKMeans(obj.opossum.IT, filtered_markers, opossum.polygon, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/kmeans/5/Opossum")
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.glutamatergic) <- "subclass"
+obj.opossum.IT <- subset(obj.opossum.glutamatergic, idents = c("IT_A", "IT_B", "IT_C", "IT_D"))
+obj.opossum.IT <- NormalizePCA(obj.opossum.IT)
+
+# Identify markers for all subclasses using FindAllMarkers
+Idents(obj.opossum.IT) <- "subclass"
+all_markers <- FindAllMarkers(obj.opossum.IT, only.pos = TRUE, logfc.threshold = 0.2, min.pct = 0.2, test.use = "wilcox")
+
+# Filter markers by p-value < 10^-10
+filtered_markers <- all_markers %>% 
+                      filter(p_val_adj < 1e-10) %>%
+                      group_by(gene) %>%
+                      slice_max(order_by = avg_log2FC, n = 1) %>%
+                      ungroup()
+
+# Get the list of significant genes
+significant_genes <- filtered_markers$gene
+
+# Z-score the expression levels of these genes across all cells
+obj.opossum.IT <- ScaleData(obj.opossum.IT, features = significant_genes)
+
+# Extract the z-scored gene expression data
+z_scored_data <- GetAssayData(obj.opossum.IT, slot = "scale.data")[significant_genes, ]
+
+# # Perform k-means clustering on the genes
+# set.seed(123) # For reproducibility
+# wss <- sapply(1:15, function(k) {
+#   kmeans(z_scored_data, centers = k, nstart = 20)$tot.withinss
+# })
+# 
+# # Plot the elbow method to determine the optimal number of clusters
+# plot(1:15, wss, type = "b", pch = 19, frame = FALSE,
+#      xlab = "Number of Clusters (k)",
+#      ylab = "Total Within-Cluster Sum of Squares")
+
+# Assuming the elbow plot suggests k=7
+optimal_k <- 8
+kmeans_result <- kmeans(z_scored_data, centers = optimal_k, nstart = 20)
+
+# Add k-means cluster assignments to the genes
+filtered_markers$kmeans_cluster <- kmeans_result$cluster[match(filtered_markers$gene, names(kmeans_result$cluster))]
+
+# Average the expression of genes in each k-means cluster across subclasses
+average_expression <- AverageExpression(obj.opossum.IT, features = significant_genes, group.by = "subclass", assays = "RNA")$RNA
+cluster_averages <- sapply(sort(unique(filtered_markers$kmeans_cluster)), function(cluster) {
+  colMeans(average_expression[rownames(average_expression) %in% filtered_markers$gene[filtered_markers$kmeans_cluster == cluster], ])
+})
+
+# Convert to a matrix for heatmap plotting
+heatmap_data <- t(cluster_averages)
+rownames(heatmap_data) <- c(1:optimal_k)
+
+# Plot the heatmap
+my_palette <- colorRampPalette(c("blue", "white", "red"))(100)
+pheatmap::pheatmap(heatmap_data, cluster_rows = FALSE, cluster_cols = FALSE,
+                   show_rownames = TRUE, show_colnames = TRUE,
+                   scale = "row", main = "K-means Cluster Expression Patterns Across Subclasses", 
+                   color = my_palette)
+
+ortho.genes <- intersect(rownames(obj.opossum.glutamatergic), rownames(obj.mouse.glutamatergic))
+
+# Determine the number of intersecting and non-intersecting genes per cluster
+cluster_counts <- lapply(unique(filtered_markers$kmeans_cluster), function(cluster) {
+  genes_in_cluster <- filtered_markers$gene[filtered_markers$kmeans_cluster == cluster]
+  intersecting_genes <- length(intersect(genes_in_cluster, ortho.genes))
+  non_intersecting_genes <- length(genes_in_cluster) - intersecting_genes
+  return(data.frame(
+    cluster = cluster,
+    intersecting = intersecting_genes,
+    non_intersecting = non_intersecting_genes
+  ))
+})
+
+# Combine the counts into a single dataframe
+cluster_counts_df <- do.call(rbind, cluster_counts)
+
+# Convert the data to long format for ggplot2
+cluster_counts_long <- tidyr::pivot_longer(cluster_counts_df, cols = c("intersecting", "non_intersecting"),
+                                           names_to = "gene_type", values_to = "count")
+
+# Plot the stacked barplot
+ggplot(cluster_counts_long, aes(x = as.factor(cluster), y = count, fill = gene_type)) +
+  geom_bar(stat = "identity") +
+  labs(x = "K-means Cluster", y = "Number of Genes", fill = "Gene Type",
+       title = "Number of Genes in Each K-means Cluster") +
+  scale_fill_manual(values = c("intersecting" = "dodgerblue", "non_intersecting" = "lightgray")) +
+  theme_minimal()
+
+```
+
+
+```{r}
+
+SaveFeaturePlotsKMeans(obj.opossum.IT, filtered_markers, opossum.polygon, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/kmeans/8/Opossum_IT_D")
 
 ```
 

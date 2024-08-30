@@ -24,6 +24,7 @@ source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R
 source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
 source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
 source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+colors_list <- GetColors()
 
 classes <- c("Glutamatergic", "GABAergic", "Nonneuronal")
 classes.list <- list("Glutamatergic" = NA, "GABAergic" = NA, "Nonneuronal" = NA)
@@ -62,50 +63,13 @@ for (sp in c("Opossum", "Mouse")) {
   for (sc in c("Full", "Int")) {
     for (cl in classes) {
       objs.m.merge[[sp]][[sc]][[cl]] <- merge(objs.m.list[[sp]][[sc]][[cl]][[1]], objs.m.list[[sp]][[sc]][[cl]][[2]])
-      objs.m.merge[[sp]][[sc]][[cl]]$class <- lower(cl)
+      objs.m.merge[[sp]][[sc]][[cl]]$class <- str_to_lower(cl)
     }
     objs.m.merge[[sp]][[sc]]$All <- merge(objs.m.merge[[sp]][[sc]]$Glutamatergic, c(objs.m.merge[[sp]][[sc]]$GABAergic, objs.m.merge[[sp]][[sc]]$Nonneuronal))
   }
 }
 
-```
-
-
-```{r}
-
-colors_list <- list(
-              # Glutamatergic
-              IT = "#FF6C88",
-              IT_A = "#FFB3B3",
-              `L2/3` = "#FFB3B3",
-              IT_B = "#FFA07A",
-              L4 = "#FF7F50",
-              IT_C = "#FF7F50",
-              L5IT = "#FFA07A",
-              IT_D = "#FF6347",
-              L6IT = "#FF6347",
-              L5NP = "#FF4500",
-              L5PT = "#FF8C69",
-              L6CT = "#FFA07A",
-              L6b = "#FF6347",
-              Projection = "#128e27",
-            
-              # GABAergic
-              Pvalb = "#1E90FF",
-              Sst = "#87CEEB",
-              Vip = "#87CEFA",
-              Lamp5 = "#4682B4",
-              Frem1 = "#ADD8E6",
-              Stac = "#5F9EA0",
-            
-              # Non-neuronal
-              Astro = "#8C8C8C",
-              Micro = "#A0A0A0",
-              OD = "#B4B4B4",
-              OPC = "#C8C8C8",
-              Endo = "#505050",
-              VLMC = "#B4B4B4"
-)
+saveRDS(objs.m.merge, "E:/Transcriptomics_V1/Integration/opossum_mouse_50_50_within_mapping_objs.rds")
 
 ```
 
@@ -128,7 +92,7 @@ for (sp in c("Opossum", "Mouse")) {
   }
 }
 
-
+saveRDS(mapping.full, "E:/Transcriptomics_V1/Integration/opossum_mouse_50_50_within_mapping.rds")
 
 ```
 
@@ -137,14 +101,15 @@ for (sp in c("Opossum", "Mouse")) {
 
 opossum.acc <- c()
 mouse.acc <- c()
-for (sc in c("Full", "Shared")) {
+space.names <- list("Full" = "Full", "Int" = "Shared")
+for (sc in c("Full", "Int")) {
   for (cl in classes) {
     opossum.acc.df <- MappingAccuracy(objs.m.merge$Opossum[[sc]][[cl]], "subclass")
-    opossum.acc.df$Space <- sc
-    opossum.acc <- rbind(opossum.acc, acc.df)
+    opossum.acc.df$Space <- space.names[[sc]]
+    opossum.acc <- rbind(opossum.acc, opossum.acc.df)
     mouse.acc.df <- MappingAccuracy(objs.m.merge$Mouse[[sc]][[cl]], "subclass")
-    mouse.acc.df$Space <- sc
-    mouse.acc <- rbind(mouse.acc, acc.df)
+    mouse.acc.df$Space <- space.names[[sc]]
+    mouse.acc <- rbind(mouse.acc, mouse.acc.df)
   }
 }
 

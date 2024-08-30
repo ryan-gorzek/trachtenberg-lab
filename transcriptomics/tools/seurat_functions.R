@@ -1,4 +1,42 @@
 
+GetColors <- function() {
+  
+  colors_list <- list(
+    # Glutamatergic
+    IT = "#FF6C88",
+    IT_A = "#FFB3B3",
+    `L2/3` = "#FFB3B3",
+    IT_B = "#FFA07A",
+    L4 = "#FF7F50",
+    IT_C = "#FF7F50",
+    L5IT = "#FFA07A",
+    IT_D = "#FF6347",
+    L6IT = "#FF6347",
+    L5NP = "#FF4500",
+    L5PT = "#FF8C69",
+    L6CT = "#FFA07A",
+    L6b = "#FF6347",
+    Projection = "#128e27",
+    
+    # GABAergic
+    Pvalb = "#1E90FF",
+    Sst = "#87CEEB",
+    Vip = "#87CEFA",
+    Lamp5 = "#4682B4",
+    Frem1 = "#ADD8E6",
+    Stac = "#5F9EA0",
+    
+    # Non-neuronal
+    Astro = "#8C8C8C",
+    Micro = "#A0A0A0",
+    OD = "#B4B4B4",
+    OPC = "#C8C8C8",
+    Endo = "#505050",
+    VLMC = "#B4B4B4"
+  )
+    
+}
+
 PreprocessData <- function(sample_IDs, data_path, project_name, mapping_path) {
   
   # Load the data.
@@ -138,11 +176,15 @@ ClusterSCT <- function(obj, resolutions) {
   
 }
 
-NormalizePCA <- function(obj, nfeatures = 3000, npcs = 30) {
+NormalizePCA <- function(obj, nfeatures = 3000, npcs = 30, features = NA) {
   
   DefaultAssay(obj) <- "RNA"
   obj <- NormalizeData(obj, normalization.method = "LogNormalize", scale.factor = 10000)
-  obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = nfeatures)
+  if (all(is.na(features))) {
+    obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = nfeatures)
+  } else {
+    VariableFeatures(obj) <- features
+  }
   all.genes <- rownames(obj)
   obj <- ScaleData(obj, features = all.genes)
   obj <- RunPCA(obj, features = VariableFeatures(object = obj), npcs = npcs)
@@ -494,6 +536,75 @@ SaveFeaturePlots <- function(obj, markers, subclass.labels, ident.labels, savepa
   }
 }
 
+SaveFeaturePlotsKMeans <- function(obj, markers, polygon.coords, savepath) {
+  
+  get_plot_limits <- function(plot) {
+    gg_build <- ggplot_build(plot)
+    xlims <- gg_build$layout$panel_scales_x[[1]]$range$range
+    ylims <- gg_build$layout$panel_scales_y[[1]]$range$range
+    return(list(xlims = xlims, ylims = ylims))
+  }
+  
+  clusters <- sort(unique(markers$kmeans_cluster))
+
+    marker_sets <- list(c(1:20))
+    for (set in marker_sets) {
+        
+      all.markers.FC <- list()
+      all.markers.PD <- list()
+      
+      for (cl in clusters) {
+        
+        all.markers <- markers
+        gene.counts <- table(all.markers$gene)
+        unique.markers <- all.markers[all.markers$gene %in% names(gene.counts)[gene.counts == 1],]
+        type.markers <- unique.markers[unique.markers$kmeans_cluster == cl,]
+        type.markers$pct.diff <- type.markers$pct.1 - type.markers$pct.2
+        all.markers.FC[[cl]] <- top_genes_desc(type.markers, "avg_log2FC", set)
+        all.markers.PD[[cl]] <- top_genes_desc(type.markers, "pct.diff", set)
+        
+        # make feature plots
+        features.FC <- unlist(all.markers.FC[[cl]])
+        features.PD <- unlist(all.markers.PD[[cl]])
+        
+        for (feature_set in list(features.FC, features.PD)) {
+          feature_subset <- feature_set[1:min(20, length(feature_set))]
+          feature_subset <- feature_subset[!is.na(feature_subset)]
+          if (length(feature_subset) > 0) {
+            plots <- FeaturePlot(obj, features = feature_subset, cols = c("lightgrey", "red"), ncol = 5)
+            
+            # Extract plot limits
+            plot_limits <- get_plot_limits(plots[[1]])
+            xlims <- plot_limits$xlims
+            ylims <- plot_limits$ylims
+            
+            x.range <- diff(xlims)
+            y.range <- diff(ylims)
+            
+            max.range <- max(x.range, y.range)
+            
+            if (x.range < max.range) {
+              xlims <- mean(xlims) + c(-1, 1) * (max.range / 2)
+            }
+            
+            if (y.range < max.range) {
+              ylims <- mean(ylims) + c(-1, 1) * (max.range / 2)
+            }
+            
+            # Adjust the plots with new limits and coord_equal
+            for (i in 1:length(plots$patches$plots)) {
+              plots[[i]] <- plots[[i]] + coord_equal(xlim = xlims, ylim = ylims) + 
+                                         geom_point(data = polygon.coords, aes(x = X..X, y = Y), color = "black", size = 2) + 
+                                         geom_path(data = polygon.coords, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+            }
+            file_prefix <- ifelse(identical(feature_set, features.FC), "FeaturePlot_FC", "FeaturePlot_PD")
+            ggsave(paste0(savepath, "_", file_prefix, "_KMeans_", cl, ".png"), plot = plots, width = 24, height = 16, dpi = 300)
+          }
+        }
+    }
+  }
+}
+
 top_genes_two <- function(df, sort_column_asc, sort_column_desc, idx) {
   
   # Sort the dataframe by the specified columns: one ascending and one descending
@@ -802,7 +913,10 @@ PlotIdentGeneCounts <- function(nested_list, subclass, clustering_res) {
 PlotSubclassGeneCounts <- function(nested_list, subclass.col, subclass.order) {
   
   # Extract dataframe
-  df <- nested_list[[subclass.col]]
+  df <- nested_list[[subclass.col]] %>%
+          filter(pct.1 >= 0.2) %>% 
+          filter(p_val_adj < 0.05)
+  
   if (!is.null(df)) {
     # Calculate the maximum avg_log2FC value
     max_log2FC <- max(df$avg_log2FC, na.rm = TRUE)
@@ -861,7 +975,9 @@ plotGeneFractions <- function(df, gene_list) {
 
 PlotSubclassGeneCountCDF <- function(de_df, all_genes, sample.name, subclass.order, subclass_colors) {
   # Extract dataframes
-  df <- de_df$subclass
+  df <- de_df$subclass %>%
+    filter(pct.1 >= 0.2) %>% 
+    filter(p_val_adj < 0.05)
   
   # Initialize an empty data frame to store cumulative counts
   cdf_data <- data.frame()
@@ -924,7 +1040,9 @@ PlotSubclassGeneCountCDF <- function(de_df, all_genes, sample.name, subclass.ord
 
 PlotSubclassGeneCountCDF_AtPoints <- function(de_df, all_genes, sample.name, subclass.order, subclass_colors, log2FC_points) {
   # Extract dataframes
-  df <- de_df$subclass
+  df <- de_df$subclass %>%
+    filter(pct.1 >= 0.2) %>% 
+    filter(p_val_adj < 0.05)
   
   # Initialize an empty data frame to store cumulative counts
   cdf_data <- data.frame()
@@ -1187,4 +1305,138 @@ MinDistance <- function(seurat_obj, reference_df, pc1_colname = "PC_1", pc2_coln
   seurat_obj <- AddMetaData(seurat_obj, metadata = min_distances, col.name = "min_distance_to_reference")
   
   return(seurat_obj)
+}
+
+PCAProject <- function(seurat_query, seurat_reference, reduction = "pca") {
+  # Ensure the reference object has the specified reduction (e.g., PCA)
+  if (!reduction %in% names(seurat_reference@reductions)) {
+    stop(paste0("Reduction '", reduction, "' not found in the reference object."))
+  }
+  
+  # Extract the PC loadings from the reference object
+  reference_loadings <- seurat_reference[[reduction]]@feature.loadings
+  
+  # Extract the scaled data from the query object
+  query_scaled_data <- GetAssayData(seurat_query, slot = "scale.data")
+  
+  # Ensure the features (genes) overlap between the query and reference
+  common_features <- intersect(rownames(reference_loadings), rownames(query_scaled_data))
+  if (length(common_features) < 1) {
+    stop("No overlapping features found between the reference and query objects.")
+  }
+  
+  # Subset the loadings and scaled data to the common features
+  reference_loadings <- reference_loadings[common_features, , drop = FALSE]
+  query_scaled_data <- query_scaled_data[common_features, , drop = FALSE]
+  
+  # Project the query cells onto the reference PCs
+  query_pcs <- t(query_scaled_data) %*% reference_loadings
+  
+  # Add the projected PCs back to the query object
+  seurat_query[[reduction]] <- CreateDimReducObject(embeddings = as.matrix(query_pcs), key = paste0(reduction, "_"), assay = DefaultAssay(seurat_query))
+  
+  return(seurat_query)
+}
+
+MatchDistribution <- function(query_obj, reference_obj, n_samples = NULL) {
+  # Extract metadata
+  query_data <- query_obj@meta.data %>% dplyr::select(nFeature_RNA, nCount_RNA)
+  reference_data <- reference_obj@meta.data %>% dplyr::select(nFeature_RNA, nCount_RNA)
+  
+  # Determine the number of samples to draw if not specified
+  if (is.null(n_samples)) {
+    n_samples <- nrow(reference_data)
+  }
+  
+  # Estimate the density of the reference dataset using 2D KDE
+  kde <- kde2d(
+    x = reference_data$nFeature_RNA, 
+    y = reference_data$nCount_RNA, 
+    n = 100
+  )
+  
+  # Convert KDE results into a probability distribution
+  kde_prob <- kde$z / sum(kde$z)
+  
+  # Sample from the KDE to get target distributions
+  sampled_points <- MASS::mvrnorm(
+    n = n_samples, 
+    mu = c(mean(reference_data$nFeature_RNA), mean(reference_data$nCount_RNA)), 
+    Sigma = cov(reference_data)
+  )
+  
+  # Find the closest unique points in the query dataset to the sampled points without replacement
+  available_indices <- seq_len(nrow(query_data))
+  sampled_indices <- vector("integer", n_samples)
+  
+  for (i in 1:n_samples) {
+    if (length(available_indices) == 0) break
+    # Calculate distances between the sampled point and available query data
+    distances <- sqrt(
+      (query_data$nFeature_RNA[available_indices] - sampled_points[i, 1])^2 + 
+        (query_data$nCount_RNA[available_indices] - sampled_points[i, 2])^2
+    )
+    # Find the closest available point
+    closest_index <- available_indices[which.min(distances)]
+    sampled_indices[i] <- closest_index
+    # Remove the selected index from the available pool
+    available_indices <- setdiff(available_indices, closest_index)
+  }
+  
+  # Subset the query object to include only the sampled cells
+  query_sampled <- subset(query_obj, cells = rownames(query_data)[sampled_indices])
+  
+  return(query_sampled)
+}
+
+PlotPCVarianceExplained <- function(seurat_objects, object_names, num_pcs = 10) {
+  library(ggplot2)
+  library(matrixStats)
+  
+  # Check if inputs are vectors
+  if (!is.list(seurat_objects)) {
+    seurat_objects <- list(seurat_objects)
+  }
+  if (!is.character(object_names)) {
+    object_names <- as.character(object_names)
+  }
+  
+  # Initialize a dataframe to hold the variance explained data
+  variance_data <- data.frame(PC = integer(), Variance_Explained = numeric(), Species = character())
+  
+  # Loop through each Seurat object to calculate the variance explained
+  for (i in seq_along(seurat_objects)) {
+    obj <- seurat_objects[[i]]
+    obj_name <- object_names[i]
+    
+    # Calculate the total variance using rowVars on the scale.data
+    total_variance <- sum(rowVars(obj@assays$SCT@scale.data))
+    
+    # Calculate the variance explained by each PC
+    variance_explained <- obj@reductions$pca@stdev^2 / total_variance * 100
+    
+    # Select the top PCs
+    top_variance <- variance_explained[1:num_pcs]
+    
+    # Create a temporary dataframe for this object
+    temp_df <- data.frame(
+      PC = 1:num_pcs,
+      Variance_Explained = top_variance,
+      Species = obj_name
+    )
+    
+    # Add this data to the main dataframe
+    variance_data <- rbind(variance_data, temp_df)
+  }
+  
+  # Plot the scree plot
+  ggplot(variance_data, aes(x = PC, y = Variance_Explained, color = Species, group = Species)) +
+    geom_line() +
+    geom_point() +
+    labs(title = paste("Scree Plot of Top", num_pcs, "PCs"),
+         x = "Principal Component",
+         y = "% Variance Explained") +
+    theme_minimal() +
+    scale_color_manual(values = c("blue", "red")) +
+    scale_x_continuous(breaks = 1:num_pcs, labels = 1:num_pcs)
 }

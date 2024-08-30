@@ -1,0 +1,338 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(SeuratWrappers)
+library(monocle3)
+library(pheatmap)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+library(ggpubr)
+library(purrr)
+library(broom)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.opossum.gabaergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_gabaergic_processed.rds")
+obj.mouse.gabaergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_gabaergic_processed.rds")
+
+mapping.classes <- readRDS("E:/Transcriptomics_V1/Integration/opossum_subsampled_mapping_100it.rds")
+mapping.full <- readRDS("E:/Transcriptomics_V1/Integration/opossum_mouse_50_50_within_mapping.rds")
+
+```
+
+
+```{r}
+
+colors_list <- list(
+              # Glutamatergic
+              CGE = "#FF6C88",
+              CGE_A = "#FFB3B3",
+              `L2/3` = "#FFB3B3",
+              CGE_B = "#FFA07A",
+              L4 = "#FF7F50",
+              CGE_C = "#FF7F50",
+              L5CGE = "#FFA07A",
+              CGE_D = "#FF6347",
+              L6CGE = "#FF6347",
+              L5NP = "#FF4500",
+              L5PT = "#32a852", 
+              L6CT = "#7de89a",
+              L6b = "#206633",
+            
+              # GABAergic
+              Pvalb = "#1E90FF",
+              Sst = "#87CEEB",
+              Vip = "#87CEFA",
+              Lamp5 = "#4682B4",
+              Frem1 = "#ADD8E6",
+              Stac = "#5F9EA0",
+            
+              # Non-neuronal
+              Astro = "#8C8C8C",
+              Micro = "#A0A0A0",
+              OD = "#B4B4B4",
+              OPC = "#C8C8C8",
+              Endo = "#505050",
+              VLMC = "#B4B4B4"
+)
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.gabaergic) <- "subclass"
+obj.opossum.CGE <- subset(obj.opossum.gabaergic, idents = c("Vip", "Lamp5", "Frem1"))
+df <- data.frame("cell.names" = mapping.classes$GABAergic$cell.id, 
+                 "prediction.scores" = mapping.classes$GABAergic$predicted.subclass.score, 
+                 "predicted.subclass" = mapping.classes$GABAergic$predicted.subclass)
+df_within <- data.frame("cell.names" = mapping.full$Opossum$Int$GABAergic$cell.id, 
+                        "prediction.scores.within" = mapping.full$Opossum$Int$GABAergic$predicted.subclass.score, 
+                        "predicted.subclass.within" = mapping.full$Opossum$Int$GABAergic$predicted.subclass)
+get_mode <- function(x) {
+  uniq_x <- unique(x)
+  uniq_x[which.max(tabulate(match(x, uniq_x)))]
+}
+prediction.scores_aggregated <- aggregate(prediction.scores ~ cell.names, data = df, FUN = mean, na.rm = TRUE)
+predicted.subclass_aggregated <- aggregate(predicted.subclass ~ cell.names, data = df, FUN = get_mode)
+df_agg <- merge(prediction.scores_aggregated, predicted.subclass_aggregated, by = "cell.names")
+df_agg <- df_agg[df_agg$cell.names %in% colnames(obj.opossum.CGE),]
+df_within <- df_within[df_within$cell.names %in% colnames(obj.opossum.CGE),]
+df_all <- merge(df_agg, df_within, by = "cell.names")
+obj.opossum.CGE <- subset(obj.opossum.CGE, cells = as.character(df_agg$cell.names))
+obj.opossum.CGE <- NormalizePCA(obj.opossum.CGE)
+obj.opossum.CGE$predicted.subclass.score <- NA
+obj.opossum.CGE@meta.data[df_all$cell.names,]$predicted.subclass.score <- df_all$prediction.scores
+obj.opossum.CGE$predicted.subclass <- NA
+obj.opossum.CGE@meta.data[df_all$cell.names,]$predicted.subclass <- df_all$predicted.subclass
+obj.opossum.CGE$predicted.subclass.score.within <- NA
+obj.opossum.CGE@meta.data[df_all$cell.names,]$predicted.subclass.score.within <- df_all$prediction.scores.within
+obj.opossum.CGE$predicted.subclass.within <- NA
+obj.opossum.CGE@meta.data[df_all$cell.names,]$predicted.subclass.within <- df_all$predicted.subclass.within
+# obj.opossum.CGE@reductions$pca@cell.embeddings[, 1:2] <- obj.opossum.CGE@reductions$pca@cell.embeddings[, 1:2] * -1
+opossum.pcs <- obj.opossum.CGE@reductions$pca@cell.embeddings[, 1:2]
+write.table(opossum.pcs, "E:/Transcriptomics_V1/Integration/opossum_cge_pcs.txt", sep = " ", col.names = FALSE, row.names = FALSE)
+
+```
+
+
+```{r}
+
+opossum.polygon <- read.csv("E:/Transcriptomics_V1/Integration/opossum_cge_polygon.csv")
+opossum.polygon <- rbind(opossum.polygon, opossum.polygon[1, ])
+obj.opossum.CGE <- MinDistance(obj.opossum.CGE, opossum.polygon)
+subclasses.opossum <- c("Vip", "Lamp5", "Frem1")
+Idents(obj.opossum.CGE) <- "subclass"
+levels(obj.opossum.CGE) <- subclasses.opossum
+DimPlot(obj.opossum.CGE, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 24) + ylim(-15, 27) + coord_equal() +
+  geom_point(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+  geom_path(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Subclass_Subsampled.png", plot = p, dpi = 300)
+# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Subclass_Subsampled.svg", plot = p, dpi = 300)
+subclasses.opossum <- c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")
+Idents(obj.opossum.CGE) <- "predicted.subclass"
+levels(obj.opossum.CGE) <- subclasses.opossum
+DimPlot(obj.opossum.CGE, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 24) + ylim(-15, 27) + coord_equal() +
+  geom_point(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+  geom_path(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Predicted_Subclass_Subsampled.png", plot = p, dpi = 300)
+# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Predicted_Subclass_Subsampled.svg", plot = p, dpi = 300)
+FeaturePlot(obj.opossum.CGE, "predicted.subclass.score", reduction = "pca", pt.size = 1, raster = FALSE) + NoLegend() + xlim(-18, 24) + ylim(-15, 27) + coord_equal() +
+  geom_point(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+  geom_path(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Mapping_Quality_Subsampled.png", plot = p, dpi = 300)
+# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Mapping_Quality_Subsampled.svg", plot = p, dpi = 300)
+subclasses.opossum <- c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1")
+Idents(obj.opossum.CGE) <- "predicted.subclass.within"
+levels(obj.opossum.CGE) <- subclasses.opossum
+DimPlot(obj.opossum.CGE, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 24) + ylim(-15, 27) + coord_equal() +
+  geom_point(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+  geom_path(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Predicted_Subclass_Subsampled.png", plot = p, dpi = 300)
+# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Predicted_Subclass_Subsampled.svg", plot = p, dpi = 300)
+FeaturePlot(obj.opossum.CGE, "predicted.subclass.score.within", reduction = "pca", pt.size = 1, raster = FALSE) + NoLegend() + xlim(-18, 24) + ylim(-15, 27) + coord_equal() +
+  geom_point(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+  geom_path(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Mapping_Quality_Subsampled.png", plot = p, dpi = 300)
+# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Mapping_Quality_Subsampled.svg", plot = p, dpi = 300)
+
+```
+
+
+```{r}
+
+stat.pairs <- list(c("min_distance_to_reference", "predicted.subclass.score"), c("min_distance_to_reference", "nFeature_RNA"), 
+                   c("min_distance_to_reference", "nCount_RNA"), c("nFeature_RNA", "predicted.subclass.score"), c("nCount_RNA", "predicted.subclass.score"),
+                   c("predicted.subclass.score.within", "predicted.subclass.score"))
+stat.names <- list("min_distance_to_reference" = "Distance to Nearest Vertex", "predicted.subclass.score" = "Predicted Subclass Score", 
+                   "predicted.subclass.score.within" = "Predicted Subclass Score (Within-Species)", "nFeature_RNA" = "nFeature_RNA", "nCount_RNA" = "nCount_RNA")
+
+for (sp in stat.pairs) {
+
+  # Extract metadata
+  metadata <- FetchData(obj.opossum.CGE, vars = c(sp[[1]], sp[[2]], "subclass"))
+  
+  # Convert subclass to a factor for consistent coloring
+  metadata$subclass <- factor(metadata$subclass)
+  
+  # Create the scatterplots split by subclass
+  p <- ggplot(metadata, aes(x = !!sym(sp[[1]]), y = !!sym(sp[[2]]), color = subclass)) +
+    geom_point(alpha = 0.5, shape = 16) +
+    geom_smooth(method = "lm", se = FALSE, color = "black", linetype = "dashed") +
+    # stat_cor(
+    #   aes(label = paste("R =", round(..r.., 2), ", p =", format.pval(..p.., digits = 2))),
+    #   method = "pearson", label.x = 0.1, label.y = 0.9, parse = FALSE, output.type = "text",
+    #   color = "black"
+    # ) +  # Adds both the correlation coefficient and p-value
+    scale_color_manual(values = colors_list[levels(metadata$subclass)]) +
+    labs(x = stat.names[[sp[[1]]]], y = stat.names[[sp[[2]]]], color = "Group") +
+    facet_wrap(~ subclass, scales = "free_x") +
+    theme_classic() +
+    theme(aspect.ratio = 1)
+  if (grepl("score", sp[[2]])) {
+    p <- p + ylim(0, 1)
+  }
+  # ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Quality_Distance_Correlation_Subsampled.png", plot = p, dpi = 300)
+  # ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Quality_Distance_Correlation_Subsampled.svg", plot = p, dpi = 300)
+  
+  print(p)
+
+}
+
+```
+
+
+```{r}
+
+# Example dataframe
+df <- FetchData(obj.opossum.CGE, vars = c("nFeature_RNA", "nCount_RNA", "min_distance_to_reference", "predicted.subclass.score", "subclass"))
+
+# Split data by subclass
+df_split <- df %>% split(.$subclass)
+
+# Function to fit models and compare them with detailed metrics
+fit_models <- function(data) {
+  # Fit the model with only nFeature_RNA
+  model_1 <- lm(predicted.subclass.score ~ nFeature_RNA + nCount_RNA, data = data)
+  
+  # Fit the model with both nFeature_RNA and min_distance_to_reference
+  model_2 <- lm(predicted.subclass.score ~ nFeature_RNA + nCount_RNA + min_distance_to_reference, data = data)
+  
+  # Perform an ANOVA to compare models
+  comparison <- anova(model_1, model_2)
+  
+  # Extract adjusted R-squared values
+  adj_r_squared_1 <- summary(model_1)$adj.r.squared
+  adj_r_squared_2 <- summary(model_2)$adj.r.squared
+  
+  # Extract residual sum of squares (RSS)
+  rss_1 <- sum(residuals(model_1)^2)
+  rss_2 <- sum(residuals(model_2)^2)
+  
+  # Return relevant metrics
+  list(
+    subclass = unique(data$subclass),
+    model_1_summary = tidy(model_1),
+    model_2_summary = tidy(model_2),
+    model_comparison = comparison,
+    adj_r_squared_1 = adj_r_squared_1,
+    adj_r_squared_2 = adj_r_squared_2,
+    rss_1 = rss_1,
+    rss_2 = rss_2
+  )
+}
+
+# Apply the function to each subclass
+results <- map(df_split, fit_models)
+
+# Extract adjusted R-squared and RSS into a dataframe
+comparison_df <- map_df(results, function(res) {
+  data.frame(
+    subclass = res$subclass,
+    model_type = c("nFeature + nCount", "nFeature + nCount + Distance"),
+    adj_r_squared = c(res$adj_r_squared_1, res$adj_r_squared_2),
+    rss = c(res$rss_1, res$rss_2)
+  )
+})
+
+comparison_df$model_type <- factor(comparison_df$model_type, levels = c("nFeature + nCount", "nFeature + nCount + Distance"))
+
+# Adjusted R-squared Bar Plot
+ggplot(comparison_df, aes(x = subclass, y = adj_r_squared, fill = model_type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = c("nFeature + nCount" = "gray70", "nFeature + nCount + Distance" = "#0384fc")) +
+  labs(title = "Adjusted R-squared",
+       x = "Subclass",
+       y = "Adjusted R-squared",
+       fill = "Model Type") +
+  theme_minimal()
+
+```
+
+
+```{r}
+
+# Example dataframe
+df <- FetchData(obj.opossum.CGE, vars = c("nFeature_RNA", "nCount_RNA", "predicted.subclass.score.within", "min_distance_to_reference", "predicted.subclass.score", "subclass"))
+
+# Split data by subclass
+df_split <- df %>% split(.$subclass)
+
+# Function to fit models and compare them with detailed metrics
+fit_models <- function(data) {
+  # Fit the model with only nFeature_RNA
+  model_1 <- lm(predicted.subclass.score ~ nFeature_RNA + nCount_RNA + predicted.subclass.score.within, data = data)
+  
+  # Fit the model with both nFeature_RNA and min_distance_to_reference
+  model_2 <- lm(predicted.subclass.score ~ nFeature_RNA + nCount_RNA + predicted.subclass.score.within + min_distance_to_reference, data = data)
+  
+  # Perform an ANOVA to compare models
+  comparison <- anova(model_1, model_2)
+  
+  # Extract adjusted R-squared values
+  adj_r_squared_1 <- summary(model_1)$adj.r.squared
+  adj_r_squared_2 <- summary(model_2)$adj.r.squared
+  
+  # Extract residual sum of squares (RSS)
+  rss_1 <- sum(residuals(model_1)^2)
+  rss_2 <- sum(residuals(model_2)^2)
+  
+  # Return relevant metrics
+  list(
+    subclass = unique(data$subclass),
+    model_1_summary = tidy(model_1),
+    model_2_summary = tidy(model_2),
+    model_comparison = comparison,
+    adj_r_squared_1 = adj_r_squared_1,
+    adj_r_squared_2 = adj_r_squared_2,
+    rss_1 = rss_1,
+    rss_2 = rss_2
+  )
+}
+
+# Apply the function to each subclass
+results <- map(df_split, fit_models)
+
+# Extract adjusted R-squared and RSS into a dataframe
+comparison_df <- map_df(results, function(res) {
+  data.frame(
+    subclass = res$subclass,
+    model_type = c("nFeature + nCount + Within Pred.", "nFeature + nCount + Within Pred. + Distance"),
+    adj_r_squared = c(res$adj_r_squared_1, res$adj_r_squared_2),
+    rss = c(res$rss_1, res$rss_2)
+  )
+})
+
+comparison_df$model_type <- factor(comparison_df$model_type, levels = c("nFeature + nCount + Within Pred.", "nFeature + nCount + Within Pred. + Distance"))
+
+# Adjusted R-squared Bar Plot
+ggplot(comparison_df, aes(x = subclass, y = adj_r_squared, fill = model_type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = c("nFeature + nCount + Within Pred." = "gray70", "nFeature + nCount + Within Pred. + Distance" = "#0384fc")) +
+  labs(title = "Adjusted R-squared",
+       x = "Subclass",
+       y = "Adjusted R-squared",
+       fill = "Model Type") +
+  theme_minimal()
+
+```
+

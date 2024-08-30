@@ -296,8 +296,6 @@ obj.opossum.IT.SVF <- SCTransform(obj.opossum.IT, vst.flavor = "v2", residual.fe
 
 ```{r}
 
-source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
-
 DimPlot(obj.mouse.IT.SVF, reduction = "pca", group.by = "sample", pt.size = 1, shuffle = TRUE, raster = FALSE) + xlim(-30, 35) + ylim(-45, 20) + coord_equal()
 subclasses.mouse <- c("L2/3", "L4", "L5IT", "L6IT")
 Idents(obj.mouse.IT.SVF) <- "subclass"
@@ -315,26 +313,6 @@ pl <- DimPlot(obj.opossum.IT.SVF, reduction = "pca", cols = colors_list[subclass
 pl[[1]]$layers[[1]]$aes_params$alpha =  0.8
 pl
 FeaturePlot(obj.opossum.IT.SVF, "nCount_RNA", reduction = "pca", pt.size = 2, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
-
-```
-
-
-```{r}
-
-obj.opossum.IT.SS <- obj.opossum.IT[, sample(colnames(obj.opossum.IT), length(colnames(obj.mouse.IT)))]
-obj.mouse.IT$species <- "Mouse"
-obj.combined.IT <- merge(obj.mouse.IT, obj.opossum.IT.SS)
-obj.combined.IT <- SCTransform(obj.combined.IT, vst.flavor = "v2", residual.features = shared.HVFs, return.only.var.genes = FALSE, verbose = FALSE) %>%
-                   RunPCA(npcs = 30, verbose = FALSE)
-
-```
-
-
-```{r}
-
-DimPlot(obj.combined.IT, reduction = "pca", dims = c(2, 3), group.by = "species", pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
-DimPlot(obj.combined.IT, reduction = "pca", dims = c(2, 3), split.by = "species", group.by = "subclass", pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
-FeaturePlot(obj.combined.IT, "nCount_RNA", reduction = "pca", dims = c(2, 3), pt.size = 2, raster = FALSE) + NoLegend() + xlim(-35, 45) + ylim(-40, 40) + coord_equal()
 
 ```
 
@@ -380,56 +358,6 @@ GRADIENT GENES
 
 Idents(obj.opossum.IT) <- "subclass"
 markers.opossum.IT <- FindAllMarkers(obj.opossum.IT, assay = "SCT", logfc.threshold = 0.8, only.pos = TRUE)
-
-```
-
-
-```{r}
-
-gene_list <- rownames(markers.opossum.IT)
-
-# Subset the Seurat object to include only the genes of interest
-DefaultAssay(obj.opossum.IT) <- "RNA"
-seurat_subset <- subset(obj.opossum.IT, features = gene_list)
-
-data <- GetAssayData(object = seurat_subset, slot = "data")
-celldata <- as.data.frame(seurat_subset@meta.data)
-genedata <- as.data.frame(x = row.names(data), row.names = row.names(data))
-colnames(genedata) <- "gene_short_name"
-cds <- new_cell_data_set(data, cell_metadata = celldata, gene_metadata = genedata)
-cds <- estimate_size_factors(cds)
-
-# Learn the graph and order cells by pseudotime on the subset CDS
-cds <- preprocess_cds(cds, method = "PCA")
-cds <- reduce_dimension(cds, reduction_method = "UMAP")
-cds <- cluster_cells(cds)
-cds <- learn_graph(cds)
-cds <- order_cells(cds)
-
-# Extract the pseudotime information from the subset CDS
-pseudotime_data <- pseudotime(cds)
-
-# Create a data frame with pseudotime and cell names
-pseudotime_df <- data.frame(cell = colnames(cds), pseudotime = pseudotime_data)
-# Order the data frame by pseudotime
-pseudotime_df <- pseudotime_df[order(pseudotime_df$pseudotime), ]
-# Extract ordered cell names
-ordered_cells <- pseudotime_df$cell
-
-# Extract expression matrix for the specified genes
-# sampled_cells <- ordered_cells[ordered_cells %in% sample(ordered_cells, 2000, replace = FALSE, prob = NULL)]
-expression_matrix <- as.matrix(exprs(cds[gene_list[gene_list %in% rownames(cds)], ordered_cells]))
-
-breaks <- seq(-2, 2, length.out = 101)
-colors <- colorRampPalette(c("blue", "white", "red"))(100)
-
-# Generate the heatmap
-pheatmap(expression_matrix, cluster_rows = FALSE, cluster_cols = FALSE,
-         show_rownames = FALSE, show_colnames = FALSE,
-         scale = "column", 
-         color = colors,
-         breaks = breaks,
-         main = "Gene Expression Heatmap Ordered by Pseudotime")
 
 ```
 

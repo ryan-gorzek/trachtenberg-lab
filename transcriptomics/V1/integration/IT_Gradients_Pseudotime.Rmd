@@ -1,0 +1,343 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(SeuratWrappers)
+library(monocle3)
+library(pheatmap)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+library(sampling)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
+obj.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+
+```
+
+
+```{r}
+
+colors_list <- list(
+              # Glutamatergic
+              IT = "#FF6C88",
+              IT_A = "#FFB3B3",
+              `L2/3` = "#FFB3B3",
+              IT_B = "#FFA07A",
+              L4 = "#FF7F50",
+              IT_C = "#FF7F50",
+              L5IT = "#FFA07A",
+              IT_D = "#FF6347",
+              L6IT = "#FF6347",
+              L5NP = "#FF4500",
+              L5PT = "#32a852", 
+              L6CT = "#7de89a",
+              L6b = "#206633",
+            
+              # GABAergic
+              Pvalb = "#1E90FF",
+              Sst = "#87CEEB",
+              Vip = "#87CEFA",
+              Lamp5 = "#4682B4",
+              Frem1 = "#ADD8E6",
+              Stac = "#5F9EA0",
+            
+              # Non-neuronal
+              Astro = "#8C8C8C",
+              Micro = "#A0A0A0",
+              OD = "#B4B4B4",
+              OPC = "#C8C8C8",
+              Endo = "#505050",
+              VLMC = "#B4B4B4"
+)
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.glutamatergic) <- "subclass"
+obj.opossum.IT <- subset(obj.opossum.glutamatergic, idents = c("IT_A", "IT_B", "IT_C", "IT_D"))
+obj.opossum.IT <- NormalizePCA(obj.opossum.IT)
+
+Idents(obj.mouse.glutamatergic) <- "subclass"
+obj.mouse.IT <- subset(obj.mouse.glutamatergic, idents = c("L2/3", "L4", "L5IT", "L6IT"))
+obj.mouse.IT <- NormalizePCA(obj.mouse.IT)
+
+```
+
+
+```{r}
+
+subclass.markers.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/Glutamatergic/markerdict_subclass.rds")$subclass
+subclass.markers.opossum.glutamatergic$pct.diff <- subclass.markers.opossum.glutamatergic$pct.1 - subclass.markers.opossum.glutamatergic$pct.2
+markers.opossum.IT <- subclass.markers.opossum.glutamatergic[subclass.markers.opossum.glutamatergic$cluster %in% c("IT_A", "IT_B", "IT_C", "IT_D"),]
+markers.opossum.IT <- markers.opossum.IT %>% 
+                        filter(avg_log2FC > 0.32 & pct.1 > 0.15) %>%
+                        arrange(cluster, -pct.diff)
+subclass.markers.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Glutamatergic/P38/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.glutamatergic$pct.diff <- subclass.markers.mouse.glutamatergic$pct.1 - subclass.markers.mouse.glutamatergic$pct.2
+markers.mouse.IT <- subclass.markers.mouse.glutamatergic[subclass.markers.mouse.glutamatergic$cluster %in% c("L2/3", "L4", "L5IT", "L6IT"),]
+markers.mouse.IT <- markers.mouse.IT %>% 
+                      filter(avg_log2FC > 0.32 & pct.1 > 0.15) %>%
+                      arrange(cluster, -pct.diff)
+subclass.pairs <- list(c("IT_A", "L2/3"), c("IT_C", "L4"), c("IT_B", "L5IT"), c("IT_D", "L6IT"))
+markers.shared.IT <- c()
+for (p in 1:4) {
+  markers.shared.IT <- c(markers.shared.IT, intersect(markers.opossum.IT$gene[markers.opossum.IT$cluster == subclass.pairs[[p]][1]], 
+                                                      markers.mouse.IT$gene[markers.mouse.IT$cluster == subclass.pairs[[p]][2]]))
+}
+markers.shared.IT <- markers.shared.IT[order(match(markers.shared.IT, markers.mouse.IT$gene))]
+
+```
+
+
+```{r}
+
+Idents(obj.mouse.IT) <- "subclass"
+markers.mouse.IT <- FindAllMarkers(obj.mouse.IT, assay = "SCT", logfc.threshold = 1, only.pos = TRUE)
+# markers.mouse.IT$pct.diff <- markers.mouse.IT$pct.1 - markers.mouse.IT$pct.2
+# markers.mouse.IT <- markers.mouse.IT[markers.mouse.IT$pct.diff < 0.01,]
+
+```
+
+
+```{r}
+
+gene_list <- markers.shared.IT
+
+# Subset the Seurat object to include only the genes of interest
+DefaultAssay(obj.mouse.IT) <- "RNA"
+seurat_subset <- subset(obj.mouse.IT, features = gene_list)
+
+data <- GetAssayData(object = seurat_subset, slot = "counts")
+celldata <- as.data.frame(seurat_subset@meta.data)
+genedata <- as.data.frame(x = row.names(data), row.names = row.names(data))
+colnames(genedata) <- "gene_short_name"
+cds <- new_cell_data_set(data, cell_metadata = celldata, gene_metadata = genedata)
+cds <- estimate_size_factors(cds)
+
+# Learn the graph and order cells by pseudotime on the subset CDS
+cds <- preprocess_cds(cds, method = "PCA")
+cds <- reduce_dimension(cds, reduction_method = "UMAP")
+cds <- cluster_cells(cds)
+cds <- learn_graph(cds)
+cds <- order_cells(cds)
+
+# Extract the pseudotime information from the subset CDS
+pseudotime_data <- pseudotime(cds)
+
+# Create a data frame with pseudotime and cell names
+pseudotime_df <- data.frame(cell = colnames(cds), pseudotime = pseudotime_data)
+# Order the data frame by pseudotime
+pseudotime_df <- pseudotime_df[order(pseudotime_df$pseudotime), ]
+# Extract ordered cell names
+ordered_cells <- pseudotime_df$cell
+
+# Extract expression matrix for the specified genes
+# sampled_cells <- ordered_cells[ordered_cells %in% sample(ordered_cells, 2000, replace = FALSE, prob = NULL)]
+expression_matrix <- as.matrix(exprs(cds[gene_list[gene_list %in% rownames(cds)], ordered_cells]))
+
+breaks <- seq(-2, 2, length.out = 101)
+colors <- colorRampPalette(c("blue", "white", "red"))(100)
+
+# Extract subclass information for the ordered cells
+subclass_labels <- celldata[ordered_cells, "subclass"]
+
+# Create a data frame for the annotation
+annotation_df <- data.frame(Subclass = subclass_labels)
+rownames(annotation_df) <- ordered_cells
+
+# Define colors for the subclasses
+# Assuming you have a predefined list of colors for each subclass
+subclass_colors <- list(subclass = colors_list[c("L2/3", "L4", "L5IT", "L6IT")])  # colors_list should map subclass names to colors
+
+# Generate the heatmap with annotation
+pheatmap(expression_matrix, cluster_rows = FALSE, cluster_cols = FALSE,
+         show_rownames = FALSE, show_colnames = FALSE,
+         scale = "row", 
+         color = colors,
+         breaks = breaks,
+         main = "Gene Expression Heatmap Ordered by Pseudotime",
+         annotation_col = annotation_df,
+         annotation_colors = subclass_colors,
+         annotation_legend = TRUE)  # Show the legend for subclasses
+
+```
+
+
+```{r}
+
+gene_list <- markers.shared.IT
+
+# Subset the Seurat object to include only the genes of interest
+DefaultAssay(obj.opossum.IT) <- "RNA"
+seurat_subset <- subset(obj.opossum.IT, features = gene_list)
+
+data <- GetAssayData(object = seurat_subset, slot = "counts")
+celldata <- as.data.frame(seurat_subset@meta.data)
+genedata <- as.data.frame(x = row.names(data), row.names = row.names(data))
+colnames(genedata) <- "gene_short_name"
+cds <- new_cell_data_set(data, cell_metadata = celldata, gene_metadata = genedata)
+cds <- estimate_size_factors(cds)
+
+# Learn the graph and order cells by pseudotime on the subset CDS
+cds <- preprocess_cds(cds, method = "PCA")
+cds <- reduce_dimension(cds, reduction_method = "UMAP")
+cds <- cluster_cells(cds)
+cds <- learn_graph(cds)
+cds <- order_cells(cds)
+
+# Extract the pseudotime information from the subset CDS
+pseudotime_data <- pseudotime(cds)
+
+# Create a data frame with pseudotime and cell names
+pseudotime_df <- data.frame(cell = colnames(cds), pseudotime = pseudotime_data)
+# Order the data frame by pseudotime
+pseudotime_df <- pseudotime_df[order(pseudotime_df$pseudotime), ]
+# Extract ordered cell names
+ordered_cells <- pseudotime_df$cell
+
+# Extract expression matrix for the specified genes
+# sampled_cells <- ordered_cells[ordered_cells %in% sample(ordered_cells, 2000, replace = FALSE, prob = NULL)]
+expression_matrix <- as.matrix(exprs(cds[gene_list[gene_list %in% rownames(cds)], ordered_cells]))
+
+breaks <- seq(-2, 2, length.out = 101)
+colors <- colorRampPalette(c("blue", "white", "red"))(100)
+
+# Extract subclass information for the ordered cells
+subclass_labels <- celldata[ordered_cells, "subclass"]
+
+# Create a data frame for the annotation
+annotation_df <- data.frame(Subclass = subclass_labels)
+rownames(annotation_df) <- ordered_cells
+
+# Define colors for the subclasses
+# Assuming you have a predefined list of colors for each subclass
+subclass_colors <- list(subclass = colors_list[c("IT_A", "IT_B", "IT_C", "IT_D")])  # colors_list should map subclass names to colors
+
+# Generate the heatmap with annotation
+pheatmap(expression_matrix, cluster_rows = FALSE, cluster_cols = FALSE,
+         show_rownames = FALSE, show_colnames = FALSE,
+         scale = "row",
+         color = colors,
+         breaks = breaks,
+         main = "Gene Expression Heatmap Ordered by Pseudotime",
+         annotation_col = annotation_df,
+         annotation_colors = subclass_colors,
+         annotation_legend = TRUE)  # Show the legend for subclasses
+
+```
+
+Cell & Gene Pseudotime Ordering
+
+```{r}
+
+gene_list <- markers.shared.IT
+
+# Subset the Seurat object to include only the genes of interest
+DefaultAssay(obj.mouse.IT) <- "RNA"
+seurat_subset <- subset(obj.mouse.IT, features = gene_list)
+
+data <- GetAssayData(object = seurat_subset, slot = "counts")
+celldata <- as.data.frame(seurat_subset@meta.data)
+genedata <- as.data.frame(x = row.names(data), row.names = row.names(data))
+colnames(genedata) <- "gene_short_name"
+cds <- new_cell_data_set(data, cell_metadata = celldata, gene_metadata = genedata)
+cds <- estimate_size_factors(cds)
+
+# Learn the graph and order cells by pseudotime on the subset CDS
+cds <- preprocess_cds(cds, method = "PCA")
+cds <- reduce_dimension(cds, reduction_method = "UMAP")
+cds <- cluster_cells(cds)
+cds <- learn_graph(cds)
+cds <- order_cells(cds)
+
+# Extract the pseudotime information from the subset CDS
+pseudotime_data <- pseudotime(cds)
+
+# Create a data frame with pseudotime and cell names
+pseudotime_df <- data.frame(cell = colnames(cds), pseudotime = pseudotime_data)
+# Order the data frame by pseudotime
+pseudotime_df <- pseudotime_df[order(pseudotime_df$pseudotime), ]
+# Extract ordered cell names
+ordered_cells <- pseudotime_df$cell
+
+# Step 1: Transpose the count matrix
+transposed_data <- t(data)
+
+# Step 2: Create a new cell_data_set with the transposed matrix
+cds_genes_as_cells <- new_cell_data_set(
+  transposed_data,
+  cell_metadata = genedata,  # original gene metadata becomes cell metadata
+  gene_metadata = celldata   # original cell metadata becomes gene metadata
+)
+
+cds_genes_as_cells <- estimate_size_factors(cds_genes_as_cells)
+
+# Step 3: Run Monocle routines on the transposed data
+cds_genes_as_cells <- preprocess_cds(cds_genes_as_cells, method = "PCA")
+cds_genes_as_cells <- reduce_dimension(cds_genes_as_cells, reduction_method = "UMAP")
+cds_genes_as_cells <- cluster_cells(cds_genes_as_cells)
+cds_genes_as_cells <- learn_graph(cds_genes_as_cells)
+cds_genes_as_cells <- order_cells(cds_genes_as_cells)
+
+# Step 4: Extract the pseudotime information for the genes (which were treated as cells)
+gene_pseudotime <- pseudotime(cds_genes_as_cells)
+
+# Order genes by pseudotime
+gene_pseudotime_df <- data.frame(gene = names(gene_pseudotime), pseudotime = gene_pseudotime)
+gene_pseudotime_df <- gene_pseudotime_df[order(gene_pseudotime_df$pseudotime), ]
+ordered_genes_by_pseudotime <- gene_pseudotime_df$gene
+
+# Extract expression matrix for the specified genes
+# sampled_cells <- ordered_cells[ordered_cells %in% sample(ordered_cells, 2000, replace = FALSE, prob = NULL)]
+expression_matrix <- as.matrix(exprs(cds[gene_list[gene_list %in% rownames(cds)], ordered_cells]))
+expression_matrix <- expression_matrix[ordered_genes_by_pseudotime,]
+
+breaks <- seq(-1, 1, length.out = 101)
+colors <- colorRampPalette(c("blue", "white", "red"))(100)
+
+# Extract subclass information for the ordered cells
+subclass_labels <- celldata[ordered_cells, "subclass"]
+
+# Create a data frame for the annotation
+annotation_df <- data.frame(Subclass = subclass_labels)
+rownames(annotation_df) <- ordered_cells
+
+# Define colors for the subclasses
+# Assuming you have a predefined list of colors for each subclass
+subclass_colors <- list(subclass = colors_list[c("L2/3", "L4", "L5IT", "L6IT")])  # colors_list should map subclass names to colors
+
+# Generate the heatmap with annotation
+pheatmap(expression_matrix, cluster_rows = FALSE, cluster_cols = FALSE,
+         show_rownames = FALSE, show_colnames = FALSE,
+         scale = "row", 
+         color = colors,
+         breaks = breaks,
+         main = "Gene Expression Heatmap Ordered by Pseudotime",
+         annotation_col = annotation_df,
+         annotation_colors = subclass_colors,
+         annotation_legend = TRUE)  # Show the legend for subclasses
+
+```
+

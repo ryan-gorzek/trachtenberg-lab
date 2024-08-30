@@ -1,0 +1,400 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(SeuratWrappers)
+library(monocle3)
+library(pheatmap)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
+obj.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+
+```
+
+
+```{r}
+
+colors_list <- list(
+              # Glutamatergic
+              IT = "#FF6C88",
+              IT_A = "#FFB3B3",
+              `L2/3` = "#FFB3B3",
+              IT_B = "#FFA07A",
+              L4 = "#FF7F50",
+              IT_C = "#FF7F50",
+              L5IT = "#FFA07A",
+              IT_D = "#FF6347",
+              L6IT = "#FF6347",
+              L5NP = "#FF4500",
+              L5PT = "#32a852", 
+              L6CT = "#7de89a",
+              L6b = "#206633",
+            
+              # GABAergic
+              Pvalb = "#1E90FF",
+              Sst = "#87CEEB",
+              Vip = "#87CEFA",
+              Lamp5 = "#4682B4",
+              Frem1 = "#ADD8E6",
+              Stac = "#5F9EA0",
+            
+              # Non-neuronal
+              Astro = "#8C8C8C",
+              Micro = "#A0A0A0",
+              OD = "#B4B4B4",
+              OPC = "#C8C8C8",
+              Endo = "#505050",
+              VLMC = "#B4B4B4"
+)
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.glutamatergic) <- "subclass"
+obj.opossum.IT <- subset(obj.opossum.glutamatergic, idents = c("IT_A", "IT_B", "IT_C", "IT_D"))
+obj.opossum.IT <- NormalizePCA(obj.opossum.IT)
+
+Idents(obj.mouse.glutamatergic) <- "subclass"
+obj.mouse.IT <- subset(obj.mouse.glutamatergic, idents = c("L2/3", "L4", "L5IT", "L6IT"))
+obj.mouse.IT <- NormalizePCA(obj.mouse.IT)
+
+```
+
+
+```{r}
+
+subclasses.mouse <- c("L2/3", "L4", "L5IT", "L6IT")
+Idents(obj.mouse.IT) <- "subclass"
+levels(obj.mouse.IT) <- subclasses.mouse
+DimPlot(obj.mouse.IT, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-16, 20) + ylim(-22, 14) + coord_equal()
+
+subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D")
+Idents(obj.opossum.IT) <- "subclass"
+levels(obj.opossum.IT) <- subclasses.opossum
+DimPlot(obj.opossum.IT, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-18, 24) + coord_equal()
+
+```
+
+
+```{r}
+
+PlotPCVarianceExplained(c(obj.opossum.IT, obj.mouse.IT), c("Opossum", "Mouse"))
+
+```
+
+
+```{r}
+
+PlotPCLoadingsCorrelation(c(obj.opossum.IT, obj.mouse.IT), c("Opossum", "Mouse"))
+
+```
+
+
+```{r}
+
+shared.HVFs <- SelectIntegrationFeatures(object.list = c(obj.mouse.IT, obj.opossum.IT), nfeatures = 3000)
+obj.opossum.IT.SHVF <- NormalizePCA(obj.opossum.IT, features = shared.HVFs)
+obj.mouse.IT.SHVF <- NormalizePCA(obj.mouse.IT, features = shared.HVFs)
+
+```
+
+
+```{r}
+
+subclasses.mouse <- c("L2/3", "L4", "L5IT", "L6IT")
+Idents(obj.mouse.IT.SHVF) <- "subclass"
+levels(obj.mouse.IT.SHVF) <- subclasses.mouse
+DimPlot(obj.mouse.IT.SHVF, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-16, 20) + ylim(-22, 14) + coord_equal()
+
+subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D")
+Idents(obj.opossum.IT.SHVF) <- "subclass"
+levels(obj.opossum.IT.SHVF) <- subclasses.opossum
+DimPlot(obj.opossum.IT.SHVF, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-18, 24) + coord_equal()
+
+```
+
+
+```{r}
+
+PlotPCVarianceExplained(c(obj.opossum.IT.SHVF, obj.mouse.IT.SHVF), c("Opossum", "Mouse"))
+
+```
+
+
+```{r}
+
+PlotPCLoadingsCorrelation(c(obj.opossum.IT.SHVF, obj.mouse.IT.SHVF), c("Opossum", "Mouse"))
+
+```
+
+
+```{r}
+
+obj.mouse.IT.SHVF$species <- "Mouse"
+obj.combined.IT <- merge(obj.mouse.IT.SHVF, obj.opossum.IT.SHVF)
+obj.combined.IT <- SCTransform(obj.combined.IT, vst.flavor = "v2", residual.features = shared.HVFs, return.only.var.genes = FALSE, verbose = FALSE) %>%
+                   RunPCA(npcs = 30, verbose = FALSE)
+
+```
+
+
+```{r}
+
+subclasses.opossum.mouse <- c("L2/3", "IT_A", "L4", "IT_C", "L5IT", "IT_B", "L6IT", "IT_D")
+levels(obj.combined.IT) <- subclasses.opossum.mouse
+DimPlot(obj.combined.IT, reduction = "pca", dims = c(2, 3), cols = c("#aaaaaa", "#c692b8"), group.by = "species", pt.size = 1, label = FALSE, shuffle = TRUE, raster = FALSE) + xlim(-30, 35) + ylim(-40, 25) + coord_equal()
+DimPlot(obj.combined.IT, reduction = "pca", dims = c(2, 3), cols = colors_list[subclasses.opossum.mouse], group.by = "subclass", split.by = "species", pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-30, 35) + ylim(-40, 25) + coord_equal()
+
+```
+
+
+```{r}
+
+PlotWithinSpeciesVarianceExplained(obj.combined.IT, c("Opossum", "Mouse"), num_pcs = 30)
+
+```
+
+
+```{r}
+
+PlotPCLoadingsCorrelation(c(obj.opossum.IT.SHVF, obj.combined.IT), c("Opossum", "Combined"))
+PlotPCLoadingsCorrelation(c(obj.mouse.IT.SHVF, obj.combined.IT), c("Mouse", "Combined"))
+
+```
+
+
+```{r}
+
+library(vegan)
+
+obj.opossum.IT.CMB <- obj.combined.IT[, obj.combined.IT$species == "Opossum"]
+
+perform_procrustes_analysis_with_permutation <- function(seurat_obj1, seurat_obj2, dims1_list, dims2_list, scale = TRUE, num_permutations = 1000) {
+  # Function to perform a permutation test
+  permutation_test <- function(embeddings1, embeddings2, num_permutations) {
+    observed_M2 <- protest(embeddings1, embeddings2)$ss
+    
+    permuted_M2s <- replicate(num_permutations, {
+      permuted_embeddings2 <- embeddings2[sample(nrow(embeddings2)), ]
+      protest(embeddings1, permuted_embeddings2)$ss
+    })
+    
+    p_value <- mean(permuted_M2s <= observed_M2)
+    
+    return(p_value)
+  }
+  
+  # Initialize a list to store results
+  results <- list()
+  
+  for (i in seq_along(dims1_list)) {
+    dims1 <- dims1_list[[i]]
+    dims2 <- dims2_list[[i]]
+    
+    # Extract the embeddings
+    embeddings1 <- Embeddings(seurat_obj1, reduction = "pca")[, dims1]
+    embeddings2 <- Embeddings(seurat_obj2, reduction = "pca")[, dims2]
+    
+    # Standardize the embeddings if scale is TRUE
+    if (scale) {
+      embeddings1 <- scale(embeddings1)
+      embeddings2 <- scale(embeddings2)
+    }
+    
+    # Perform Procrustes analysis
+    procrustes_result <- protest(embeddings1, embeddings2)
+    M2 <- procrustes_result$ss
+    
+    # Perform permutation test
+    p_value <- permutation_test(embeddings1, embeddings2, num_permutations)
+    
+    # Store the M^2 statistic, p-value, and the dimensions compared
+    results[[i]] <- list(
+      dims1 = dims1,
+      dims2 = dims2,
+      M2 = M2,
+      p_value = p_value
+    )
+  }
+  
+  # Convert results to a data frame for easier comparison
+  results_df <- do.call(rbind, lapply(results, function(x) {
+    data.frame(
+      dims1 = paste(x$dims1, collapse = ","),
+      dims2 = paste(x$dims2, collapse = ","),
+      M2 = x$M2,
+      p_value = x$p_value
+    )
+  }))
+  
+  # Rank the results by M^2
+  results_df <- results_df[order(results_df$M2), ]
+  
+  return(results_df)
+}
+
+# Example usage:
+# Assuming obj.opossum.IT and obj.opossum.IT.CMB are your Seurat objects
+# and you want to compare multiple pairs of PCs
+
+dims1_list <- list(c(1, 2), c(1, 2), c(1, 2))  # Example: PC1/PC2, PC1/PC3, PC2/3 in obj.opossum.IT
+dims2_list <- list(c(2, 3), c(4, 6), c(7, 8))  # Example: PC3/PC4, PC5/PC6, PC7/PC8 in obj.opossum.IT.CMB
+
+comparison_results <- perform_procrustes_analysis_with_permutation(
+  obj.opossum.IT, 
+  obj.opossum.IT.CMB, 
+  dims1_list, 
+  dims2_list, 
+  num_permutations = 10
+)
+
+# View the ranked comparison results with p-values
+print(comparison_results)
+
+```
+
+
+```{r}
+
+library(vegan)
+library(ggplot2)
+
+# Function to plot the original scaled embeddings without transformations
+plot_original_embeddings <- function(seurat_obj, dims = c(1, 2), title = "Original Scaled Embeddings") {
+  # Extract the embeddings
+  embeddings <- Embeddings(seurat_obj, reduction = "pca")[, dims]
+  
+  # Manually standardize the embeddings
+  embeddings <- scale(embeddings)
+  
+  # Create a data frame for plotting
+  plot_data <- as.data.frame(embeddings)
+  colnames(plot_data) <- c("Dim1", "Dim2")
+  
+  # Plot the scaled embeddings
+  p <- ggplot(plot_data, aes(x = Dim1, y = Dim2)) +
+    geom_point(color = "blue", size = 1, alpha = 0.6) +
+    labs(title = title, x = paste("PC", dims[1]), y = paste("PC", dims[2])) +
+    theme_minimal() +
+    xlim(-4, 4) +
+    ylim(-4, 4) +
+    coord_fixed()  # Make the plot square
+  
+  return(p)
+}
+
+# Generate the plots for the original scaled embeddings
+original_plot1 <- plot_original_embeddings(obj.opossum.IT, dims = c(1, 2), title = "Scaled Embeddings: obj.opossum.IT (PC1/PC2)")
+original_plot2 <- plot_original_embeddings(obj.opossum.IT.CMB, dims = c(2, 3), title = "Scaled Embeddings: obj.opossum.IT.CMB (PC3/PC4)")
+
+# Display the plots
+print(original_plot1)
+print(original_plot2)
+
+# Function to perform Procrustes analysis and plot the results with proper scaling, subsampling, and original points
+plot_procrustes <- function(seurat_obj1, seurat_obj2, dims1 = c(1, 2), dims2 = c(1, 2), scale = TRUE, subsample_fraction = 0.25) {
+  # Extract the embeddings
+  embeddings1 <- Embeddings(seurat_obj1, reduction = "pca")[, dims1]
+  embeddings2 <- Embeddings(seurat_obj2, reduction = "pca")[, dims2]
+  
+  # Manually standardize the embeddings if scale is TRUE
+  if (scale) {
+    embeddings1 <- scale(embeddings1)
+    embeddings2 <- scale(embeddings2)
+  }
+
+  # Subsample 25% of the points
+  set.seed(123)  # For reproducibility
+  sampled_indices <- sample(1:nrow(embeddings1), size = ceiling(subsample_fraction * nrow(embeddings1)))
+  embeddings1 <- embeddings1[sampled_indices, ]
+  embeddings2 <- embeddings2[sampled_indices, ]
+  
+  # Perform Procrustes analysis with scaling applied to both embeddings
+  procrustes_result <- procrustes(embeddings1, embeddings2, scale = FALSE)
+  
+  # Extract the original and aligned coordinates
+  original_points1 <- as.data.frame(procrustes_result$X)
+  aligned_points2 <- as.data.frame(procrustes_result$Yrot)
+  original_points2 <- as.data.frame(embeddings2)
+  
+  # Create a data frame for plotting
+  plot_data <- data.frame(
+    X1 = original_points1[, 1],
+    Y1 = original_points1[, 2],
+    X2 = aligned_points2[, 1],
+    Y2 = aligned_points2[, 2],
+    X2_original = original_points2[, 1],
+    Y2_original = original_points2[, 2],
+    Cell = rownames(original_points1)
+  )
+  
+  # Plot the Procrustes results including the original points from embeddings2
+  p <- ggplot() +
+    # geom_point(data = plot_data, aes(x = X2_original, y = Y2_original), color = "gray", size = 2, alpha = 0.4) +  # Original embeddings2 points
+    geom_point(data = plot_data, aes(x = X1, y = Y1), color = "blue", size = 1, alpha = 0.6) +  # Original embeddings1 points
+    geom_point(data = plot_data, aes(x = X2, y = Y2), color = "red", size = 1, alpha = 0.6) +  # Aligned embeddings2 points
+    geom_segment(data = plot_data, aes(x = X1, y = Y1, xend = X2, yend = Y2), arrow = arrow(length = unit(0.2, "cm")), alpha = 0.4) +
+    labs(title = "Procrustes Analysis: Original vs Aligned Points (25% Subsampled)", x = "Dimension 1", y = "Dimension 2") +
+    xlim(-4, 4) +
+    ylim(-4, 4) +
+    coord_fixed() +
+    theme_minimal()
+  
+  return(p)
+}
+
+# Example usage:
+# Assuming obj.opossum.IT and obj.opossum.IT.CMB are your Seurat objects
+# and you want to compare PC1/PC2 of obj.opossum.IT to PC3/PC4 of obj.opossum.IT.CMB
+
+procrustes_plot <- plot_procrustes(obj.opossum.IT, obj.opossum.IT.CMB, dims1 = c(1, 2), dims2 = c(2, 3))
+
+# Display the plot
+print(procrustes_plot)
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.IT.CMB, reduction = "pca", dims = c(2, 3), group.by = "subclass", pt.size = 1, label = FALSE, shuffle = TRUE, raster = FALSE) + xlim(-30, 35) + ylim(-40, 25) + coord_equal()
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+

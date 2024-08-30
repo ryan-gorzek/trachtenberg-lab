@@ -152,6 +152,8 @@ SaveIdentConfusionMatrices(obj.mouse.glutamatergic, subclass.labels, ident.label
 
 ```{r}
 
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+
 # Plot relative subclass proportions
 Idents(obj.mouse.glutamatergic) <- "subclass"
 levels(obj.mouse.glutamatergic) <- c("L2/3", "L4", "L5IT", "L5NP", "L5PT", "L6CT", "L6IT", "L6b")
@@ -167,15 +169,15 @@ subclass.labels <- c("L2/3", "L4", "L5IT", "L5NP", "L5PT", "L6CT", "L6IT", "L6b"
 ident.labels <- c("type")
 
 subclass.markers.mouse.glutamatergic <- SubclassMarkerDict(obj.mouse.glutamatergic, "subclass",
-                                                       "E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Glutamatergic/P38/markerdict_subclass.rds")
+                                                       "E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Glutamatergic/P8/markerdict_subclass.rds")
 markers.mouse.glutamatergic <- IdentMarkerDict(obj.mouse.glutamatergic, subclass.labels, ident.labels,
-                                        "E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Glutamatergic/P38/markerdict_types.rds")
+                                        "E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Glutamatergic/P8/markerdict_types.rds")
 SaveDotPlots(obj.mouse.glutamatergic, markers.mouse.glutamatergic,
              subclass.labels, ident.labels,
-             "E:/Transcriptomics_V1/Mouse/seurat/cell_types/Glutamatergic/P38/", "ENSMUSG")
+             "E:/Transcriptomics_V1/Mouse/seurat/cell_types/Glutamatergic/P8/", "ENSMUSG")
 SaveFeaturePlots(obj.mouse.glutamatergic, markers.mouse.glutamatergic,
                  subclass.labels, ident.labels,
-                 "E:/Transcriptomics_V1/Mouse/seurat/cell_types/Glutamatergic/P38/")
+                 "E:/Transcriptomics_V1/Mouse/seurat/cell_types/Glutamatergic/P8/")
 
 PlotSubclassGeneCounts(subclass.markers.mouse.glutamatergic, "subclass", 
                        c("L2/3", "L4", "L5IT", "L5NP", "L5PT", "L6CT", "L6IT", "L6b")) + theme(aspect.ratio = 1)
@@ -189,16 +191,16 @@ for (sbcl in subclass.labels) {
 
 SaveSubclassConfusionMatrices(obj.mouse.glutamatergic, "subclass",
                               c("L2/3", "L4", "L5IT", "L5NP", "L5PT", "L6CT", "L6IT", "L6b"),
-                              "E:/Transcriptomics_V1/Mouse/seurat/cell_types/Glutamatergic/P38/")
+                              "E:/Transcriptomics_V1/Mouse/seurat/cell_types/Glutamatergic/P8/")
 SaveIdentConfusionMatrices(obj.mouse.glutamatergic, subclass.labels, ident.labels,
-                           "E:/Transcriptomics_V1/Mouse/seurat/cell_types/Glutamatergic/P38/")
+                           "E:/Transcriptomics_V1/Mouse/seurat/cell_types/Glutamatergic/P8/")
 
 ```
 
 
 ```{r}
 
-saveRDS(obj.mouse.glutamatergic, "E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+saveRDS(obj.mouse.glutamatergic, "E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P8_glutamatergic_processed.rds")
 
 ```
 

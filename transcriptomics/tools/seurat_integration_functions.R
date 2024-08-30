@@ -487,8 +487,12 @@ PlotIdentDEIntersection <- function(list1, list2, all_genes1, all_genes2, sample
 
 PlotSubclassDEIntersectionHeatmap <- function(list1, list2, all_genes1, all_genes2, sample.name1, sample.name2, subclass.order, log2FC_threshold, output_path, percentage = FALSE) {
   # Extract dataframes
-  df1 <- list1$subclass
-  df2 <- list2$subclass
+  df1 <- list1$subclass %>%
+    filter(pct.1 >= 0.2) %>% 
+    filter(p_val_adj < 0.05)
+  df2 <- list2$subclass %>%
+    filter(pct.1 >= 0.2) %>% 
+    filter(p_val_adj < 0.05)
 
   # Find intersecting genes
   intersecting_genes <- intersect(all_genes1, all_genes2)
@@ -554,8 +558,8 @@ PlotSubclassDEIntersectionHeatmap <- function(list1, list2, all_genes1, all_gene
   # Plot heatmap
   ggplot(intersection_counts, aes(x = Cluster1, y = Cluster2, fill = Value)) +
     geom_tile(color = "white", size = 0.5) +
-    geom_text(aes(label = round(Value, 2)), color = "black") +
-    scale_fill_gradient(low = "white", high = "red", limits = c(0, max(intersection_counts$Value))) +
+    geom_text(aes(label = round(Value, 1)), color = "black") +
+    scale_fill_gradient(low = "white", high = "red", limits = c(0, 20), oob = scales::squish) +
     scale_y_discrete(limits = rev(levels(factor(intersection_counts$Cluster2)))) + # Reverse y-axis order
     labs(
       title = paste0("Shared DE Genes (log2FC > ", log2FC_threshold, ")"), 
@@ -565,7 +569,7 @@ PlotSubclassDEIntersectionHeatmap <- function(list1, list2, all_genes1, all_gene
     ) +
     theme_minimal() +
     theme(
-      aspect.ratio = 1,
+      aspect.ratio = length(levels(intersection_counts$Cluster2)) / length(levels(intersection_counts$Cluster1)),
       axis.text.x = element_text(size = 12, angle = 90, hjust = 1, vjust = 0.5),  # Rotate x-axis tick labels
       axis.text.y = element_text(size = 12)   # Increase y-axis tick label size
     ) # Make cells square
@@ -573,8 +577,12 @@ PlotSubclassDEIntersectionHeatmap <- function(list1, list2, all_genes1, all_gene
 
 PlotSubclassDEIntersectionHeatmap_TopX <- function(list1, list2, all_genes1, all_genes2, sample.name1, sample.name2, subclass.order, top_genes_threshold, output_path, percentage = FALSE) {
   # Extract dataframes
-  df1 <- list1$subclass
-  df2 <- list2$subclass
+  df1 <- list1$subclass %>%
+    filter(pct.1 >= 0.2) %>% 
+    filter(p_val_adj < 0.05)
+  df2 <- list2$subclass %>%
+    filter(pct.1 >= 0.2) %>% 
+    filter(p_val_adj < 0.05)
   
   # Find intersecting genes
   intersecting_genes <- intersect(all_genes1, all_genes2)
@@ -664,7 +672,9 @@ PlotSubclassDEIntersectionHeatmap_TopX <- function(list1, list2, all_genes1, all
 
 PlotSubclassDEIntersectionTotalCDF <- function(list, ortho_genes, subclass.order, subclass_colors) {
   # Extract dataframes
-  df <- list$subclass
+  df <- list$subclass %>%
+          filter(pct.1 >= 0.2) %>% 
+          filter(p_val_adj < 0.05)
   
   # Initialize an empty data frame to store cumulative counts
   cdf_data <- data.frame()
@@ -730,8 +740,12 @@ PlotSubclassDEIntersectionTotalCDF <- function(list, ortho_genes, subclass.order
 
 PlotSubclassDEIntersectionCDF <- function(list1, list2, all_genes1, all_genes2, sample.name1, sample.name2, subclass.order, output_path, cluster_pairs, pair_colors, normalize.within = TRUE) {
   # Extract dataframes
-  df1 <- list1$subclass
-  df2 <- list2$subclass
+  df1 <- list1$subclass %>%
+    filter(pct.1 >= 0.2) %>% 
+    filter(p_val_adj < 0.05)
+  df2 <- list2$subclass %>%
+    filter(pct.1 >= 0.2) %>% 
+    filter(p_val_adj < 0.05)
   
   # Find intersecting genes
   intersecting_genes <- intersect(all_genes1, all_genes2)
@@ -814,8 +828,12 @@ PlotSubclassDEIntersectionCDF <- function(list1, list2, all_genes1, all_genes2, 
 
 PlotSubclassDEIntersectionCDF_TopX <- function(list1, list2, all_genes1, all_genes2, sample.name1, sample.name2, subclass.order, output_path, cluster_pairs, pair_colors, top_genes_seq) {
   # Extract dataframes
-  df1 <- list1$subclass
-  df2 <- list2$subclass
+  df1 <- list1$subclass %>%
+    filter(pct.1 >= 0.2) %>% 
+    filter(p_val_adj < 0.05)
+  df2 <- list2$subclass %>%
+    filter(pct.1 >= 0.2) %>% 
+    filter(p_val_adj < 0.05)
   
   # Find intersecting genes
   intersecting_genes <- intersect(all_genes1, all_genes2)
@@ -834,8 +852,8 @@ PlotSubclassDEIntersectionCDF_TopX <- function(list1, list2, all_genes1, all_gen
     df2_filtered <- df2 %>% filter(cluster == cluster2) %>% filter(gene %in% intersecting_genes)
     
     # Rank genes by avg_log2FC
-    df1_filtered <- df1_filtered %>% arrange(desc(avg_log2FC))
-    df2_filtered <- df2_filtered %>% arrange(desc(avg_log2FC))
+    df1_filtered <- df1_filtered %>% arrange(dplyr::desc(avg_log2FC))
+    df2_filtered <- df2_filtered %>% arrange(dplyr::desc(avg_log2FC))
     
     # Calculate the cumulative fraction of shared genes as top X DE genes vary
     shared_gene_counts <- data.frame(
@@ -878,8 +896,12 @@ PlotSubclassDEIntersectionCDF_TopX <- function(list1, list2, all_genes1, all_gen
 
 PlotSubclassDEIntersectionScatter <- function(list1, list2, sample.name1, sample.name2, subclass.order, cluster_pairs, pair_colors, log2FC_threshold = 0.5) {
   # Extract dataframes
-  df1 <- list1$subclass
-  df2 <- list2$subclass
+  df1 <- list1$subclass %>%
+           filter(pct.1 >= 0.2) %>% 
+           filter(p_val_adj < 0.05)
+  df2 <- list2$subclass %>%
+           filter(pct.1 >= 0.2) %>% 
+           filter(p_val_adj < 0.05)
   
   # Initialize an empty data frame to store counts
   scatter_data <- data.frame()
@@ -937,8 +959,12 @@ PlotSubclassDEIntersectionScatter <- function(list1, list2, sample.name1, sample
 
 PlotSubclassDEIntersectionOverlapScatter <- function(list1, list2, all_genes1, all_genes2, sample.name1, sample.name2, subclass.order, cluster_pairs, pair_colors, log2FC_threshold = 0.5) {
   # Extract dataframes
-  df1 <- list1$subclass
-  df2 <- list2$subclass
+  df1 <- list1$subclass %>%
+    filter(pct.1 >= 0.2) %>% 
+    filter(p_val_adj < 0.05)
+  df2 <- list2$subclass %>%
+    filter(pct.1 >= 0.2) %>% 
+    filter(p_val_adj < 0.05)
   
   # Find intersecting genes
   intersecting_genes <- intersect(all_genes1, all_genes2)
@@ -1767,4 +1793,93 @@ PlotMappingQualityHeatmap <- function(data, column_name, column_levels, value_co
   }
 
   return(p)
+}
+
+PlotPCLoadingsCorrelation <- function(seurat_objects, object_names, num_pcs = 10) {
+  # Extract PCA loadings for the specified number of PCs
+  loadings_list <- lapply(seurat_objects, function(obj) {
+    Loadings(obj, reduction = "pca")[, 1:num_pcs]
+  })
+  
+  # Find the intersection of genes between the two Seurat objects
+  common_genes <- intersect(rownames(loadings_list[[1]]), rownames(loadings_list[[2]]))
+  
+  # Subset the loadings matrices to the common genes
+  loadings_list <- lapply(loadings_list, function(loadings) {
+    loadings[common_genes, ]
+  })
+  
+  # Calculate the correlation matrix between the two sets of loadings
+  cor_matrix <- cor(loadings_list[[1]], loadings_list[[2]])
+  
+  # Convert correlation matrix to long format for ggplot2
+  cor_df <- melt(cor_matrix)
+  colnames(cor_df) <- c("PC1", "PC2", "Correlation")
+  
+  # Create the heatmap using ggplot2
+  ggplot(cor_df, aes(x = PC1, y = PC2, fill = Correlation)) +
+    geom_tile() +
+    geom_text(aes(label = sprintf("%.2f", Correlation)), color = "black", size = 3) +
+    scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+    labs(title = paste("PC Loadings Correlation of", object_names[1], "with", object_names[2]),
+         x = paste0(object_names[1], " PC"),
+         y = paste0(object_names[2], " PC")) +
+    scale_y_discrete(limits = rev(levels(cor_df$PC1))) +
+    coord_fixed() +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+}
+
+PlotWithinSpeciesVarianceExplained <- function(seurat_obj, species_names, num_pcs = 10) {
+  library(ggplot2)
+  library(matrixStats)
+  
+  # Get PCA embeddings
+  pca_embeddings <- Embeddings(seurat_obj, reduction = "pca")
+  
+  # Add PCA embeddings to metadata
+  seurat_obj <- AddMetaData(seurat_obj, pca_embeddings, col.name = paste0("PC", 1:ncol(pca_embeddings)))
+  
+  # Initialize a dataframe to hold the variance explained data
+  variance_data <- data.frame(PC = integer(), Variance_Explained = numeric(), Species = character())
+  
+  # Loop through each species to calculate the variance explained
+  for (species_name in species_names) {
+    # Subset the cells for the species
+    cells <- WhichCells(seurat_obj, expression = species == species_name)
+    
+    # Fetch PCA data for the species
+    pca_data <- FetchData(seurat_obj, vars = paste0("PC", 1:num_pcs), cells = cells)
+    
+    # Calculate the total variance using rowVars on the scale.data for this species
+    species_data <- seurat_obj@assays$SCT@scale.data[, cells]
+    total_variance <- sum(rowVars(species_data))
+    
+    # Calculate the variance for each PC within the species
+    variances <- apply(pca_data, 2, sd)
+    
+    # Normalize by the total variance within the species
+    variances_explained <- variances / total_variance * 100
+    
+    # Create a temporary dataframe for this species
+    temp_df <- data.frame(
+      PC = 1:num_pcs,
+      Variance_Explained = variances_explained,
+      Species = species_name
+    )
+    
+    # Add this data to the main dataframe
+    variance_data <- rbind(variance_data, temp_df)
+  }
+
+  # Plot the scree plot
+  ggplot(variance_data, aes(x = PC, y = Variance_Explained, color = Species, group = Species)) +
+    geom_line() +
+    geom_point() +
+    labs(title = paste("Within-Species Variance Explained by Top", num_pcs, "PCs"),
+         x = "Principal Component",
+         y = "% Variance Explained") +
+    theme_minimal() +
+    scale_color_manual(values = c("blue", "red")) +
+    scale_x_continuous(breaks = 1:num_pcs, labels = 1:num_pcs)
 }

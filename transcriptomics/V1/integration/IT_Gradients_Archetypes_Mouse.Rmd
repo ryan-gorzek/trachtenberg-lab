@@ -34,7 +34,7 @@ source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
 obj.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
 obj.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
 
-mapping.classes <- readRDS("E:/Transcriptomics_V1/Integration/opossum_subsampled_mapping_100it.rds")
+mapping.classes <- readRDS("E:/Transcriptomics_V1/Integration/opossum_mouse_subsampled_mapping_100it.rds")
 mapping.full <- readRDS("E:/Transcriptomics_V1/Integration/opossum_mouse_50_50_within_mapping.rds")
 
 ```
@@ -80,14 +80,14 @@ colors_list <- list(
 
 ```{r}
 
-Idents(obj.opossum.glutamatergic) <- "subclass"
-obj.opossum.IT <- subset(obj.opossum.glutamatergic, idents = c("IT_A", "IT_B", "IT_C"))
-df <- data.frame("cell.names" = mapping.classes$Glutamatergic$cell.id, 
-                 "prediction.scores" = mapping.classes$Glutamatergic$predicted.subclass.score, 
-                 "predicted.subclass" = mapping.classes$Glutamatergic$predicted.subclass)
-df_within <- data.frame("cell.names" = mapping.full$Opossum$Int$Glutamatergic$cell.id, 
-                        "prediction.scores.within" = mapping.full$Opossum$Int$Glutamatergic$predicted.subclass.score, 
-                        "predicted.subclass.within" = mapping.full$Opossum$Int$Glutamatergic$predicted.subclass)
+Idents(obj.mouse.glutamatergic) <- "subclass"
+obj.mouse.IT <- subset(obj.mouse.glutamatergic, idents = c("L2/3", "L4", "L5IT", "L6IT"))
+df <- data.frame("cell.names" = mapping.classes$Mouse$Glutamatergic$cell.id, 
+                 "prediction.scores" = mapping.classes$Mouse$Glutamatergic$predicted.subclass.score, 
+                 "predicted.subclass" = mapping.classes$Mouse$Glutamatergic$predicted.subclass)
+df_within <- data.frame("cell.names" = mapping.full$Mouse$Int$Glutamatergic$cell.id, 
+                        "prediction.scores.within" = mapping.full$Mouse$Int$Glutamatergic$predicted.subclass.score, 
+                        "predicted.subclass.within" = mapping.full$Mouse$Int$Glutamatergic$predicted.subclass)
 get_mode <- function(x) {
   uniq_x <- unique(x)
   uniq_x[which.max(tabulate(match(x, uniq_x)))]
@@ -95,65 +95,66 @@ get_mode <- function(x) {
 prediction.scores_aggregated <- aggregate(prediction.scores ~ cell.names, data = df, FUN = mean, na.rm = TRUE)
 predicted.subclass_aggregated <- aggregate(predicted.subclass ~ cell.names, data = df, FUN = get_mode)
 df_agg <- merge(prediction.scores_aggregated, predicted.subclass_aggregated, by = "cell.names")
-df_agg <- df_agg[df_agg$cell.names %in% colnames(obj.opossum.IT),]
-df_within <- df_within[df_within$cell.names %in% colnames(obj.opossum.IT),]
+df_agg <- df_agg[df_agg$cell.names %in% colnames(obj.mouse.IT),]
+df_within <- df_within[df_within$cell.names %in% colnames(obj.mouse.IT),]
 df_all <- merge(df_agg, df_within, by = "cell.names")
-obj.opossum.IT <- subset(obj.opossum.IT, cells = as.character(df_agg$cell.names))
-obj.opossum.IT <- NormalizePCA(obj.opossum.IT)
-obj.opossum.IT$predicted.subclass.score <- NA
-obj.opossum.IT@meta.data[df_all$cell.names,]$predicted.subclass.score <- df_all$prediction.scores
-obj.opossum.IT$predicted.subclass <- NA
-obj.opossum.IT@meta.data[df_all$cell.names,]$predicted.subclass <- df_all$predicted.subclass
-obj.opossum.IT$predicted.subclass.score.within <- NA
-obj.opossum.IT@meta.data[df_all$cell.names,]$predicted.subclass.score.within <- df_all$prediction.scores.within
-obj.opossum.IT$predicted.subclass.within <- NA
-obj.opossum.IT@meta.data[df_all$cell.names,]$predicted.subclass.within <- df_all$predicted.subclass.within
-obj.opossum.IT@reductions$pca@cell.embeddings[, 1:2] <- obj.opossum.IT@reductions$pca@cell.embeddings[, 1:2] * -1
-opossum.pcs <- obj.opossum.IT@reductions$pca@cell.embeddings[, 1:2]
-write.table(opossum.pcs, "E:/Transcriptomics_V1/Integration/opossum_pcs_subsample.txt", sep = " ", col.names = FALSE, row.names = FALSE)
+obj.mouse.IT <- subset(obj.mouse.IT, cells = as.character(df_agg$cell.names))
+obj.mouse.IT <- NormalizePCA(obj.mouse.IT)
+obj.mouse.IT$predicted.subclass.score <- NA
+obj.mouse.IT@meta.data[df_all$cell.names,]$predicted.subclass.score <- df_all$prediction.scores
+obj.mouse.IT$predicted.subclass <- NA
+obj.mouse.IT@meta.data[df_all$cell.names,]$predicted.subclass <- df_all$predicted.subclass
+obj.mouse.IT$predicted.subclass.score.within <- NA
+obj.mouse.IT@meta.data[df_all$cell.names,]$predicted.subclass.score.within <- df_all$prediction.scores.within
+obj.mouse.IT$predicted.subclass.within <- NA
+obj.mouse.IT@meta.data[df_all$cell.names,]$predicted.subclass.within <- df_all$predicted.subclass.within
+# obj.mouse.IT@reductions$pca@cell.embeddings[, 1:2] <- obj.mouse.IT@reductions$pca@cell.embeddings[, 1:2] * -1
+mouse.pcs <- obj.mouse.IT@reductions$pca@cell.embeddings[, 1:2]
+write.table(mouse.pcs, "E:/Transcriptomics_V1/Integration/mouse_pcs_subsample.txt", sep = " ", col.names = FALSE, row.names = FALSE)
 
 ```
 
 
 ```{r}
 
-opossum.polygon <- read.csv("E:/Transcriptomics_V1/Integration/opossum_polygon_subsample.csv")
-opossum.polygon <- rbind(opossum.polygon, opossum.polygon[1, ])
-obj.opossum.IT <- MinDistance(obj.opossum.IT, opossum.polygon)
-subclasses.opossum <- c("IT_A", "IT_B", "IT_C")
-Idents(obj.opossum.IT) <- "subclass"
-levels(obj.opossum.IT) <- subclasses.opossum
-DimPlot(obj.opossum.IT, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal() +
-  geom_point(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
-  geom_path(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
-# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Subclass_Subsampled.png", plot = p, dpi = 300)
-# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Subclass_Subsampled.svg", plot = p, dpi = 300)
-subclasses.opossum <- c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b")
-Idents(obj.opossum.IT) <- "predicted.subclass"
-levels(obj.opossum.IT) <- subclasses.opossum
-DimPlot(obj.opossum.IT, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal() +
-  geom_point(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
-  geom_path(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
-# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Predicted_Subclass_Subsampled.png", plot = p, dpi = 300)
-# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Predicted_Subclass_Subsampled.svg", plot = p, dpi = 300)
-FeaturePlot(obj.opossum.IT, "predicted.subclass.score", reduction = "pca", pt.size = 1, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal() +
-  geom_point(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
-  geom_path(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
-# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Mapping_Quality_Subsampled.png", plot = p, dpi = 300)
-# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Mapping_Quality_Subsampled.svg", plot = p, dpi = 300)
-subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D", "L5NP", "L5PT", "L6CT", "L6b")
-Idents(obj.opossum.IT) <- "predicted.subclass.within"
-levels(obj.opossum.IT) <- subclasses.opossum
-DimPlot(obj.opossum.IT, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal() +
-  geom_point(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
-  geom_path(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
-# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Predicted_Subclass_Subsampled.png", plot = p, dpi = 300)
-# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Predicted_Subclass_Subsampled.svg", plot = p, dpi = 300)
-FeaturePlot(obj.opossum.IT, "predicted.subclass.score.within", reduction = "pca", pt.size = 1, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal() +
-  geom_point(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
-  geom_path(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
-# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Mapping_Quality_Subsampled.png", plot = p, dpi = 300)
-# ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Mapping_Quality_Subsampled.svg", plot = p, dpi = 300)
+mouse.polygon <- read.csv("E:/Transcriptomics_V1/Integration/mouse_polygon_subsample.csv")
+mouse.polygon <- mouse.polygon[c(1, 4, 2, 3), ]
+mouse.polygon <- rbind(mouse.polygon, mouse.polygon[1, ])
+obj.mouse.IT <- MinDistance(obj.mouse.IT, mouse.polygon)
+subclasses.mouse <- c("L2/3", "L4", "L5IT", "L6IT")
+Idents(obj.mouse.IT) <- "subclass"
+levels(obj.mouse.IT) <- subclasses.mouse
+DimPlot(obj.mouse.IT, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-16, 20) + ylim(-22, 14) + coord_equal() +
+  geom_point(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+  geom_path(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+# ggsave("E:/Mouse_Paper/Figure 3/Mouse_PC_Space_Subclass_Subsampled.png", plot = p, dpi = 300)
+# ggsave("E:/Mouse_Paper/Figure 3/Mouse_PC_Space_Subclass_Subsampled.svg", plot = p, dpi = 300)
+subclasses.mouse <- c("IT_A", "IT_B", "IT_C", "IT_D", "L5NP", "L5PT", "L6CT", "L6b")
+Idents(obj.mouse.IT) <- "predicted.subclass"
+levels(obj.mouse.IT) <- subclasses.mouse
+DimPlot(obj.mouse.IT, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-16, 20) + ylim(-22, 14) + coord_equal() +
+  geom_point(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+  geom_path(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+# ggsave("E:/Mouse_Paper/Figure 3/Mouse_PC_Space_Predicted_Subclass_Subsampled.png", plot = p, dpi = 300)
+# ggsave("E:/Mouse_Paper/Figure 3/Mouse_PC_Space_Predicted_Subclass_Subsampled.svg", plot = p, dpi = 300)
+FeaturePlot(obj.mouse.IT, "predicted.subclass.score", reduction = "pca", pt.size = 1, raster = FALSE) + NoLegend() + xlim(-16, 20) + ylim(-22, 14) + coord_equal() +
+  geom_point(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+  geom_path(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+# ggsave("E:/Mouse_Paper/Figure 3/Mouse_PC_Space_Mapping_Quality_Subsampled.png", plot = p, dpi = 300)
+# ggsave("E:/Mouse_Paper/Figure 3/Mouse_PC_Space_Mapping_Quality_Subsampled.svg", plot = p, dpi = 300)
+subclasses.mouse <- c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b")
+Idents(obj.mouse.IT) <- "predicted.subclass.within"
+levels(obj.mouse.IT) <- subclasses.mouse
+DimPlot(obj.mouse.IT, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-16, 20) + ylim(-22, 14) + coord_equal() +
+  geom_point(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+  geom_path(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+# ggsave("E:/Mouse_Paper/Figure 3/Mouse_PC_Space_Predicted_Subclass_Subsampled.png", plot = p, dpi = 300)
+# ggsave("E:/Mouse_Paper/Figure 3/Mouse_PC_Space_Predicted_Subclass_Subsampled.svg", plot = p, dpi = 300)
+FeaturePlot(obj.mouse.IT, "predicted.subclass.score.within", reduction = "pca", pt.size = 1, raster = FALSE) + NoLegend() + xlim(-16, 20) + ylim(-22, 14) + coord_equal() +
+  geom_point(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+  geom_path(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+# ggsave("E:/Mouse_Paper/Figure 3/Mouse_PC_Space_Mapping_Quality_Subsampled.png", plot = p, dpi = 300)
+# ggsave("E:/Mouse_Paper/Figure 3/Mouse_PC_Space_Mapping_Quality_Subsampled.svg", plot = p, dpi = 300)
 
 ```
 
@@ -169,7 +170,7 @@ stat.names <- list("min_distance_to_reference" = "Distance to Nearest Vertex", "
 for (sp in stat.pairs) {
 
   # Extract metadata
-  metadata <- FetchData(obj.opossum.IT, vars = c(sp[[1]], sp[[2]], "subclass"))
+  metadata <- FetchData(obj.mouse.IT, vars = c(sp[[1]], sp[[2]], "subclass"))
   
   # Convert subclass to a factor for consistent coloring
   metadata$subclass <- factor(metadata$subclass)
@@ -185,14 +186,14 @@ for (sp in stat.pairs) {
     # ) +  # Adds both the correlation coefficient and p-value
     scale_color_manual(values = colors_list[levels(metadata$subclass)]) +
     labs(x = stat.names[[sp[[1]]]], y = stat.names[[sp[[2]]]], color = "Group") +
-    facet_wrap(~ subclass, scales = "free_x") +
+    facet_wrap(~ subclass, scales = "free_x", nrow = 1) +
     theme_classic() +
     theme(aspect.ratio = 1)
   if (grepl("score", sp[[2]])) {
     p <- p + ylim(0, 1)
   }
-  # ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Quality_Distance_Correlation_Subsampled.png", plot = p, dpi = 300)
-  # ggsave("E:/Opossum_Paper/Figure 3/Opossum_PC_Space_Quality_Distance_Correlation_Subsampled.svg", plot = p, dpi = 300)
+  # ggsave("E:/Mouse_Paper/Figure 3/Mouse_PC_Space_Quality_Distance_Correlation_Subsampled.png", plot = p, dpi = 300)
+  # ggsave("E:/Mouse_Paper/Figure 3/Mouse_PC_Space_Quality_Distance_Correlation_Subsampled.svg", plot = p, dpi = 300)
   
   print(p)
 
@@ -204,7 +205,7 @@ for (sp in stat.pairs) {
 ```{r}
 
 # Example dataframe
-df <- FetchData(obj.opossum.IT, vars = c("nFeature_RNA", "nCount_RNA", "min_distance_to_reference", "predicted.subclass.score", "subclass"))
+df <- FetchData(obj.mouse.IT, vars = c("nFeature_RNA", "nCount_RNA", "min_distance_to_reference", "predicted.subclass.score", "subclass"))
 
 # Split data by subclass
 df_split <- df %>% split(.$subclass)
@@ -272,7 +273,7 @@ ggplot(comparison_df, aes(x = subclass, y = adj_r_squared, fill = model_type)) +
 ```{r}
 
 # Example dataframe
-df <- FetchData(obj.opossum.IT, vars = c("nFeature_RNA", "nCount_RNA", "predicted.subclass.score.within", "min_distance_to_reference", "predicted.subclass.score", "subclass"))
+df <- FetchData(obj.mouse.IT, vars = c("nFeature_RNA", "nCount_RNA", "predicted.subclass.score.within", "min_distance_to_reference", "predicted.subclass.score", "subclass"))
 
 # Split data by subclass
 df_split <- df %>% split(.$subclass)
@@ -337,12 +338,12 @@ ggplot(comparison_df, aes(x = subclass, y = adj_r_squared, fill = model_type)) +
 ```
 
 Split IT_A-IT_B axis into thirds
-1) is middle portion enriched for opossum-specific genes?
+1) is middle portion enriched for mouse-specific genes?
 
 ```{r}
 
-Idents(obj.opossum.IT) <- "subclass"
-obj.opossum.IT.AB <- subset(obj.opossum.IT, idents = c("IT_A", "IT_B"))
+Idents(obj.mouse.IT) <- "subclass"
+obj.mouse.IT.AB <- subset(obj.mouse.IT, idents = c("IT_A", "IT_B"))
 
 # Function to rotate points around a specified point in PC space
 rotate_points <- function(coords, center, angle_degrees) {
@@ -371,40 +372,40 @@ center_of_rotation <- c(X = 0, Y = -5)  # Adjust these values to your desired ce
 angle_of_rotation <- -20  # Adjust this value to your desired rotation angle in degrees
 
 # Extract the current PC coordinates
-pc_coords <- obj.opossum.IT.AB@reductions$pca@cell.embeddings[, 1:2]
+pc_coords <- obj.mouse.IT.AB@reductions$pca@cell.embeddings[, 1:2]
 
 # Rotate the points
 rotated_coords <- rotate_points(pc_coords, center_of_rotation, angle_of_rotation)
-rotated.polygon <- as.data.frame(rotate_points(opossum.polygon, center_of_rotation, angle_of_rotation))
+rotated.polygon <- as.data.frame(rotate_points(mouse.polygon, center_of_rotation, angle_of_rotation))
 colnames(rotated.polygon) <- c("X..X", "Y")
 
 # Update the Seurat object with the new coordinates
-obj.opossum.IT.AB.Rot <- obj.opossum.IT.AB
-obj.opossum.IT.AB.Rot@reductions$pca@cell.embeddings[, 1:2] <- rotated_coords
+obj.mouse.IT.AB.Rot <- obj.mouse.IT.AB
+obj.mouse.IT.AB.Rot@reductions$pca@cell.embeddings[, 1:2] <- rotated_coords
 
 # Specify the X coordinates to split into three groups
 x_cutoffs <- c(-8, 4)  # Adjust these values based on your desired cutoffs
 
 # Assign labels based on the X axis split
-obj.opossum.IT.AB.Rot$continuum <- cut(rotated_coords[, 1],
+obj.mouse.IT.AB.Rot$continuum <- cut(rotated_coords[, 1],
                                    breaks = c(-Inf, x_cutoffs, Inf),
                                    labels = c("L5IT-like", "Primitive", "L2/3-like"))
 
 # Plot the updated PCA with the labels
-Idents(obj.opossum.IT.AB.Rot) <- "subclass"
-DimPlot(obj.opossum.IT.AB.Rot, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-22, 23) + ylim(-5, 40) + coord_equal() +
+Idents(obj.mouse.IT.AB.Rot) <- "subclass"
+DimPlot(obj.mouse.IT.AB.Rot, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-22, 23) + ylim(-5, 40) + coord_equal() +
   geom_point(data = rotated.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
   geom_path(data = rotated.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1) + 
   geom_vline(xintercept = x_cutoffs, color = "lightgray", linetype = "solid", size = 1)
 
-FeaturePlot(obj.opossum.IT.AB.Rot, "predicted.subclass.score", reduction = "pca", pt.size = 1, raster = FALSE) + NoLegend() + xlim(-22, 23) + ylim(-5, 40) + coord_equal() +
+FeaturePlot(obj.mouse.IT.AB.Rot, "predicted.subclass.score", reduction = "pca", pt.size = 1, raster = FALSE) + NoLegend() + xlim(-22, 23) + ylim(-5, 40) + coord_equal() +
   geom_point(data = rotated.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
   geom_path(data = rotated.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1) + 
   geom_vline(xintercept = x_cutoffs, color = "lightgray", linetype = "solid", size = 1)
 
 # Plot the updated PCA with the labels
-Idents(obj.opossum.IT.AB.Rot) <- "continuum"
-DimPlot(obj.opossum.IT.AB.Rot, reduction = "pca", pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-22, 23) + ylim(-5, 40) + coord_equal() +
+Idents(obj.mouse.IT.AB.Rot) <- "continuum"
+DimPlot(obj.mouse.IT.AB.Rot, reduction = "pca", pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-22, 23) + ylim(-5, 40) + coord_equal() +
   geom_point(data = rotated.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
   geom_path(data = rotated.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1) + 
   geom_vline(xintercept = x_cutoffs, color = "lightgray", linetype = "solid", size = 1)
@@ -414,11 +415,11 @@ DimPlot(obj.opossum.IT.AB.Rot, reduction = "pca", pt.size = 1, label = TRUE, shu
 
 ```{r}
 
-Idents(obj.opossum.IT.AB.Rot) <- "continuum"
-markers.L5ITlike <- FindMarkers(obj.opossum.IT.AB.Rot, ident.1 = "L5IT-like", logfc.threshold = 0.2, only.pos = TRUE)
-markers.primitive <- FindMarkers(obj.opossum.IT.AB.Rot, ident.1 = "Primitive", logfc.threshold = 0.2, only.pos = TRUE)
+Idents(obj.mouse.IT.AB.Rot) <- "continuum"
+markers.L5ITlike <- FindMarkers(obj.mouse.IT.AB.Rot, ident.1 = "L5IT-like", logfc.threshold = 0.2, only.pos = TRUE)
+markers.primitive <- FindMarkers(obj.mouse.IT.AB.Rot, ident.1 = "Primitive", logfc.threshold = 0.2, only.pos = TRUE)
 markers.primitive$gene <- rownames(markers.primitive)
-markers.L23like <- FindMarkers(obj.opossum.IT.AB.Rot, ident.1 = "L2/3-like", logfc.threshold = 0.2, only.pos = TRUE)
+markers.L23like <- FindMarkers(obj.mouse.IT.AB.Rot, ident.1 = "L2/3-like", logfc.threshold = 0.2, only.pos = TRUE)
 
 ```
 
@@ -430,7 +431,7 @@ markers.primitive <- markers.primitive %>%
 
 for (mkr in markers.primitive$gene[11:20]) {
 
-  p <- FeaturePlot(obj.opossum.IT.AB.Rot, mkr, reduction = "pca", pt.size = 1, raster = FALSE) + NoLegend() + xlim(-22, 23) + ylim(-5, 40) + coord_equal() +
+  p <- FeaturePlot(obj.mouse.IT.AB.Rot, mkr, reduction = "pca", pt.size = 1, raster = FALSE) + NoLegend() + xlim(-22, 23) + ylim(-5, 40) + coord_equal() +
     geom_point(data = rotated.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
     geom_path(data = rotated.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1) + 
     geom_vline(xintercept = x_cutoffs, color = "lightgray", linetype = "solid", size = 1)
@@ -444,9 +445,9 @@ for (mkr in markers.primitive$gene[11:20]) {
 
 ```{r}
 
-FeaturePlot(obj.opossum.IT, "Dkk3", reduction = "pca", pt.size = 1, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal() +
-  geom_point(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
-  geom_path(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+FeaturePlot(obj.mouse.IT, "Dkk3", reduction = "pca", pt.size = 1, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal() +
+  geom_point(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+  geom_path(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
 
 ```
 
@@ -454,20 +455,24 @@ FeaturePlot(obj.opossum.IT, "Dkk3", reduction = "pca", pt.size = 1, raster = FAL
 ```{r}
 
 # Identify markers for all subclasses using FindAllMarkers
-Idents(obj.opossum.IT) <- "subclass"
-all_markers <- FindAllMarkers(obj.opossum.IT, only.pos = TRUE, logfc.threshold = 0.2, min.pct = 0.2, test.use = "wilcox")
+Idents(obj.mouse.IT) <- "subclass"
+all_markers <- FindAllMarkers(obj.mouse.IT, only.pos = TRUE, logfc.threshold = 0.2, min.pct = 0.2, test.use = "wilcox")
 
 # Filter markers by p-value < 10^-10
-filtered_markers <- all_markers %>% filter(p_val_adj < 1e-10)
+filtered_markers <- all_markers %>% 
+                      filter(p_val_adj < 1e-10) %>%
+                      group_by(gene) %>%
+                      slice_max(order_by = avg_log2FC, n = 1) %>%
+                      ungroup()
 
 # Get the list of significant genes
 significant_genes <- filtered_markers$gene
 
 # Z-score the expression levels of these genes across all cells
-obj.opossum.IT <- ScaleData(obj.opossum.IT, features = significant_genes)
+obj.mouse.IT <- ScaleData(obj.mouse.IT, features = significant_genes)
 
 # Extract the z-scored gene expression data
-z_scored_data <- GetAssayData(obj.opossum.IT, slot = "scale.data")[significant_genes, ]
+z_scored_data <- GetAssayData(obj.mouse.IT, slot = "scale.data")[significant_genes, ]
 
 # Perform k-means clustering on the genes
 set.seed(123) # For reproducibility
@@ -481,27 +486,83 @@ plot(1:15, wss, type = "b", pch = 19, frame = FALSE,
      ylab = "Total Within-Cluster Sum of Squares")
 
 # Assuming the elbow plot suggests k=7
-optimal_k <- 6
+optimal_k <- 7
 kmeans_result <- kmeans(z_scored_data, centers = optimal_k, nstart = 20)
 
 # Add k-means cluster assignments to the genes
 filtered_markers$kmeans_cluster <- kmeans_result$cluster[match(filtered_markers$gene, names(kmeans_result$cluster))]
 
 # Average the expression of genes in each k-means cluster across subclasses
-average_expression <- AverageExpression(obj.opossum.IT, features = significant_genes, group.by = "subclass", assays = "RNA")$RNA
-cluster_averages <- sapply(unique(filtered_markers$kmeans_cluster), function(cluster) {
+average_expression <- AverageExpression(obj.mouse.IT, features = significant_genes, group.by = "subclass", assays = "RNA")$RNA
+cluster_averages <- sapply(sort(unique(filtered_markers$kmeans_cluster)), function(cluster) {
   colMeans(average_expression[rownames(average_expression) %in% filtered_markers$gene[filtered_markers$kmeans_cluster == cluster], ])
 })
 
 # Convert to a matrix for heatmap plotting
 heatmap_data <- t(cluster_averages)
+rownames(heatmap_data) <- c(1:optimal_k)
 
 # Plot the heatmap
 my_palette <- colorRampPalette(c("blue", "white", "red"))(100)
-pheatmap::pheatmap(heatmap_data, cluster_rows = TRUE, cluster_cols = TRUE,
+pheatmap::pheatmap(heatmap_data, cluster_rows = FALSE, cluster_cols = FALSE,
                    show_rownames = TRUE, show_colnames = TRUE,
                    scale = "row", main = "K-means Cluster Expression Patterns Across Subclasses", 
                    color = my_palette)
 
+ortho.genes <- intersect(rownames(obj.opossum.glutamatergic), rownames(obj.mouse.glutamatergic))
+
+# Determine the number of intersecting and non-intersecting genes per cluster
+cluster_counts <- lapply(unique(filtered_markers$kmeans_cluster), function(cluster) {
+  genes_in_cluster <- filtered_markers$gene[filtered_markers$kmeans_cluster == cluster]
+  intersecting_genes <- length(intersect(genes_in_cluster, ortho.genes))
+  non_intersecting_genes <- length(genes_in_cluster) - intersecting_genes
+  return(data.frame(
+    cluster = cluster,
+    intersecting = intersecting_genes,
+    non_intersecting = non_intersecting_genes
+  ))
+})
+
+# Combine the counts into a single dataframe
+cluster_counts_df <- do.call(rbind, cluster_counts)
+
+# Convert the data to long format for ggplot2
+cluster_counts_long <- tidyr::pivot_longer(cluster_counts_df, cols = c("intersecting", "non_intersecting"),
+                                           names_to = "gene_type", values_to = "count")
+
+# Plot the stacked barplot
+ggplot(cluster_counts_long, aes(x = as.factor(cluster), y = count, fill = gene_type)) +
+  geom_bar(stat = "identity") +
+  labs(x = "K-means Cluster", y = "Number of Genes", fill = "Gene Type",
+       title = "Number of Genes in Each K-means Cluster") +
+  scale_fill_manual(values = c("intersecting" = "dodgerblue", "non_intersecting" = "lightgray")) +
+  theme_minimal()
+
 ```
+
+
+```{r}
+
+SaveFeaturePlotsKMeans(obj.mouse.IT, filtered_markers, mouse.polygon, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/kmeans/7/Mouse")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

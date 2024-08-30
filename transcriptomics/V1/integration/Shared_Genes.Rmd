@@ -86,7 +86,7 @@ subclass.markers.mouse <- list(subclass = rbind(subclass.markers.mouse.glutamate
 subclasses <- rev(c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b", 
                 "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac", 
                 "Astro", "Micro", "OD", "OPC", "Endo", "VLMC"))
-ortho.genes <- rownames(obj.integrated)
+ortho.genes <- intersect(rownames(obj.opossum), rownames(obj.mouse))
 
 PlotSubclassDEIntersectionTotalCDF(subclass.markers.mouse, ortho.genes, subclasses, as.character(colors_list[subclasses])) + coord_fixed(ratio = 1)
 
@@ -108,7 +108,7 @@ subclass.markers.mouse <- list(subclass = rbind(subclass.markers.mouse.glutamate
 subclasses <- rev(c("IT_A", "IT_B", "IT_C", "IT_D", "L5NP", "L5PT", "L6CT", "L6b", 
                     "Pvalb", "Sst", "Vip", "Lamp5", "Frem1",  
                     "Astro", "Micro", "OD", "OPC", "Endo"))
-ortho.genes <- rownames(obj.integrated)
+ortho.genes <- intersect(rownames(obj.opossum), rownames(obj.mouse))
 
 PlotSubclassDEIntersectionTotalCDF(subclass.markers.opossum, ortho.genes, subclasses, as.character(colors_list[subclasses])) + coord_fixed(ratio = 1)
 
@@ -248,6 +248,8 @@ PlotSubclassDEIntersectionCDF_TopX(subclass.markers.mouse, subclass.markers.opos
 
 
 ```{r, fig.width=8, fig.height=5}
+
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
 
 subclass.markers.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/Glutamatergic/markerdict_subclass.rds")$subclass
 subclass.markers.opossum.gabaergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/GABAergic/markerdict_subclass.rds")$subclass
