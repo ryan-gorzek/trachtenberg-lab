@@ -1,0 +1,113 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(SeuratWrappers)
+library(monocle3)
+library(pheatmap)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+
+```
+
+
+```{r}
+
+obj.mouse.glutamatergic <- ClusterSCT(obj.mouse.glutamatergic, c(0.1, 0.2, 0.3, 0.4))
+
+```
+
+
+```{r}
+
+colors_list <- list(
+              # Glutamatergic
+              IT = "#FF6C88",
+              IT_A = "#FFB3B3",
+              `L2/3` = "#FFB3B3",
+              IT_B = "#FFA07A",
+              L4 = "#FF7F50",
+              IT_C = "#FF7F50",
+              L5IT = "#FFA07A",
+              IT_D = "#FF6347",
+              L6IT = "#FF6347",
+              L5NP = "#FF4500",
+              L5PT = "#FF8C69",
+              L6CT = "#FFA07A",
+              L6b = "#FF6347",
+            
+              # GABAergic
+              Pvalb = "#1E90FF",
+              Sst = "#87CEEB",
+              Vip = "#87CEFA",
+              Lamp5 = "#4682B4",
+              Frem1 = "#ADD8E6",
+              Stac = "#5F9EA0",
+            
+              # Non-neuronal
+              Astro = "#8C8C8C",
+              Micro = "#A0A0A0",
+              OD = "#B4B4B4",
+              OPC = "#C8C8C8",
+              Endo = "#505050",
+              VLMC = "#B4B4B4"
+)
+
+```
+
+
+```{r}
+
+DimPlot(obj.mouse.glutamatergic, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE) + NoLegend() + xlim(-13, 15) + ylim(-14, 14) + coord_equal()
+
+DimPlot(obj.mouse.glutamatergic, reduction = "umap", group.by = "SCT_snn_res.0.1", label = TRUE, raster = FALSE) + NoLegend() + xlim(-13, 15) + ylim(-14, 14) + coord_equal()
+# ggsave("E:/Opossum_Paper/Figure S2/Opossum_Glutamatergic_UMAP_res.0.2.svg", plot = p, width = 5, height = 5, dpi = 300)
+# ggsave("E:/Opossum_Paper/Figure S2/Opossum_Glutamatergic_UMAP_res.0.2.png", plot = p, width = 5, height = 5, dpi = 300)
+p <- DimPlot(obj.mouse.glutamatergic, reduction = "umap", group.by = "SCT_snn_res.0.2", label = TRUE, raster = FALSE) + NoLegend() + xlim(-12, 16) + ylim(-12, 16) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure S2/Mouse_Glutamatergic_UMAP_res.0.2.svg", plot = p, width = 5, height = 5, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure S2/Mouse_Glutamatergic_UMAP_res.0.2.png", plot = p, width = 5, height = 5, dpi = 300)
+DimPlot(obj.mouse.glutamatergic, reduction = "umap", group.by = "SCT_snn_res.0.3", label = TRUE, raster = FALSE) + NoLegend() + xlim(-13, 15) + ylim(-14, 14) + coord_equal()
+# ggsave("E:/Opossum_Paper/Figure S2/Opossum_Glutamatergic_UMAP_res.0.4.svg", plot = p, width = 5, height = 5, dpi = 300)
+# ggsave("E:/Opossum_Paper/Figure S2/Opossum_Glutamatergic_UMAP_res.0.4.png", plot = p, width = 5, height = 5, dpi = 300)
+Idents(obj.mouse.glutamatergic) <- "subclass"
+mouse.subclass.levels <- c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b")
+levels(obj.mouse.glutamatergic) <- mouse.subclass.levels
+p <- DimPlot(obj.mouse.glutamatergic, reduction = "umap", cols = colors_list[mouse.subclass.levels], label = TRUE, raster = FALSE) + NoLegend() + xlim(-12, 16) + ylim(-12, 16) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure S2/Mouse_Glutamatergic_UMAP_subclass.svg", plot = p, width = 5, height = 5, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure S2/Mouse_Glutamatergic_UMAP_subclass.png", plot = p, width = 5, height = 5, dpi = 300)
+
+```
+
+
+```{r, fig.width=6, fig.height=8}
+
+p <- PlotSubsampledMappedLabelsHeatmap(obj.mouse.glutamatergic$SCT_snn_res.0.2, obj.mouse.glutamatergic$subclass, 
+                                  c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"), normalize = "row", 
+                                  ident.order = c("2", "1", "5", "4", "8", "7", "6", "3", "9", "L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"))
+ggsave("E:/Opossum_Paper/Figure S2/Mouse_Glutamatergic_Mapping.svg", plot = p, width = 6, height = 8, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure S2/Mouse_Glutamatergic_Mapping.png", plot = p, width = 6, height = 8, dpi = 300)
+
+```
+

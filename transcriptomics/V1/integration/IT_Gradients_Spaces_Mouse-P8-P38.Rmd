@@ -1,0 +1,261 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(SeuratWrappers)
+library(monocle3)
+library(pheatmap)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+library(sampling)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.mouse.glutamatergic.P8 <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P8_glutamatergic_processed.rds")
+obj.mouse.glutamatergic.P38 <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+
+```
+
+
+```{r}
+
+colors_list <- list(
+              # Glutamatergic
+              IT = "#FF6C88",
+              IT_A = "#FFB3B3",
+              `L2/3` = "#FFB3B3",
+              IT_B = "#FFA07A",
+              L4 = "#FF7F50",
+              IT_C = "#FF7F50",
+              L5IT = "#FFA07A",
+              IT_D = "#FF6347",
+              L6IT = "#FF6347",
+              L5NP = "#FF4500",
+              L5PT = "#32a852", 
+              L6CT = "#7de89a",
+              L6b = "#206633",
+            
+              # GABAergic
+              Pvalb = "#1E90FF",
+              Sst = "#87CEEB",
+              Vip = "#87CEFA",
+              Lamp5 = "#4682B4",
+              Frem1 = "#ADD8E6",
+              Stac = "#5F9EA0",
+            
+              # Non-neuronal
+              Astro = "#8C8C8C",
+              Micro = "#A0A0A0",
+              OD = "#B4B4B4",
+              OPC = "#C8C8C8",
+              Endo = "#505050",
+              VLMC = "#B4B4B4"
+)
+
+```
+
+
+```{r}
+
+Idents(obj.mouse.glutamatergic.P8) <- "subclass"
+obj.mouse.IT.P8 <- subset(obj.mouse.glutamatergic.P8, idents = c("L2/3", "L4", "L5IT", "L6IT"))
+obj.opossum.IT.SS <- SubsampleObject(obj.opossum.IT, "subclass", min(table(obj.opossum.IT$subclass)))
+obj.mouse.IT.P8 <- NormalizePCA(obj.mouse.IT.P8)
+obj.opossum.IT.SS <- NormalizePCA(obj.opossum.IT.SS)
+
+Idents(obj.mouse.glutamatergic.P38) <- "subclass"
+obj.mouse.IT.P38 <- subset(obj.mouse.glutamatergic.P38, idents = c("L2/3", "L4", "L5IT", "L6IT"))
+obj.mouse.IT.SS <- SubsampleObject(obj.mouse.IT, "subclass", min(table(obj.mouse.IT$subclass)))
+obj.mouse.IT.P38 <- NormalizePCA(obj.mouse.IT.P38)
+obj.mouse.IT.SS <- NormalizePCA(obj.mouse.IT.SS)
+
+```
+
+
+```{r}
+
+opossum.VFs <- VariableFeatures(obj.opossum.IT)
+mouse.VFs <- VariableFeatures(obj.mouse.IT)
+shared.VFs <- intersect(opossum.VFs, mouse.VFs)
+obj.opossum.IT.SVF <- NormalizePCA(obj.opossum.IT, features = shared.VFs)
+obj.mouse.IT.SVF <- NormalizePCA(obj.mouse.IT, features = shared.VFs)
+
+opossum.SS.VFs <- VariableFeatures(obj.opossum.IT.SS)
+mouse.SS.VFs <- VariableFeatures(obj.mouse.IT.SS)
+shared.SS.VFs <- intersect(opossum.SS.VFs, mouse.SS.VFs)
+obj.opossum.IT.SS.SVF <- NormalizePCA(obj.opossum.IT.SS, features = shared.SS.VFs)
+obj.mouse.IT.SS.SVF <- NormalizePCA(obj.mouse.IT.SS, features = shared.SS.VFs)
+
+```
+
+
+```{r}
+
+subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D")
+DimPlot(obj.opossum.IT, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal()
+DimPlot(obj.opossum.IT.SVF, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(16, -14) + ylim(15, -15) + coord_equal()
+DimPlot(obj.opossum.IT.SS, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 24) + ylim(-20, 22) + coord_equal()
+DimPlot(obj.opossum.IT.SS.SVF, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-14, 18) + ylim(16, -16) + coord_equal()
+
+subclasses.mouse <- c("L2/3", "L4", "L5IT", "L6IT")
+DimPlot(obj.mouse.IT, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-16, 20) + ylim(-22, 14) + coord_equal()
+DimPlot(obj.mouse.IT.SVF, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(18, -12) + coord_equal()
+DimPlot(obj.mouse.IT.SS, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-22, 20) + ylim(-18, 24) + coord_equal()
+DimPlot(obj.mouse.IT.SS.SVF, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-16, 14) + ylim(-12, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.opossum.IT.SSP <- PCAProject(obj.opossum.IT, obj.opossum.IT.SS)
+obj.mouse.IT.SSP <- PCAProject(obj.mouse.IT, obj.mouse.IT.SS)
+
+DimPlot(obj.opossum.IT.SSP, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-16, 28) + ylim(-26, 18) + coord_equal()
+DimPlot(obj.mouse.IT.SSP, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-25, 17) + ylim(-17, 25) + coord_equal()
+
+```
+
+
+```{r}
+
+mapping.classes <- readRDS("E:/Transcriptomics_V1/Integration/opossum_subsampled_mapping_100it.rds")
+mapping.full <- readRDS("E:/Transcriptomics_V1/Integration/opossum_mouse_50_50_within_mapping.rds")
+
+df <- data.frame("cell.names" = mapping.classes$Glutamatergic$cell.id, 
+                 "prediction.scores" = mapping.classes$Glutamatergic$predicted.subclass.score, 
+                 "predicted.subclass" = mapping.classes$Glutamatergic$predicted.subclass)
+df_within <- data.frame("cell.names" = mapping.full$Opossum$Int$Glutamatergic$cell.id, 
+                        "prediction.scores.within" = mapping.full$Opossum$Int$Glutamatergic$predicted.subclass.score, 
+                        "predicted.subclass.within" = mapping.full$Opossum$Int$Glutamatergic$predicted.subclass)
+get_mode <- function(x) {
+  uniq_x <- unique(x)
+  uniq_x[which.max(tabulate(match(x, uniq_x)))]
+}
+prediction.scores_aggregated <- aggregate(prediction.scores ~ cell.names, data = df, FUN = mean, na.rm = TRUE)
+predicted.subclass_aggregated <- aggregate(predicted.subclass ~ cell.names, data = df, FUN = get_mode)
+df_agg <- merge(prediction.scores_aggregated, predicted.subclass_aggregated, by = "cell.names")
+df_agg <- df_agg[df_agg$cell.names %in% colnames(obj.opossum.IT),]
+df_within <- df_within[df_within$cell.names %in% colnames(obj.opossum.IT),]
+df_all <- merge(df_agg, df_within, by = "cell.names")
+obj.opossum.IT.SSP <- subset(obj.opossum.IT.SSP, cells = as.character(df_agg$cell.names))
+obj.opossum.IT.SSP$predicted.subclass.score <- NA
+obj.opossum.IT.SSP@meta.data[df_all$cell.names,]$predicted.subclass.score <- df_all$prediction.scores
+obj.opossum.IT.SSP$predicted.subclass <- NA
+obj.opossum.IT.SSP@meta.data[df_all$cell.names,]$predicted.subclass <- df_all$predicted.subclass
+obj.opossum.IT.SSP$predicted.subclass.score.within <- NA
+obj.opossum.IT.SSP@meta.data[df_all$cell.names,]$predicted.subclass.score.within <- df_all$prediction.scores.within
+obj.opossum.IT.SSP$predicted.subclass.within <- NA
+obj.opossum.IT.SSP@meta.data[df_all$cell.names,]$predicted.subclass.within <- df_all$predicted.subclass.within
+# obj.opossum.IT.SSP@reductions$pca@cell.embeddings[, 1:2] <- obj.opossum.IT.SSP@reductions$pca@cell.embeddings[, 1:2] * -1
+# opossum.pcs <- obj.opossum.IT.SSP@reductions$pca@cell.embeddings[, 1:2]
+# write.table(opossum.pcs, "E:/Transcriptomics_V1/Integration/opossum_pcs_subsample.txt", sep = " ", col.names = FALSE, row.names = FALSE)
+
+```
+
+
+```{r}
+
+FeaturePlot(obj.opossum.IT.SSP, "predicted.subclass.score", reduction = "pca", pt.size = 1, raster = FALSE) + NoLegend() + xlim(-16, 28) + ylim(-26, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+
+VlnPlot(obj.mouse.IT, "nFeature_RNA")
+VlnPlot(obj.opossum.IT, "nFeature_RNA")
+VlnPlot(obj.mouse.IT, "nCount_RNA")
+VlnPlot(obj.opossum.IT, "nCount_RNA")
+
+obj.opossum.IT.MT <- MatchDistribution(obj.opossum.IT, obj.mouse.IT)
+
+VlnPlot(obj.opossum.IT.MT, "nFeature_RNA")
+VlnPlot(obj.opossum.IT.MT, "nCount_RNA")
+
+```
+
+
+```{r}
+
+obj.opossum.IT.MT <- PCAProject(obj.opossum.IT.MT, obj.opossum.IT)
+DimPlot(obj.opossum.IT.MT, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal()
+
+```
+
+
+```{r}
+
+library(lisi)
+opossum.lisi <- compute_lisi(obj.opossum.IT@reductions$pca@cell.embeddings[,1:2], obj.opossum.IT@meta.data, c("subclass"))
+opossum.lisi$species <- "Opossum"
+mouse.lisi <- compute_lisi(obj.mouse.IT@reductions$pca@cell.embeddings[,1:2], obj.mouse.IT@meta.data, c("subclass"))
+mouse.lisi$species <- "Mouse"
+
+# Combine the dataframes
+df_combined <- bind_rows(opossum.lisi, mouse.lisi)
+
+# Plot the CDF
+ggplot(df_combined, aes(x = subclass, color = species)) +
+  stat_ecdf(geom = "step", size = 1.2) +
+  labs(x = "LISI Score", y = "Cumulative Proportion", 
+       title = "CDF of LISI Scores by Species") +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+
+```
+
+
+```{r}
+
+shared.HVFs <- SelectIntegrationFeatures(object.list = c(obj.mouse.IT.P8, obj.mouse.IT.P38), nfeatures = 3000)
+obj.mouse.IT.P8$age <- "P8"
+obj.mouse.IT.P38$age <- "P38"
+obj.combined.IT <- merge(obj.mouse.IT.P8, obj.mouse.IT.P38)
+obj.combined.IT <- SCTransform(obj.combined.IT, vst.flavor = "v2", residual.features = shared.HVFs, return.only.var.genes = FALSE, verbose = FALSE) %>%
+                   RunPCA(npcs = 30, verbose = FALSE)
+
+```
+
+
+```{r}
+
+subclasses.opossum.mouse <- c("IT_D", "L2/3", "IT_A", "L4", "IT_C", "L5IT", "IT_B", "L6IT")
+levels(obj.combined.IT) <- subclasses.opossum.mouse
+p <- DimPlot(obj.combined.IT, reduction = "pca", dims = c(2, 3), cols = c("#aaaaaa", "#c692b8"), group.by = "species", pt.size = 1, label = FALSE, shuffle = TRUE, raster = FALSE) + xlim(-30, 35) + ylim(-25, 40) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 3/Opossum_Mouse_PC_Overlap_Species.svg", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 3/Opossum_Mouse_PC_Overlap_Species.png", plot = p, dpi = 300)
+p <- DimPlot(obj.combined.IT, reduction = "pca", dims = c(2, 3), cols = colors_list[subclasses.opossum.mouse], group.by = "subclass", split.by = "species", pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-30, 35) + ylim(-25, 40) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 3/Opossum_Mouse_PC_Overlap_Subclass.svg", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 3/Opossum_Mouse_PC_Overlap_Subclass.png", plot = p, dpi = 300)
+
+```
+
+
+```{r}
+
+DimPlot(obj.combined.IT, reduction = "pca", dims = c(2, 3), cols = c("#aaaaaa", "#c692b8"), group.by = "age", pt.size = 1, label = FALSE, shuffle = TRUE, raster = FALSE) + xlim(-50, 50) + ylim(-50, 50) + coord_equal()
+DimPlot(obj.combined.IT, reduction = "pca", dims = c(2, 3), cols = colors_list[subclasses.opossum.mouse], group.by = "subclass", split.by = "age", pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-50, 50) + ylim(-50, 50) + coord_equal()
+
+```
+

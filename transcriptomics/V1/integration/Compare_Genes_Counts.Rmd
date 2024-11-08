@@ -1,0 +1,73 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+classes <- c("Glutamatergic", "GABAergic", "Nonneuronal")
+
+# Initialize lists to store the data frames for each class
+df_list <- list()
+
+for (cl in classes) {
+  
+  # Load the Seurat objects
+  obj.opossum <- readRDS(paste0("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_", tolower(cl), "_processed.rds"))
+  obj.opossum$species <- "Opossum"
+  
+  obj.mouse <- readRDS(paste0("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_", tolower(cl), "_processed.rds"))
+  obj.mouse$species <- "Mouse"
+  
+  # Extract nFeature_RNA and nCount_RNA
+  df.opossum <- obj.opossum@meta.data %>%
+    select(nFeature_RNA, nCount_RNA) %>%
+    mutate(class = cl, species = "Opossum")
+  
+  df.mouse <- obj.mouse@meta.data %>%
+    select(nFeature_RNA, nCount_RNA) %>%
+    mutate(class = cl, species = "Mouse")
+  
+  # Combine the data frames for this class
+  df_combined <- bind_rows(df.opossum, df.mouse)
+  
+  # Add the combined data frame to the list
+  df_list[[cl]] <- df_combined
+}
+
+# Combine all classes into one data frame
+df_all <- bind_rows(df_list)
+
+# Now you can plot or compare the nFeature_RNA and nCount_RNA between species within classes
+ggplot(df_all, aes(x = species, y = nFeature_RNA, fill = species)) +
+  geom_boxplot() +
+  facet_wrap(~class) +
+  labs(title = "Comparison of nFeature_RNA between species within classes")
+
+ggplot(df_all, aes(x = species, y = nCount_RNA, fill = species)) +
+  geom_boxplot() +
+  facet_wrap(~class) +
+  labs(title = "Comparison of nCount_RNA between species within classes")
+
+```
+

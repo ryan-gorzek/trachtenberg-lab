@@ -1,0 +1,90 @@
+---
+title: "Integrate GABAergic Mouse Opossum"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(cowplot)
+library(dplyr)
+library(SeuratDisk)
+library(lisi)
+
+obj.mouse <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_gabaergic_processed.rds")
+obj.mouse$species <- "Mouse"
+
+obj.opossum <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_gabaergic_processed.rds")
+obj.opossum$species <- "Opossum"
+
+obj.opossum <- obj.opossum[, sample(colnames(obj.opossum), size = ncol(obj.mouse), replace = FALSE)]
+
+```
+
+
+```{r}
+
+common.features <- intersect(rownames(obj.mouse), rownames(obj.opossum))
+obj.combined <- merge(obj.mouse[common.features,], y = obj.opossum[common.features,])
+obj.list <- SplitObject(obj.combined, split.by = "species")
+
+```
+
+
+```{r}
+
+obj.list[["Mouse"]] <- SCTransform(obj.list[["Mouse"]], vst.flavor = "v2", verbose = FALSE) %>%
+               RunPCA(npcs = 30, verbose = FALSE) %>%
+               RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+               FindNeighbors(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+               FindClusters(resolution = 1, algorithm = 4, method = "igraph")
+
+DimPlot(obj.list[["Mouse"]], label = TRUE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.list[["Mouse"]], label = TRUE, group.by = "subclass") + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+# DimPlot(obj.list[["Mouse"]], label = TRUE, group.by = "type") + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+obj.list[["Opossum"]] <- SCTransform(obj.list[["Opossum"]], vst.flavor = "v2", verbose = FALSE) %>%
+               RunPCA(npcs = 30, verbose = FALSE) %>%
+               RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+               FindNeighbors(reduction = "pca", dims = 1:30, verbose = FALSE) %>%
+               FindClusters(resolution = 1, algorithm = 4, method = "igraph")
+
+DimPlot(obj.list[["Opossum"]], label = TRUE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+DimPlot(obj.list[["Opossum"]], label = TRUE, group.by = "subclass") + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+# DimPlot(obj.list[["Opossum"]], label = TRUE, group.by = "type") + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+features <- SelectIntegrationFeatures(object.list = obj.list, nfeatures = 5000)
+obj.list <- PrepSCTIntegration(object.list = obj.list, anchor.features = features)
+anchors <- FindIntegrationAnchors(object.list = obj.list, normalization.method = "SCT", anchor.features = features)
+obj.combined.sct <- IntegrateData(anchorset = anchors, normalization.method = "SCT", features.to.integrate = common.features)
+
+```
+
+
+```{r}
+
+obj.combined.sct <- RunPCA(obj.combined.sct, verbose = FALSE)
+obj.combined.sct <- RunUMAP(obj.combined.sct, reduction = "pca", dims = 1:30, verbose = FALSE)
+obj.combined.sct <- FindNeighbors(obj.combined.sct, reduction = "pca", dims = 1:30)
+obj.combined.sct <- FindClusters(obj.combined.sct, resolution = 1, algorithm = 4, method = "igraph")
+
+```
+
+
+```{r}
+
+mp <- DimPlot(obj.combined.sct, reduction = "umap", group.by = "species", pt.size = 0.75, raster = FALSE, shuffle = TRUE, cols = c("#909090", "#c692b8")) + xlim(11, -15) + ylim(-13, 13) + coord_equal()
+sp <- DimPlot(obj.combined.sct, reduction = "umap", group.by = "subclass", pt.size = 0.75, split.by = "species", label = FALSE, raster = FALSE, order = rev(c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")), cols = c("#589B43", "#9B53A0",  "#29589A", "#EF3C46", "#EfAE70", "#545454")) + NoLegend() + xlim(11, -15) + ylim(-13, 13) + coord_equal()
+ggsave(file="E:/Opossum_Poster/GABAergic_V1_Mixed.svg", plot=mp, dpi=300)
+ggsave(file="E:/Opossum_Poster/GABAergic_V1_Split.svg", plot=sp, dpi=300)
+
+```
+

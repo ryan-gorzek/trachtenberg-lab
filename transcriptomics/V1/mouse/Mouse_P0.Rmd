@@ -1,0 +1,259 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(SeuratWrappers)
+library(monocle3)
+library(pheatmap)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+library(sampling)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+expr.matrix <- read.table("E:/Transcriptomics_V1/Mouse/P0/GSE123335_P0_combined_matrix.txt", header = TRUE)
+meta.data <- read.table("E:/Transcriptomics_V1/Mouse/P0/GSE123335_P0_combined_matrix_ClusterAnnotations.txt", header = TRUE, sep = "\t")
+
+# Assuming your data frame is called `df`
+# Step 1: Extract gene names and use them as rownames
+gene_names <- expr.matrix$Gene
+expr_matrix <- expr.matrix[, -1]  # Remove the 'Gene' column
+
+# Step 2: Set the rownames as gene names
+rownames(expr_matrix) <- gene_names
+
+# Step 3: Convert to matrix if needed (Seurat requires a matrix input)
+expr_matrix <- as.matrix(expr_matrix)
+
+# Step 4: Create a Seurat object
+obj.mouse.P0 <- CreateSeuratObject(counts = expr_matrix)
+
+```
+
+
+```{r}
+
+obj.mouse.P0$class <- NA
+obj.mouse.P0$class[meta.data$CellID] <- meta.data$Cluster
+
+```
+
+
+```{r}
+
+obj.mouse.P0 <- ClusterSCT(obj.mouse.P0, c(1))
+obj.mouse.P0$species <- "Mouse"
+
+```
+
+
+```{r}
+
+DimPlot(obj.mouse.P0, reduction = "umap", group.by = "class", label = TRUE, label.size = 2, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-20, 20) + ylim(-20, 20) + coord_equal()
+DimPlot(obj.mouse.P0, reduction = "umap", label = TRUE, label.size = 2, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-20, 20) + ylim(-20, 20) + coord_equal()
+FeaturePlot(obj.mouse.P0, "Emx1", reduction = "umap", raster = FALSE) + NoLegend() + xlim(-8, 8) + ylim(0, 16) + coord_equal()
+FeaturePlot(obj.mouse.P0, "Neurod6", reduction = "umap", raster = FALSE) + NoLegend() + xlim(-8, 8) + ylim(0, 16) + coord_equal()
+FeaturePlot(obj.mouse.P0, "Deptor", reduction = "umap", raster = FALSE) + NoLegend() + xlim(-8, 8) + ylim(0, 16) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.mouse.P0.glutamatergic <- subset(obj.mouse.P0, idents = c(1, 5, 6, 7, 10, 13, 16))
+
+```
+
+
+```{r}
+
+obj.mouse.P0.glutamatergic <- ClusterSCT(obj.mouse.P0.glutamatergic, c(1))
+
+```
+
+
+```{r}
+
+DimPlot(obj.mouse.P0.glutamatergic, reduction = "umap", group.by = "class", label = TRUE, label.size = 2, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-10, 10) + ylim(-10, 10) + coord_equal()
+DimPlot(obj.mouse.P0.glutamatergic, reduction = "umap", label = TRUE, label.size = 2, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-10, 10) + ylim(-10, 10) + coord_equal()
+FeaturePlot(obj.mouse.P0.glutamatergic, "Foxp2", reduction = "umap", raster = FALSE) + NoLegend() + xlim(-10, 10) + ylim(-10, 10) + coord_equal()
+FeaturePlot(obj.mouse.P0.glutamatergic, "Fezf2", reduction = "umap", raster = FALSE) + NoLegend() + xlim(-10, 10) + ylim(-10, 10) + coord_equal()
+FeaturePlot(obj.mouse.P0.glutamatergic, "Cux2", reduction = "umap", raster = FALSE) + NoLegend() + xlim(-10, 10) + ylim(-10, 10) + coord_equal()
+FeaturePlot(obj.mouse.P0.glutamatergic, "Rorb", reduction = "umap", raster = FALSE) + NoLegend() + xlim(-10, 10) + ylim(-10, 10) + coord_equal()
+FeaturePlot(obj.mouse.P0.glutamatergic, "Deptor", reduction = "umap", raster = FALSE) + NoLegend() + xlim(-10, 10) + ylim(-10, 10) + coord_equal()
+FeaturePlot(obj.mouse.P0.glutamatergic, "Zfp804b", reduction = "umap", raster = FALSE) + NoLegend() + xlim(-10, 10) + ylim(-10, 10) + coord_equal()
+FeaturePlot(obj.mouse.P0.glutamatergic, "Emx1", reduction = "umap", raster = FALSE) + NoLegend() + xlim(-8, 8) + ylim(0, 16) + coord_equal()
+FeaturePlot(obj.mouse.P0.glutamatergic, "Neurod6", reduction = "umap", raster = FALSE) + NoLegend() + xlim(-8, 8) + ylim(0, 16) + coord_equal()
+FeaturePlot(obj.mouse.P0.glutamatergic, "Deptor", reduction = "umap", raster = FALSE) + NoLegend() + xlim(-8, 8) + ylim(0, 16) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
+Idents(obj.opossum.glutamatergic) <- "subclass"
+obj.opossum.IT <- subset(obj.opossum.glutamatergic, idents = c("IT_A", "IT_B", "IT_C"))
+obj.opossum.IT <- NormalizePCA(obj.opossum.IT)
+
+```
+
+
+```{r}
+
+obj.mouse.P0.IT <- subset(obj.mouse.P0.glutamatergic, idents = c(1, 3, 4, 8, 9, 11))
+obj.mouse.P0.IT <- NormalizePCA(obj.mouse.P0.IT)
+obj.mouse.P0.IT$species <- "Mouse"
+
+```
+
+
+```{r}
+
+DimPlot(obj.mouse.P0.IT, reduction = "pca", group.by = "class", dims = c(2, 3), pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal()
+DimPlot(obj.mouse.P0.IT, reduction = "pca", dims = c(2, 3), pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal()
+FeaturePlot(obj.mouse.P0.IT, "Cux2", reduction = "pca", dims = c(2, 3), raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal()
+FeaturePlot(obj.mouse.P0.IT, "Rorb", reduction = "pca", dims = c(2, 3), raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal()
+
+```
+
+
+```{r}
+
+shared.HVFs <- SelectIntegrationFeatures(object.list = c(obj.mouse.P0.IT, obj.opossum.IT), nfeatures = 3000)
+obj.opossum.IT.SS <- obj.opossum.IT[,sample(colnames(obj.opossum.IT), ncol(obj.mouse.P0.IT))]
+obj.opossum.IT.SHVF <- NormalizePCA(obj.opossum.IT.SS, features = shared.HVFs)
+obj.mouse.P0.IT.SHVF <- NormalizePCA(obj.mouse.P0.IT, features = shared.HVFs)
+
+```
+
+
+```{r}
+
+DimPlot(obj.mouse.P0.IT.SHVF, reduction = "pca", group.by = "class", dims = c(2, 3), pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal()
+DimPlot(obj.mouse.P0.IT.SHVF, reduction = "pca", dims = c(2, 3), pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal()
+FeaturePlot(obj.mouse.P0.IT.SHVF, "Cux2", reduction = "pca", dims = c(2, 3), raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal()
+FeaturePlot(obj.mouse.P0.IT.SHVF, "Rorb", reduction = "pca", dims = c(2, 3), raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.opossum.IT.Proj <- PCAProject(obj.opossum.IT, obj.mouse.P0.IT)
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.IT.Proj, reduction = "pca", dims = c(2, 3), pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal()
+FeaturePlot(obj.opossum.IT.Proj, "Cux2", reduction = "pca", dims = c(2, 3), raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal()
+FeaturePlot(obj.opossum.IT.Proj, "Rorb", reduction = "pca", dims = c(2, 3), raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.combined.IT <- merge(obj.mouse.P0.IT, obj.opossum.IT.SS)
+obj.combined.IT <- SCTransform(obj.combined.IT, vst.flavor = "v2", residual.features = shared.HVFs, return.only.var.genes = FALSE, verbose = FALSE) %>%
+                   RunPCA(npcs = 30, verbose = FALSE)
+
+```
+
+
+```{r}
+
+PlotWithinSpeciesVarianceExplained(obj.combined.IT, c("Opossum", "Mouse"), num_pcs = 30)
+
+```
+
+
+```{r}
+
+DimPlot(obj.combined.IT, reduction = "pca", dims = c(2, 3), cols = c("#aaaaaa", "#c692b8"), group.by = "species", pt.size = 1, label = FALSE, shuffle = TRUE, raster = FALSE) + xlim(-30, 35) + ylim(-40, 25) + coord_equal()
+
+```
+
+
+```{r}
+
+PlotPCLoadingsCorrelation(c(obj.opossum.IT.SS.SHVF, obj.combined.IT), c("Opossum", "Combined"))
+PlotPCLoadingsCorrelation(c(obj.mouse.P0.IT.SHVF, obj.combined.IT), c("Mouse", "Combined"))
+
+```
+
+
+```{r}
+
+obj.mouse.P8.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P8_glutamatergic_processed.rds")
+Idents(obj.mouse.P8.glutamatergic) <- "subclass"
+obj.mouse.P8.IT <- subset(obj.mouse.P8.glutamatergic, idents = c("L2/3", "L4", "L5IT", "L6IT"))
+obj.mouse.P8.IT <- NormalizePCA(obj.mouse.P8.IT)
+
+```
+
+
+```{r}
+
+obj.mouse.P8.IT.Proj <- PCAProject(obj.mouse.P8.IT, obj.mouse.P0.IT)
+
+```
+
+
+```{r}
+
+DimPlot(obj.mouse.P8.IT.Proj, reduction = "pca", dims = c(2, 3), pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal()
+FeaturePlot(obj.mouse.P8.IT.Proj, "Cux2", reduction = "pca", dims = c(2, 3), raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal()
+FeaturePlot(obj.mouse.P8.IT.Proj, "Rorb", reduction = "pca", dims = c(2, 3), raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.mouse.P8.IT.SS <- obj.mouse.P8.IT[,sample(colnames(obj.mouse.P8.IT), ncol(obj.mouse.P0.IT))]
+obj.mouse.P0.IT$species <- "Mouse-P0"
+obj.mouse.P8.IT.SS$species <- "Mouse-P8"
+obj.combined.IT <- merge(obj.mouse.P0.IT, obj.mouse.P8.IT.SS)
+obj.combined.IT <- SCTransform(obj.combined.IT, vst.flavor = "v2", residual.features = shared.HVFs, return.only.var.genes = FALSE, verbose = FALSE) %>%
+                   RunPCA(npcs = 30, verbose = FALSE)
+
+```
+
+
+```{r}
+
+PlotWithinSpeciesVarianceExplained(obj.combined.IT, c("Mouse-P0", "Mouse-P8"), num_pcs = 30)
+
+```
+
+
+
+
+
+
+
+
+
+
+

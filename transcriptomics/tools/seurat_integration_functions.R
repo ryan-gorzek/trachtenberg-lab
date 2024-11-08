@@ -529,6 +529,8 @@ PlotSubclassDEIntersectionHeatmap <- function(list1, list2, all_genes1, all_gene
     
     # Find intersecting DE genes for the specific cluster pair
     intersecting_de_genes <- intersect(df1_filtered$gene, df2_filtered$gene)
+    de_genes_1 <- as.character(df1_filtered$gene[(df1_filtered$gene %in% intersecting_de_genes) == FALSE])
+    de_genes_2 <- as.character(df2_filtered$gene[(df2_filtered$gene %in% intersecting_de_genes) == FALSE])
     
     # Count the number of intersecting DE genes
     count <- length(intersecting_de_genes)
@@ -546,8 +548,10 @@ PlotSubclassDEIntersectionHeatmap <- function(list1, list2, all_genes1, all_gene
     # Save intersecting genes to a text file
     filename <- paste0(output_path, "/", gsub("/", "", cluster1), "_vs_", gsub("/", "", cluster2), "_intersecting_genes.txt")
     write.table(intersecting_de_genes, file = filename, quote = FALSE, row.names = FALSE, col.names = FALSE)
-    # filename <- paste0(output_path, "/", gsub("/", "", cluster1), "_vs_", gsub("/", "", cluster2), "_all_genes.txt")
-    # write.table(all_de_genes, file = filename, quote = FALSE, row.names = FALSE, col.names = FALSE)
+    filename <- paste0(output_path, "/", gsub("/", "", cluster1), "_vs_", gsub("/", "", cluster2), "_", tolower(sample.name1), "_genes.txt")
+    write.table(de_genes_1, file = filename, quote = FALSE, row.names = FALSE, col.names = FALSE)
+    filename <- paste0(output_path, "/", gsub("/", "", cluster1), "_vs_", gsub("/", "", cluster2), "_", tolower(sample.name2), "_genes.txt")
+    write.table(de_genes_2, file = filename, quote = FALSE, row.names = FALSE, col.names = FALSE)
   }
   
   fill_label <- if (percentage) "Percentage of DE Genes" else "# DE Genes"
@@ -1638,22 +1642,28 @@ PlotSubsampledMappedLabelsHeatmap <- function(true.labels, pred.labels, column_l
     melted$Percentage <- melted$Count
   }
   
-  # Sorting function
+  # # Sorting function
+  # sort_ident <- function(ident, primary_order) {
+  #   primary <- sapply(ident, function(x) str_extract(x, paste(primary_order, collapse = "|")))
+  #   suffix <- sapply(ident, function(x) str_extract(x, "(?<=_)[A-Za-z0-9]+$"))
+  #   suffix_numeric <- suppressWarnings(as.numeric(suffix))
+  #   suffix[is.na(suffix_numeric)] <- paste0("Z", suffix[is.na(suffix_numeric)])  # Add "Z" prefix to non-numeric suffixes to sort them correctly
+  #   suffix_numeric[is.na(suffix_numeric)] <- Inf
+  #   df <- data.frame(ident = ident, primary = primary, suffix = suffix, suffix_numeric = suffix_numeric)
+  #   df <- df %>% arrange(match(primary, primary_order), suffix_numeric, suffix)
+  #   return(unlist(df$ident))
+  # }
+  
   sort_ident <- function(ident, primary_order) {
-    primary <- sapply(ident, function(x) str_extract(x, paste(primary_order, collapse = "|")))
-    suffix <- sapply(ident, function(x) str_extract(x, "(?<=_)[A-Za-z0-9]+$"))
-    suffix_numeric <- suppressWarnings(as.numeric(suffix))
-    suffix[is.na(suffix_numeric)] <- paste0("Z", suffix[is.na(suffix_numeric)])  # Add "Z" prefix to non-numeric suffixes to sort them correctly
-    suffix_numeric[is.na(suffix_numeric)] <- Inf
-    df <- data.frame(ident = ident, primary = primary, suffix = suffix, suffix_numeric = suffix_numeric)
-    df <- df %>% arrange(match(primary, primary_order), suffix_numeric, suffix)
-    return(unlist(df$ident))
+    # Ensure that all identifiers in 'ident' are part of 'primary_order'
+    ident <- factor(ident, levels = primary_order, ordered = TRUE)
+    return(as.character(levels(ident)))  # Return the factor levels in the specified order
   }
   
   # Get unique levels
   row_levels <- unique(melted$row)
   col_levels <- unique(melted$col)
-  
+
   # Sort and factorize identifiers
   if (is.null(ident.order)) {
     row_levels <- sort_ident(row_levels, unique(melted$row))
@@ -1882,4 +1892,32 @@ PlotWithinSpeciesVarianceExplained <- function(seurat_obj, species_names, num_pc
     theme_minimal() +
     scale_color_manual(values = c("blue", "red")) +
     scale_x_continuous(breaks = 1:num_pcs, labels = 1:num_pcs)
+}
+
+PlotCCAFeatureLoadings <- function(seurat_obj1, seurat_obj2) {
+  # Ensure both Seurat objects contain the same genes
+  common_genes <- intersect(rownames(seurat_obj1), rownames(seurat_obj2))
+  seurat_obj1 <- subset(seurat_obj1, features = common_genes)
+  seurat_obj2 <- subset(seurat_obj2, features = common_genes)
+  
+  # Run CCA
+  combined <- RunCCA(seurat_obj1, seurat_obj2, features = common_genes, rescale = TRUE)
+  
+  # Extract feature loadings for each gene in each object
+  # The `Loadings` function retrieves feature loadings for the reduction
+  feature_loadings <- Loadings(combined, reduction = "cca")
+  
+  # Convert the loadings to a data frame for easy plotting
+  loadings_df <- as.data.frame(feature_loadings)
+  loadings_df$Gene <- rownames(loadings_df)  # Add gene names for reference
+  loadings_df <<- loadings_df
+  # Plot the feature loadings (for the first two CCA components as an example)
+  ggplot(loadings_df, aes(x = CC_1, y = CC_2)) +
+    geom_point(alpha = 0.6) +
+    labs(
+      title = "CCA Feature Loadings Plot",
+      x = "CC1",
+      y = "CC2"
+    ) +
+    theme_minimal()
 }

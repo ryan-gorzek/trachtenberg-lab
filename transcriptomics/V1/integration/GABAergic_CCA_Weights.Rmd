@@ -1,0 +1,39 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.opossum.gabaergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_gabaergic_processed.rds")
+obj.mouse.gabaergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_gabaergic_processed.rds")
+
+```
+
+
+```{r}
+
+PlotCCAFeatureLoadings(obj.mouse.gabaergic, obj.opossum.gabaergic)
+
+```
+

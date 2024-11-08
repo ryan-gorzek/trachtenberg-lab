@@ -8,7 +8,7 @@ output: html_notebook
 
 library(Rsamtools)
 
-bam.path <- "E:/bams/mouse/possorted_genome_bam.bam"
+bam.path <- "E:/Transcriptomics_V1/Opossum/output/Original/OpossumV1-4B/outs/possorted_genome_bam.bam"
 
 bam.header <- scanBamHeader(file = bam.path)
 idx.stats <- idxstatsBam(bam.path)
@@ -121,7 +121,7 @@ for (scf in seq(length(scaffold.names), 1, by = -1)) {
     bed.df$strand <- bam.df.bed$strand
     
     scaffold.fname <- gsub("\\.", "_", scaffold.names[scf])
-    fname <- paste0("E:/bams/mouse/beds/", "intergenic-reads-", scaffold.fname, ".bed")
+    fname <- paste0("E:/bams/opossum/4B/beds/", "intergenic-reads-", scaffold.fname, ".bed")
     write.table(bed.df, file = fname, quote = F, sep = "\t", row.names = F, col.names = F)
     
     }

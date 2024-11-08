@@ -246,7 +246,7 @@ p <- ggplot(curr.props, aes(x = factor(cell.identity, level = c("Pvalb", "Sst", 
     geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
     geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
     scale_x_discrete(labels = c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")) +
-    scale_y_continuous(breaks = c(0, 0.2, 0.4, 0.6), expand = c(0, 0), limits = c(0, 0.60)) +
+    scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75), expand = c(0, 0), limits = c(0, 0.7501)) +
     guides(fill = guide_legend(override.aes = list(shape = NA))) +
     theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
     labs(x = NULL, y = "Fraction of GABAergic Cells", fill = NULL) + 
@@ -255,8 +255,8 @@ p <- ggplot(curr.props, aes(x = factor(cell.identity, level = c("Pvalb", "Sst", 
 res.aov <- aov(fraction ~ species * cell.identity, data = curr.props)
 tukey <- TukeyHSD(res.aov, which = "species:cell.identity")
 
-ggsave(file = "E:/Opossum_Paper/Figure 1/GABAergic_Subclass_Proportions.png", plot = p, width = 4.5, height = 3.1, dpi = 500)
-ggsave(file = "E:/Opossum_Paper/Figure 1/GABAergic_Subclass_Proportions.svg", plot = p, width = 4.5, height = 3.1, dpi = 500)
+ggsave(file = "E:/Opossum_Poster/GABAergic_Subclass_Proportions.png", plot = p, width = 4.5, height = 3.1, dpi = 500)
+ggsave(file = "E:/Opossum_Poster/GABAergic_Subclass_Proportions.svg", plot = p, width = 4.5, height = 3.1, dpi = 500)
 
 ```
 

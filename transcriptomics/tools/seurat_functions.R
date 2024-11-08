@@ -55,7 +55,9 @@ PreprocessData <- function(sample_IDs, data_path, project_name, mapping_path) {
     
   }
   
+  if (length(objs) > 1) {
   obj <- merge(objs[[1]], y = objs[2:length(objs)], add.cell.ids = sample_IDs, project = project_name)
+  } else { obj <- objs[[1]] }
   genes$pre.map <- rownames(obj)
   
   # Map gene names/IDs if specified.
@@ -731,7 +733,7 @@ SaveIdentConfusionMatrices <- function(obj, subclass.labels, ident.labels, savep
   }
 }
 
-SaveSubclassConfusionMatrices <- function(obj, subclass.cols, subclass.order, savepath) {
+SaveSubclassConfusionMatrices <- function(obj, subclass.cols, subclass.order, savepath, return.plot = FALSE, colormap_upper_limit = NULL) {
   
   DefaultAssay(obj) <- "SCT"
   
@@ -739,22 +741,35 @@ SaveSubclassConfusionMatrices <- function(obj, subclass.cols, subclass.order, sa
     
     folder_path <- paste0(savepath)
     make_folder(folder_path)
-      
+    
     DefaultAssay(obj) <- "SCT"
     Idents(obj) <- sbcl
     levels(obj) <- sort_by_reference(levels(obj), subclass.order)
     
     mdl <- TrainModel(obj, training_genes = VariableFeatures(obj))
-          
+    
     if (!is.null(mdl$confusion)) {
       confusion_plot <- mdl$confusion +
-                        coord_equal() + 
-                        theme(axis.text.x = element_text(angle = 90),
-                              panel.background = element_rect(fill = "white", color = NA), 
-                              plot.background = element_rect(fill = "white", color = NA))
-            
+        coord_equal() + 
+        theme(axis.text.x = element_text(angle = 90),
+              panel.background = element_rect(fill = "white", color = NA), 
+              plot.background = element_rect(fill = "white", color = NA))
+      
+      if (!is.null(colormap_upper_limit)) {
+        confusion_plot <- confusion_plot +
+          scale_fill_gradient(limits = c(0, colormap_upper_limit), 
+                              low = "white", 
+                              high = "red", 
+                              oob = scales::squish)
+      } else {
+        confusion_plot <- confusion_plot +
+          scale_fill_gradient(low = "white", high = "red")
+      }
+      
       ggsave(paste0(folder_path, sbcl, "_XGBoost.png"), plot = confusion_plot, width = 5, height = 5, dpi = 300)
-
+      if (return.plot == TRUE) {
+        return(confusion_plot)
+      }
     }
   }
 }
@@ -1439,4 +1454,26 @@ PlotPCVarianceExplained <- function(seurat_objects, object_names, num_pcs = 10) 
     theme_minimal() +
     scale_color_manual(values = c("blue", "red")) +
     scale_x_continuous(breaks = 1:num_pcs, labels = 1:num_pcs)
+}
+
+SubsampleClasses <- function(seurat_obj, meta_column) {
+  # Get the metadata
+  metadata <- seurat_obj@meta.data
+  
+  # Determine the class sizes
+  class_sizes <- table(metadata[[meta_column]])
+  
+  # Find the minimum class size
+  min_size <- min(class_sizes)
+  
+  # Subsample each class to the minimum size
+  sampled_cells <- unlist(lapply(names(class_sizes), function(class_name) {
+    class_cells <- rownames(metadata[metadata[[meta_column]] == class_name, ])
+    sample(class_cells, min_size)
+  }))
+  
+  # Subset the Seurat object to the sampled cells
+  downsampled_obj <- subset(seurat_obj, cells = sampled_cells)
+  
+  return(downsampled_obj)
 }

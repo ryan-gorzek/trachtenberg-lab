@@ -1,0 +1,151 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.mouse <- readRDS("E:/Transcriptomics_V1/Mouse/Arlotta/ArlottaLab.rds")
+
+```
+
+
+```{r}
+
+obj.mouse$timepoint <- obj.mouse$biosample_id
+obj.mouse$timepoint[obj.mouse$biosample_id == "E18_S1"] <- "E18"
+obj.mouse$timepoint[obj.mouse$biosample_id == "E18_S3"] <- "E18"
+obj.mouse$timepoint[obj.mouse$biosample_id == "P1_S1"] <- "P1"
+
+```
+
+
+```{r}
+
+timepoints <- unique(obj.mouse$timepoint)
+objs.mouse <- list()
+for (t in timepoints) {
+  obj.temp <- subset(obj.mouse, timepoint == t)
+  obj.temp <- ClusterSCT(obj.temp, c(1))
+  objs.mouse[[t]] <- obj.temp
+}
+
+```
+
+
+```{r}
+
+timepoint <- "P4"
+DimPlot(objs.mouse[[timepoint]], reduction = "umap", group.by = "New_cellType", label = T, raster = FALSE, label.size = 2) + NoLegend() + xlim(-8, 15) + ylim(-8, 12) + coord_equal()
+obj.mouse.P4 <- subset(objs.mouse[["P4"]], New_cellType == c("UL CPN", "Layer 4", "DL_CPN_1", "DL_CPN_2", "CThPN", "Layer 6b", "SCPN", "NP"))
+obj.mouse.P4 <- ClusterSCT(obj.mouse.P4, c(1))
+DimPlot(obj.mouse.P4, reduction = "umap", group.by = "New_cellType", label = T, raster = FALSE, label.size = 3) + NoLegend() + xlim(-8, 8) + ylim(-8, 8) + coord_equal()
+
+```
+
+
+```{r}
+
+
+
+```
+
+
+```{r}
+
+timepoints <- c("E16", "E17", "P4")
+for (t in timepoints) {
+  obj.IT <- subset(objs.mouse[[t]], New_cellType == c("UL CPN", "Layer 4", "DL CPN", "DL_CPN_1", "DL_CPN_2"))
+  obj.IT <- NormalizePCA(obj.IT)
+  p <- DimPlot(obj.IT, reduction = "pca", group.by = "New_cellType", label = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-20, 20) + coord_equal()
+  print(p)
+}
+
+```
+
+
+```{r}
+
+DimPlot(obj.IT, reduction = "pca", group.by = "New_cellType", label = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-20, 20) + coord_equal()
+FeaturePlot(obj.IT, "Zfp804b", reduction = "pca", raster = FALSE) + xlim(-20, 20) + ylim(-20, 20) + coord_equal()
+
+obj.mouse.IT <- obj.IT
+
+```
+
+
+```{r}
+
+obj.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
+Idents(obj.opossum.glutamatergic) <- "subclass"
+obj.opossum.IT <- subset(obj.opossum.glutamatergic, idents = c("IT_A", "IT_B", "IT_C", "IT_D"))
+obj.opossum.IT <- NormalizePCA(obj.opossum.IT)
+
+```
+
+
+```{r}
+
+shared.HVFs <- SelectIntegrationFeatures(object.list = c(obj.mouse.IT, obj.opossum.IT), nfeatures = 3000)
+obj.opossum.IT.SS.MP <- obj.opossum.IT[, sample(colnames(obj.opossum.IT), length(colnames(obj.mouse.IT)))]
+obj.mouse.IT$species <- "Mouse"
+obj.combined.IT <- merge(obj.mouse.IT, obj.opossum.IT.SS.MP)
+obj.combined.IT <- SCTransform(obj.combined.IT, vst.flavor = "v2", residual.features = shared.HVFs, return.only.var.genes = FALSE, verbose = FALSE) %>%
+                   RunPCA(npcs = 30, verbose = FALSE)
+
+```
+
+
+```{r}
+
+DimPlot(obj.combined.IT, reduction = "pca", dims = c(6, 7), cols = c("#aaaaaa", "#c692b8"), group.by = "species", pt.size = 1, label = FALSE, shuffle = TRUE, raster = FALSE) + xlim(-30, 35) + ylim(-25, 40) + coord_equal()
+
+```
+
+
+```{r}
+
+PlotPCLoadingsCorrelation(c(obj.opossum.IT, obj.mouse.IT), c("Opossum", "Mouse"))
+
+```
+
+
+```{r}
+
+PlotWithinSpeciesVarianceExplained(obj.combined.IT, c("Opossum", "Mouse"), num_pcs = 30)
+
+```
+
+
+```{r}
+
+obj.mouse.IT.Proj <- PCAProject(obj.mouse.IT, obj.opossum.IT)
+DimPlot(obj.opossum.IT, reduction = "pca", group.by = "subclass", label = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-20, 20) + coord_equal()
+DimPlot(obj.mouse.IT.Proj, reduction = "pca", group.by = "New_cellType", label = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-20, 20) + coord_equal()
+
+```
+
+
+
+
+
+

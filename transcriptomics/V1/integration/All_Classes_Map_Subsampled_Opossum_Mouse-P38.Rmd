@@ -80,6 +80,85 @@ saveRDS(mapping.species, "E:/Transcriptomics_V1/Integration/opossum_mouse_subsam
 
 ```
 
+NULL DISTRIBUTION
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+colors_list <- GetColors()
+
+classes <- c("Glutamatergic", "GABAergic", "Nonneuronal")
+iters <- c()
+objs.opossum = list()
+objs.mouse = list()
+mapping.data = list("cell.id" = c(), "subclass" = c(), "predicted.subclass" = c(), "predicted.subclass.score" = c())
+mapping.classes = list("Glutamatergic" = mapping.data, "GABAergic" = mapping.data, "Nonneuronal" = mapping.data)
+mapping.species <- list("Opossum" = mapping.classes, "Mouse" = mapping.classes)
+objs.opossum$Glutamatergic <- readRDS(paste0("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds"))
+objs.mouse$Glutamatergic <- readRDS(paste0("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds"))
+objs.opossum$GABAergic <- readRDS(paste0("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_gabaergic_processed.rds"))
+objs.mouse$GABAergic <- readRDS(paste0("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_gabaergic_processed.rds"))
+objs.opossum$Nonneuronal <- readRDS(paste0("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_nonneuronal_processed.rds"))
+objs.mouse$Nonneuronal <- readRDS(paste0("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_nonneuronal_processed.rds"))
+
+iteration.list = list("Opossum" = list(), "Mouse" = list())
+for (cl in classes) {
+  iteration.list$Opossum[[cl]] <- SubsampleObjectMultipleIterations(objs.opossum[[cl]], "subclass", 100, 100)
+  iteration.list$Mouse[[cl]] <- SubsampleObjectMultipleIterations(objs.mouse[[cl]], "subclass", 100, 100)
+}
+
+for (cl in classes) {
+  for (it in 1:100) {
+
+    obj.opossum <- objs.opossum[[cl]]
+    obj.opossum$species <- "Opossum"
+    obj.mouse <- objs.mouse[[cl]]
+    obj.mouse$species <- "Mouse"
+    # obj.opossum <- SubsampleObject(obj.opossum, "subclass", 200)
+    obj.opossum <- subset(obj.opossum, cells = as.character(iteration.list$Opossum[[cl]][[it]]))
+    # obj.mouse <- SubsampleObject(obj.mouse, "subclass", 200)
+    obj.mouse <- subset(obj.mouse, cells = as.character(iteration.list$Mouse[[cl]][[it]]))
+    obj.mouse$subclass <- sample(as.character(obj.mouse$subclass))
+    objs <- list(obj.opossum, obj.mouse)
+    objs.m <- MapObjects(objs[[1]], objs[[2]], c("subclass"), assay = "SCT")
+    mapping.species$Opossum[[cl]][["cell.id"]] <- c(mapping.species$Opossum[[cl]][["cell.id"]], as.character(colnames(objs.m[[1]])))
+    mapping.species$Opossum[[cl]][["subclass"]] <- c(mapping.species$Opossum[[cl]][["subclass"]], as.character(objs.m[[1]]$subclass))
+    mapping.species$Opossum[[cl]][["predicted.subclass"]] <- c(mapping.species$Opossum[[cl]][["predicted.subclass"]], as.character(objs.m[[1]]$predicted.subclass))
+    mapping.species$Opossum[[cl]][["predicted.subclass.score"]] <- c(mapping.species$Opossum[[cl]][["predicted.subclass.score"]], as.numeric(objs.m[[1]]$predicted.subclass.score))
+    mapping.species$Mouse[[cl]][["cell.id"]] <- c(mapping.species$Mouse[[cl]][["cell.id"]], as.character(colnames(objs.m[[2]])))
+    mapping.species$Mouse[[cl]][["subclass"]] <- c(mapping.species$Mouse[[cl]][["subclass"]], as.character(objs.m[[2]]$subclass))
+    mapping.species$Mouse[[cl]][["predicted.subclass"]] <- c(mapping.species$Mouse[[cl]][["predicted.subclass"]], as.character(objs.m[[2]]$predicted.subclass))
+    mapping.species$Mouse[[cl]][["predicted.subclass.score"]] <- c(mapping.species$Mouse[[cl]][["predicted.subclass.score"]], as.numeric(objs.m[[2]]$predicted.subclass.score))
+  
+  }
+}
+
+```
+
+
+```{r}
+
+saveRDS(mapping.species, "E:/Transcriptomics_V1/Integration/opossum_mouse_subsampled_mapping_100it_perm.rds")
+
+```
+
 
 ```{r}
 
@@ -93,6 +172,8 @@ objs.opossum$Nonneuronal <- readRDS(paste0("E:/Transcriptomics_V1/Opossum/seurat
 objs.mouse$Nonneuronal <- readRDS(paste0("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_nonneuronal_processed.rds"))
 mapping.species <- readRDS("E:/Transcriptomics_V1/Integration/opossum_mouse_subsampled_mapping_100it.rds")
 mapping.classes <- mapping.species$Opossum
+mapping.species.perm <- readRDS("E:/Transcriptomics_V1/Integration/opossum_mouse_subsampled_mapping_100it_perm.rds")
+mapping.classes.perm <- mapping.species.perm$Opossum
 
 ```
 
@@ -101,11 +182,14 @@ mapping.classes <- mapping.species$Opossum
 
 source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
 
+p <- PlotSubsampledMappedLabelsHeatmap(mapping.classes$Glutamatergic$subclass, mapping.classes$Glutamatergic$predicted.subclass, 
+                                  c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"), normalize = "row", 
+                                  ident.order = c("IT_A", "IT_B", "L2/3", "L5IT", "L5NP", "IT_D", "L6IT", "IT_C", "L4", "L5PT", "L6CT", "L6b")) + scale_fill_gradient2(low = "white", mid = "red", high = "blue", midpoint = 50)
 PlotSubsampledMappedLabelsHeatmap(mapping.classes$Glutamatergic$subclass, mapping.classes$Glutamatergic$predicted.subclass, 
                                   c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"), normalize = "row", 
-                                  ident.order = c("IT_A", "IT_C", "IT_B", "IT_D", "L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"))
-# ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Confusion_Subsampled_Glutamatergic.png", plot = p, width = 6, height = 5, dpi = 300)
-# ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Confusion_Subsampled_Glutamatergic.svg", plot = p, width = 6, height = 5, dpi = 300)
+                                  ident.order = c("IT_A", "IT_C", "IT_B", "IT_D", "L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b")) + scale_fill_gradient2(low = "white", mid = "blue", high = "red", midpoint = 50)
+ggsave("E:/Opossum_Poster/Opossum_Mouse_Mapping_Confusion_Subsampled_Glutamatergic.png", plot = p, width = 6, height = 5, dpi = 300)
+ggsave("E:/Opossum_POster/Opossum_Mouse_Mapping_Confusion_Subsampled_Glutamatergic.svg", plot = p, width = 6, height = 5, dpi = 300)
 
 ```
 
@@ -130,9 +214,36 @@ seurat_obj <- AddMetaData(seurat_obj, metadata = data$Score, col.name = "Predict
 opossum.glutamatergic.levels <- c("IT_A", "IT_C", "IT_B", "IT_D", "L5NP", "L5PT", "L6CT", "L6b")
 Idents(seurat_obj) <- "Subclass"
 levels(seurat_obj) <- opossum.glutamatergic.levels
-p <- VlnPlot(seurat_obj, features = "PredictionScore", cols = colors_list[opossum.glutamatergic.levels], pt.size = 0.5) + ylim(0, 1) + theme(legend.spacing.x = unit(3.0, 'cm'))
-ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Quality_Subsampled_Glutamatergic.png", plot = p, dpi = 300)
-ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Quality_Subsampled_Glutamatergic.svg", plot = p, dpi = 300)
+p <- VlnPlot(seurat_obj, features = "PredictionScore", cols = colors_list[opossum.glutamatergic.levels], pt.size = 0.25) + ylim(0, 1) + theme(legend.spacing.x = unit(1.0, 'cm'))
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_Mouse_Mapping_Quality_Subsampled_Glutamatergic.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_Mouse_Mapping_Quality_Subsampled_Glutamatergic.svg", plot = p, dpi = 300)
+
+```
+
+
+```{r}
+
+data <- data.frame(Subclass = mapping.classes.perm$Glutamatergic$subclass, Score = mapping.classes.perm$Glutamatergic$predicted.subclass.score)
+
+# Create a Seurat object with fake expression data
+fake_expression_data <- matrix(rnorm(2000), nrow = 5, ncol = nrow(data))  # 20 genes, 100 cells
+rownames(fake_expression_data) <- paste0("Gene", 1:5)
+colnames(fake_expression_data) <- paste0("Cell", 1:nrow(data))
+
+# Initialize Seurat object
+seurat_obj <- CreateSeuratObject(counts = fake_expression_data)
+
+# Add subclass and prediction scores to metadata
+seurat_obj <- AddMetaData(seurat_obj, metadata = data$Subclass, col.name = "Subclass")
+seurat_obj <- AddMetaData(seurat_obj, metadata = data$Score, col.name = "PredictionScore")
+
+# Use VlnPlot to create violin plots
+opossum.glutamatergic.levels <- c("IT_A", "IT_C", "IT_B", "IT_D", "L5NP", "L5PT", "L6CT", "L6b")
+Idents(seurat_obj) <- "Subclass"
+levels(seurat_obj) <- opossum.glutamatergic.levels
+VlnPlot(seurat_obj, features = "PredictionScore", cols = colors_list[opossum.glutamatergic.levels], pt.size = 0.5) + ylim(0, 1) + theme(legend.spacing.x = unit(3.0, 'cm'))
+# ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Quality_Subsampled_Glutamatergic.png", plot = p, dpi = 300)
+# ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Quality_Subsampled_Glutamatergic.svg", plot = p, dpi = 300)
 
 ```
 
@@ -141,9 +252,9 @@ ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Quality_Subsampled_Glut
 
 p <- PlotSubsampledMappedLabelsHeatmap(mapping.classes$GABAergic$subclass, mapping.classes$GABAergic$predicted.subclass, 
                                   c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1"), normalize = "row", 
-                                  ident.order = c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac"))
-ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Confusion_Subsampled_GABAergic.png", plot = p, width = 5, height = 4.5, dpi = 300)
-ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Confusion_Subsampled_GABAergic.svg", plot = p, width = 5, height = 4.5, dpi = 300)
+                                  ident.order = c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")) + scale_fill_gradient2(low = "white", mid = "red", high = "blue", midpoint = 50)
+ggsave("E:/Opossum_Poster/Opossum_Mouse_Mapping_Confusion_Subsampled_GABAergic.png", plot = p, width = 5, height = 4.5, dpi = 300)
+ggsave("E:/Opossum_Poster/Opossum_Mouse_Mapping_Confusion_Subsampled_GABAergic.svg", plot = p, width = 5, height = 4.5, dpi = 300)
 
 ```
 
@@ -168,9 +279,9 @@ seurat_obj <- AddMetaData(seurat_obj, metadata = data$Score, col.name = "Predict
 opossum.gabaergic.levels <- c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1")
 Idents(seurat_obj) <- "Subclass"
 levels(seurat_obj) <- opossum.gabaergic.levels
-p <- VlnPlot(seurat_obj, features = "PredictionScore", cols = colors_list[opossum.gabaergic.levels], pt.size = 0.5) + ylim(0, 1) + theme(legend.spacing.x = unit(3.0, 'cm'))
-ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Quality_Subsampled_GABAergic.png", plot = p, dpi = 300)
-ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Quality_Subsampled_GABAergic.svg", plot = p, dpi = 300)
+p <- VlnPlot(seurat_obj, features = "PredictionScore", cols = colors_list[opossum.gabaergic.levels], pt.size = 0.5) + ylim(0, 1) + theme(legend.spacing.x = unit(1.0, 'cm'))
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_Mouse_Mapping_Quality_Subsampled_GABAergic.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_Mouse_Mapping_Quality_Subsampled_GABAergic.svg", plot = p, dpi = 300)
 
 ```
 
@@ -179,9 +290,9 @@ ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Quality_Subsampled_GABA
 
 p <- PlotSubsampledMappedLabelsHeatmap(mapping.classes$Nonneuronal$subclass, mapping.classes$Nonneuronal$predicted.subclass, 
                                   c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC"), normalize = "row", 
-                                  ident.order = c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC"))
-ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Confusion_Subsampled_Nonneuronal.png", plot = p, width = 5, height = 4.5, dpi = 300)
-ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Confusion_Subsampled_Nonneuronal.svg", plot = p, width = 5, height = 4.5, dpi = 300)
+                                  ident.order = c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC")) + scale_fill_gradient2(low = "white", mid = "red", high = "blue", midpoint = 50)
+ggsave("E:/Opossum_Poster/Opossum_Mouse_Mapping_Confusion_Subsampled_Nonneuronal.png", plot = p, width = 5, height = 4.5, dpi = 300)
+ggsave("E:/Opossum_Poster/Opossum_Mouse_Mapping_Confusion_Subsampled_Nonneuronal.svg", plot = p, width = 5, height = 4.5, dpi = 300)
 
 ```
 
@@ -206,9 +317,9 @@ seurat_obj <- AddMetaData(seurat_obj, metadata = data$Score, col.name = "Predict
 opossum.nonneuronal.levels <- c("Astro", "Micro", "OD", "OPC", "Endo")
 Idents(seurat_obj) <- "Subclass"
 levels(seurat_obj) <- opossum.nonneuronal.levels
-p <- VlnPlot(seurat_obj, features = "PredictionScore", cols = colors_list[opossum.nonneuronal.levels], pt.size = 0.5) + ylim(0, 1) + theme(legend.spacing.x = unit(3.0, 'cm'))
-ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Quality_Subsampled_Nonneuronal.png", plot = p, dpi = 300)
-ggsave("E:/Opossum_Paper/Figure S2/Opossum_Mouse_Mapping_Quality_Subsampled_Nonneuronal.svg", plot = p, dpi = 300)
+p <- VlnPlot(seurat_obj, features = "PredictionScore", cols = colors_list[opossum.nonneuronal.levels], pt.size = 0.5) + ylim(0, 1) + theme(legend.spacing.x = unit(1.0, 'cm'))
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_Mouse_Mapping_Quality_Subsampled_Nonneuronal.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_Mouse_Mapping_Quality_Subsampled_Nonneuronal.svg", plot = p, dpi = 300)
 
 ```
 

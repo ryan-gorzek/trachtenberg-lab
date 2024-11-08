@@ -1,0 +1,149 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(SeuratWrappers)
+library(monocle3)
+library(pheatmap)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+library(sampling)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
+obj.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+
+```
+
+
+```{r}
+
+colors_list <- list(
+              # Glutamatergic
+              IT = "#FF6C88",
+              IT_A = "#FFB3B3",
+              `L2/3` = "#FFB3B3",
+              IT_B = "#FFA07A",
+              L4 = "#FF7F50",
+              IT_C = "#FF7F50",
+              L5IT = "#FFA07A",
+              IT_D = "#FF6347",
+              L6IT = "#FF6347",
+              L5NP = "#FF4500",
+              L5PT = "#32a852", 
+              L6CT = "#7de89a",
+              L6b = "#206633",
+            
+              # GABAergic
+              Pvalb = "#1E90FF",
+              Sst = "#87CEEB",
+              Vip = "#87CEFA",
+              Lamp5 = "#4682B4",
+              Frem1 = "#ADD8E6",
+              Stac = "#5F9EA0",
+            
+              # Non-neuronal
+              Astro = "#8C8C8C",
+              Micro = "#A0A0A0",
+              OD = "#B4B4B4",
+              OPC = "#C8C8C8",
+              Endo = "#505050",
+              VLMC = "#B4B4B4"
+)
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.glutamatergic) <- "subclass"
+obj.opossum.IT <- subset(obj.opossum.glutamatergic, idents = c("IT_A", "IT_B", "IT_C", "IT_D"))
+obj.opossum.IT <- ClusterSCT(obj.opossum.IT, resolutions = 1)
+
+Idents(obj.mouse.glutamatergic) <- "subclass"
+obj.mouse.IT <- subset(obj.mouse.glutamatergic, idents = c("L2/3", "L4", "L5IT", "L6IT"))
+obj.mouse.IT <- ClusterSCT(obj.mouse.IT, resolutions = 1)
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.IT) <- "subclass"
+subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D")
+p <- DimPlot(obj.opossum.IT, reduction = "umap", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-16, 10) + ylim(-13, 13) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_UMAP_IT_Subclass.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_UMAP_IT_Subclass.svg", plot = p, dpi = 300)
+
+Idents(obj.mouse.IT) <- "subclass"
+subclasses.mouse <- c("L2/3", "L4", "L5IT", "L6IT")
+p <- DimPlot(obj.mouse.IT, reduction = "umap", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-11, 15) + ylim(-14, 12) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 2/Mouse_UMAP_IT_Subclass.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Mouse_UMAP_IT_Subclass.svg", plot = p, dpi = 300)
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.opossum.IT) <- "SCT"
+p <- FeaturePlot(obj.opossum.IT, "Cux2", pt.size = 1, order = FALSE, raster = FALSE) + xlim(-16, 10) + ylim(-13, 13) + coord_equal() + scale_color_gradientn( colours = c('lightgrey', 'blue'),  limits = c(0, 4))
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_UMAP_IT_Cux2.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_UMAP_IT_Cux2.svg", plot = p, dpi = 300)
+p <- FeaturePlot(obj.opossum.IT, "Rorb", pt.size = 1, order = FALSE, max.cutoff = 4, raster = FALSE) + xlim(-16, 10) + ylim(-13, 13) + coord_equal() + scale_color_gradientn( colours = c('lightgrey', 'blue'),  limits = c(0, 4))
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_UMAP_IT_Rorb.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_UMAP_IT_Rorb.svg", plot = p, dpi = 300)
+p <- FeaturePlot(obj.opossum.IT, "Deptor", pt.size = 1, order = FALSE, max.cutoff = 4, raster = FALSE) + xlim(-16, 10) + ylim(-13, 13) + coord_equal() + scale_color_gradientn( colours = c('lightgrey', 'blue'),  limits = c(0, 4))
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_UMAP_IT_Deptor.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_UMAP_IT_Deptor.svg", plot = p, dpi = 300)
+p <- FeaturePlot(obj.opossum.IT, "Zfp804b", pt.size = 1, order = TRUE, max.cutoff = 4, raster = FALSE) + xlim(-16, 10) + ylim(-13, 13) + coord_equal() + scale_color_gradientn( colours = c('lightgrey', 'blue'),  limits = c(0, 4))
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_UMAP_IT_Zfp804b.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_UMAP_IT_Zfp804b.svg", plot = p, dpi = 300)
+
+DefaultAssay(obj.mouse.IT) <- "SCT"
+p <- FeaturePlot(obj.mouse.IT, "Cux2", pt.size = 1, order = FALSE, max.cutoff = 4, raster = FALSE) + xlim(-11, 15) + ylim(-14, 12) + coord_equal() + scale_color_gradientn( colours = c('lightgrey', 'blue'),  limits = c(0, 4))
+ggsave("E:/Opossum_Paper/Figure 2/Mouse_UMAP_IT_Cux2.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Mouse_UMAP_IT_Cux2.svg", plot = p, dpi = 300)
+p <- FeaturePlot(obj.mouse.IT, "Rorb", pt.size = 1, order = FALSE, max.cutoff = 4, raster = FALSE) + xlim(-11, 15) + ylim(-14, 12) + coord_equal() + scale_color_gradientn( colours = c('lightgrey', 'blue'),  limits = c(0, 4))
+ggsave("E:/Opossum_Paper/Figure 2/Mouse_UMAP_IT_Rorb.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Mouse_UMAP_IT_Rorb.svg", plot = p, dpi = 300)
+p <- FeaturePlot(obj.mouse.IT, "Deptor", pt.size = 1, order = FALSE, max.cutoff = 4, raster = FALSE) + xlim(-11, 15) + ylim(-14, 12) + coord_equal() + scale_color_gradientn( colours = c('lightgrey', 'blue'),  limits = c(0, 4))
+ggsave("E:/Opossum_Paper/Figure 2/Mouse_UMAP_IT_Deptor.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Mouse_UMAP_IT_Deptor.svg", plot = p, dpi = 300)
+p <- FeaturePlot(obj.mouse.IT, "Zfp804b", pt.size = 1, order = FALSE, max.cutoff = 4, raster = FALSE) + xlim(-11, 15) + ylim(-14, 12) + coord_equal() + scale_color_gradientn( colours = c('lightgrey', 'blue'),  limits = c(0, 4))
+ggsave("E:/Opossum_Paper/Figure 2/Mouse_UMAP_IT_Zfp804b.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Mouse_UMAP_IT_Zfp804b.svg", plot = p, dpi = 300)
+
+```
+
+
+```{r}
+
+DefaultAssay(obj.opossum.IT) <- "SCT"
+FeaturePlot(obj.opossum.IT, "Cux2", pt.size = 1, raster = FALSE) + xlim(-16, 10) + ylim(-13, 13) + coord_equal() + scale_color_gradientn( colours = c('lightgrey', 'blue'),  limits = c(0, 4))
+DefaultAssay(obj.opossum.IT) <- "RNA"
+FeaturePlot(obj.opossum.IT, "Cux2", slot ="counts", pt.size = 1, raster = FALSE) + xlim(-16, 10) + ylim(-13, 13) + coord_equal() + scale_color_gradientn( colours = c('lightgrey', 'blue'),  limits = c(0, 4))
+
+```
+
+
+

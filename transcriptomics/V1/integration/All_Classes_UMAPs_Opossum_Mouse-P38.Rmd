@@ -87,6 +87,39 @@ obj.m.opossum <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/ob
 
 ```{r}
 
+mapping.species <- readRDS("E:/Transcriptomics_V1/Integration/opossum_mouse_subsampled_mapping_100it.rds")
+df <- data.frame()
+for (cl in c("Glutamatergic", "GABAergic", "Nonneuronal")) { # 
+  df_class <- as.data.frame(mapping.species$Opossum[[cl]])
+  dt <- as.data.table(df_class)
+  # Find the most common predicted.subclass for each cell.id
+  dt_unique <- dt[, .(predicted.subclass = names(sort(table(predicted.subclass), decreasing = TRUE)[1])), by = cell.id]
+  df <- rbind(df, dt_unique)
+}
+
+obj.m.opossum$subclass.sub <- NA
+obj.m.opossum$subclass.sub[df$cell.id] <- df$predicted.subclass
+
+obj.m.opossum <- obj.m.opossum[, !is.na(obj.m.opossum$subclass.sub)]
+# obj.m.opossum <- ClusterSCT(obj.m.opossum, c(1))
+
+```
+
+
+```{r}
+
+Idents(obj.m.mouse) <- "subclass"
+obj.m.mouse <- subset(obj.m.mouse, idents = c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"))
+obj.m.mouse <- ClusterSCT(obj.m.mouse, c(1))
+Idents(obj.m.opossum) <- "subclass"
+obj.m.opossum <- subset(obj.m.opossum, idents = c("IT_A", "IT_B", "IT_C", "IT_D", "L5NP", "L5PT", "L6CT", "L6b"))
+obj.m.opossum <- ClusterSCT(obj.m.opossum, c(1))
+
+```
+
+
+```{r}
+
 colors_list <- list(
               # Glutamatergic
               IT = "#FF6C88",
@@ -189,8 +222,55 @@ levels(obj.m.opossum) <- opossum.subclass.levels
 colors <- as.character(colors_list[opossum.subclass.levels])
 DimPlot(obj.m.opossum, reduction = "umap", label = TRUE, raster = FALSE, shuffle = TRUE, cols = colors) + NoLegend() + xlim(-16, 13) + ylim(-12, 17) + coord_equal()
 p <- DimPlot(obj.m.opossum, reduction = "umap", label = TRUE, raster = FALSE, shuffle = TRUE, cols = colors) + NoLegend() + xlim(-16, 13) + ylim(-12, 17) + coord_equal()
-ggsave("E:/Opossum_Paper/Figure 2/Opossum_V1_All_UMAP_Subclass_IntSpace.png", plot = p, dpi = 300)
-ggsave("E:/Opossum_Paper/Figure 2/Opossum_V1_All_UMAP_Subclass_IntSpace.svg", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_V1_All_UMAP_Subclass_IntSpace_Subsampled.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_V1_All_UMAP_Subclass_IntSpace_Subsampled.svg", plot = p, dpi = 300)
+
+```
+
+
+```{r}
+
+opossum.subclass.levels <- c("IT_A", "IT_B", "IT_C", "IT_D", "L5NP", "L5PT", "L6CT", "L6b")
+
+Idents(obj.m.opossum) <- "subclass"
+levels(obj.m.opossum) <- opossum.subclass.levels
+colors <- as.character(colors_list[opossum.subclass.levels])
+DimPlot(obj.m.opossum, reduction = "umap", pt.size = 0.5, label = TRUE, raster = FALSE, shuffle = TRUE, cols = colors) + NoLegend() + xlim(-11, 14) + ylim(-13, 12) + coord_equal()
+p <- DimPlot(obj.m.opossum, reduction = "umap", pt.size = 0.5, label = TRUE, raster = FALSE, shuffle = TRUE, cols = colors) + NoLegend() + xlim(-11, 14) + ylim(-13, 12) + coord_equal()
+ggsave("E:/Opossum_Poster/Opossum_V1_Glutamatergic_UMAP_Subclass_IntSpace_Subsampled.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Poster/Opossum_V1_Glutamatergic_UMAP_Subclass_IntSpace_Subsampled.svg", plot = p, dpi = 300)
+
+```
+
+
+```{r}
+
+mouse.subclass.levels <- c("L2/3", "L4", "L5IT", "L6IT", "L5PT", "L5NP", "L6CT", "L6b", 
+                           "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac",
+                           "Astro", "Micro", "OD", "OPC", "Endo")
+
+Idents(obj.m.opossum) <- "subclass.sub"
+levels(obj.m.opossum) <- mouse.subclass.levels
+colors <- as.character(colors_list[mouse.subclass.levels])
+DimPlot(obj.m.opossum, reduction = "umap", label = TRUE, raster = FALSE, shuffle = TRUE, cols = colors) + NoLegend() + xlim(-16, 13) + ylim(-12, 17) + coord_equal()
+p <- DimPlot(obj.m.opossum, reduction = "umap", label = TRUE, raster = FALSE, shuffle = TRUE, cols = colors) + NoLegend() + xlim(-16, 13) + ylim(-12, 17) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_V1_All_UMAP_PredictedSubclass_IntSpace_Subsampled.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure 2/Opossum_V1_All_UMAP_PredictedSubclass_IntSpace_Subsampled.svg", plot = p, dpi = 300)
+
+```
+
+
+```{r}
+
+opossum.subclass.levels <- c("L2/3", "L4", "L5IT", "L6IT", "L5PT", "L5NP", "L6CT", "L6b")
+
+Idents(obj.m.opossum) <- "subclass.sub"
+levels(obj.m.opossum) <- opossum.subclass.levels
+colors <- as.character(colors_list[opossum.subclass.levels])
+DimPlot(obj.m.opossum, reduction = "umap", pt.size = 0.5, label = TRUE, raster = FALSE, shuffle = TRUE, cols = colors) + NoLegend() + xlim(-11, 14) + ylim(-13, 12) + coord_equal()
+p <- DimPlot(obj.m.opossum, reduction = "umap", pt.size = 0.5, label = TRUE, raster = FALSE, shuffle = TRUE, cols = colors) + NoLegend() + xlim(-11, 14) + ylim(-13, 12) + coord_equal()
+ggsave("E:/Opossum_Poster/Opossum_V1_Glutamatergic_UMAP_PredictedSubclass_IntSpace_Subsampled.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Poster/Opossum_V1_Glutamatergic_UMAP_PredictedSubclass_IntSpace_Subsampled.svg", plot = p, dpi = 300)
 
 ```
 
@@ -250,6 +330,21 @@ DimPlot(obj.m.mouse, reduction = "umap", label = TRUE, raster = FALSE, shuffle =
 p <- DimPlot(obj.m.mouse, reduction = "umap", label = TRUE, raster = FALSE, shuffle = TRUE, cols = colors) + NoLegend() + xlim(-14, 18) + ylim(-16, 16) + coord_equal()
 ggsave("E:/Opossum_Paper/Figure 2/Mouse_V1_All_UMAP_Subclass_IntSpace.png", plot = p, dpi = 300)
 ggsave("E:/Opossum_Paper/Figure 2/Mouse_V1_All_UMAP_Subclass_IntSpace.svg", plot = p, dpi = 300)
+
+```
+
+
+```{r}
+
+mouse.subclass.levels <- c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b")
+
+Idents(obj.m.mouse) <- "subclass"
+levels(obj.m.mouse) <- mouse.subclass.levels
+colors <- as.character(colors_list[mouse.subclass.levels])
+DimPlot(obj.m.mouse, reduction = "umap", pt.size = 0.5, label = TRUE, raster = FALSE, shuffle = TRUE, cols = colors) + NoLegend() + xlim(-12, 16) + ylim(-11, 17) + coord_equal()
+p <- DimPlot(obj.m.mouse, reduction = "umap", label = TRUE, raster = FALSE, shuffle = TRUE, cols = colors) + NoLegend() + xlim(-12, 16) + ylim(-11, 17) + coord_equal()
+ggsave("E:/Opossum_Poster/Mouse_V1_Glutamatergic_UMAP_Subclass_IntSpace.png", plot = p, dpi = 300)
+ggsave("E:/Opossum_Poster/Mouse_V1_All_Glutamatergic_Subclass_IntSpace.svg", plot = p, dpi = 300)
 
 ```
 

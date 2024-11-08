@@ -1,0 +1,184 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(SeuratWrappers)
+library(monocle3)
+library(pheatmap)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.opossum.gabaergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_gabaergic_processed.rds")
+obj.mouse.P8.gabaergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P8_gabaergic_processed.rds")
+obj.mouse.P38.gabaergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_gabaergic_processed.rds")
+
+```
+
+
+```{r}
+
+colors_list <- list(
+              # Glutamatergic
+              IT = "#FF6C88",
+              IT_A = "#FFB3B3",
+              `L2/3` = "#FFB3B3",
+              IT_B = "#FFA07A",
+              L4 = "#FF7F50",
+              IT_C = "#FF7F50",
+              L5IT = "#FFA07A",
+              IT_D = "#FF6347",
+              L6IT = "#FF6347",
+              L5NP = "#FF4500",
+              L5PT = "#32a852", 
+              L6CT = "#7de89a",
+              L6b = "#206633",
+            
+              # GABAergic
+              Pvalb = "#1E90FF",
+              Sst = "#87CEEB",
+              Vip = "#87CEFA",
+              Lamp5 = "#4682B4",
+              Frem1 = "#ADD8E6",
+              Stac = "#5F9EA0",
+            
+              # Non-neuronal
+              Astro = "#8C8C8C",
+              Micro = "#A0A0A0",
+              OD = "#B4B4B4",
+              OPC = "#C8C8C8",
+              Endo = "#505050",
+              VLMC = "#B4B4B4"
+)
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.gabaergic) <- "subclass"
+obj.opossum.CGE <- subset(obj.opossum.gabaergic, idents = c("Vip", "Frem1", "Lamp5"))
+obj.opossum.CGE <- NormalizePCA(obj.opossum.CGE)
+
+Idents(obj.mouse.P8.gabaergic) <- "subclass"
+obj.mouse.P8.CGE <- subset(obj.mouse.P8.gabaergic, idents = c("Vip", "Frem1", "Stac", "Lamp5"))
+obj.mouse.P8.CGE <- NormalizePCA(obj.mouse.P8.CGE)
+
+Idents(obj.mouse.P38.gabaergic) <- "subclass"
+obj.mouse.P38.CGE <- subset(obj.mouse.P38.gabaergic, idents = c("Vip", "Frem1", "Stac", "Lamp5"))
+obj.mouse.P38.CGE <- NormalizePCA(obj.mouse.P38.CGE)
+
+```
+
+
+```{r}
+
+shared.HVFs <- SelectIntegrationFeatures(object.list = c(obj.opossum.CGE, obj.mouse.P8.CGE, obj.mouse.P38.CGE), nfeatures = 3000)
+obj.opossum.CGE.SHVF <- NormalizePCA(obj.opossum.CGE, features = shared.HVFs)
+obj.mouse.P8.CGE.SHVF <- NormalizePCA(obj.mouse.P8.CGE, features = shared.HVFs)
+obj.mouse.P38.CGE.SHVF <- NormalizePCA(obj.mouse.P38.CGE, features = shared.HVFs)
+
+```
+
+
+```{r}
+
+obj.opossum.CGE.Proj <- PCAProject(obj.opossum.CGE, obj.mouse.P38.CGE)
+obj.mouse.P8.CGE.Proj <- PCAProject(obj.mouse.P8.CGE, obj.mouse.P38.CGE)
+
+```
+
+
+```{r}
+
+DimPlot(obj.mouse.P38.CGE, reduction = "pca", dims = c(1, 2), pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal()
+DimPlot(obj.opossum.CGE.Proj, reduction = "pca", dims = c(1, 2), pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal()
+DimPlot(obj.mouse.P8.CGE.Proj, reduction = "pca", dims = c(1, 2), pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal()
+
+```
+
+
+```{r}
+
+library(ggplot2)
+library(dplyr)
+
+# Extract embeddings and metadata from each Seurat object
+mouse_P38 <- as.data.frame(Embeddings(obj.mouse.P38.CGE, "pca")[, 1:2]) %>%
+  mutate(species = "mouse_P38")
+
+opossum_Proj <- as.data.frame(Embeddings(obj.opossum.CGE.Proj, "pca")[, 1:2]) %>%
+  mutate(species = "opossum_Proj")
+colnames(opossum_Proj) <- c("PC_1", "PC_2", "species")
+
+mouse_P8_Proj <- as.data.frame(Embeddings(obj.mouse.P8.CGE.Proj, "pca")[, 1:2]) %>%
+  mutate(species = "mouse_P8_Proj")
+colnames(mouse_P8_Proj) <- c("PC_1", "PC_2", "species")
+
+# Combine all data frames
+combined_data <- bind_rows(mouse_P38, opossum_Proj, mouse_P8_Proj)
+
+# Rename the columns to make it clearer
+colnames(combined_data) <- c("PC1", "PC2", "species")
+
+# Plot using ggplot2 with new colors and alpha adjustment
+ggplot(combined_data, aes(x = PC1, y = PC2, color = species)) +
+  geom_point(alpha = 0.5) +
+  theme_minimal() +
+  labs(title = "Projection of Cells onto PC1 and PC2",
+       x = "PC1",
+       y = "PC2") +
+  scale_color_manual(values = c("mouse_P38" = "gray", "opossum_Proj" = "purple", "mouse_P8_Proj" = "#fcba03"))
+
+```
+
+
+```{r}
+
+obj.mouse.P8.CGE$species <- "Mouse-P8"
+obj.mouse.P38.CGE$species <- "Mouse-P38"
+obj.combined.CGE <- merge(obj.mouse.P38.CGE, y = c(obj.opossum.CGE, obj.mouse.P8.CGE))
+obj.combined.CGE <- SubsampleClasses(obj.combined.CGE, "species")
+obj.combined.CGE <- SCTransform(obj.combined.CGE, vst.flavor = "v2", residual.features = shared.HVFs, return.only.var.genes = FALSE, verbose = FALSE) %>%
+                   RunPCA(npcs = 30, verbose = FALSE)
+
+```
+
+
+```{r}
+
+DimPlot(obj.combined.CGE, reduction = "pca", dims = c(2, 5), cols = c("#aaaaaa", "#545454", "#c692b8"), group.by = "species", pt.size = 1, label = FALSE, shuffle = TRUE, raster = FALSE) + xlim(-30, 35) + ylim(-40, 25) + coord_equal()
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+

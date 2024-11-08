@@ -181,8 +181,10 @@ PlotWithinSpeciesVarianceExplained(obj.combined.IT, c("Opossum", "Mouse"), num_p
 
 ```{r}
 
-PlotPCLoadingsCorrelation(c(obj.opossum.IT.SHVF, obj.combined.IT), c("Opossum", "Combined"))
-PlotPCLoadingsCorrelation(c(obj.mouse.IT.SHVF, obj.combined.IT), c("Mouse", "Combined"))
+p <- PlotPCLoadingsCorrelation(c(obj.opossum.IT.SHVF, obj.combined.IT), c("Opossum", "Combined")) + scale_fill_gradient2(limits = c(-0.4, 0.4), low = "blue", mid = "white", high = "red", oob = scales::squish)
+ggsave("E:/Opossum_Poster/Opossum_PC_Loadings_Correlation.svg", plot = p, dpi = 300)
+p <- PlotPCLoadingsCorrelation(c(obj.mouse.IT.SHVF, obj.combined.IT), c("Mouse", "Combined")) + scale_fill_gradient2(limits = c(-0.4, 0.4), low = "blue", mid = "white", high = "red", oob = scales::squish)
+ggsave("E:/Opossum_Poster/Mouse_PC_Loadings_Correlation.svg", plot = p, dpi = 300)
 
 ```
 
@@ -384,6 +386,74 @@ print(procrustes_plot)
 DimPlot(obj.opossum.IT.CMB, reduction = "pca", dims = c(2, 3), group.by = "subclass", pt.size = 1, label = FALSE, shuffle = TRUE, raster = FALSE) + xlim(-30, 35) + ylim(-40, 25) + coord_equal()
 
 ```
+
+
+```{r}
+
+# Load required libraries
+library(GOfuncR)
+
+# go_results <- list()
+
+for (pc in c(1, 2, 3, 4, 6)) {
+
+  # Function to extract top genes from PC loadings by percentile
+  extract_top_genes_by_percentile <- function(seurat_object, pc_num, percentile = 95) {
+    # Get the loadings for the specified PC
+    pc_loadings <- Seurat::Loadings(seurat_object, reduction = "pca")[, pc_num]
+    
+    # Calculate the threshold for the specified percentile
+    threshold <- quantile(abs(pc_loadings), probs = percentile / 100)
+    
+    # Identify the top genes based on the threshold
+    top_genes <- names(pc_loadings)[abs(pc_loadings) >= threshold]
+    
+    return(top_genes)
+  }
+  
+  # Function to perform GO analysis with GOfuncR
+  perform_go_analysis <- function(top_genes, all_genes) {
+    # Create the input for GOfuncR
+    genes_df <- data.frame(gene_id = all_genes, 
+                           candidate = ifelse(all_genes %in% top_genes, 1, 0))
+    
+    # Perform GO analysis
+    go_results <- GOfuncR::go_enrich(genes_df, organismDb='Mus.musculus')
+    
+    return(go_results)
+  }
+  
+  # Extract top 5% of genes from the first PC
+  top_genes <- extract_top_genes_by_percentile(obj.combined.IT, pc_num = pc, percentile = 99)
+  
+  # Perform GO analysis with GOfuncR
+  all_genes <- rownames(obj.combined.IT)
+  go_results[[paste0("PC", pc)]] <- perform_go_analysis(top_genes, all_genes)
+
+}
+
+saveRDS(go_results, "E:/Transcriptomics_V1/Integration/go_results_99_PC12346.rds")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

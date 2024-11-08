@@ -87,6 +87,20 @@ obj.m.opossum <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/ob
 
 ```{r}
 
+DimPlot(obj.mouse, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse, reduction = "umap", features = c("Chrm1"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse, reduction = "umap", features = c("Chrm2"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.mouse, reduction = "umap", features = c("Chrm3"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.opossum, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Chrm1"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Chrm2"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+FeaturePlot(obj.opossum, reduction = "umap", features = c("Chrm3"), raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
 colors_list <- list(
               # Glutamatergic
               IT = "#FF6C88",
@@ -191,7 +205,7 @@ DefaultAssay(obj.mouse.glutamatergic) <- "SCT"
 Idents(obj.mouse.glutamatergic) <- "subclass"
 mouse.levels <- c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b")
 levels(obj.mouse.glutamatergic) <- mouse.levels
-DoHeatmap(obj.mouse.glutamatergic, features = c("Ccbe1", "Mdga1", "Stard8", "Cux2", 
+p <- DoHeatmap(obj.mouse.glutamatergic, features = c("Ccbe1", "Mdga1", "Stard8", "Cux2", 
                                                 "Whrn", "Rorb", 
                                                 "Deptor", "Foxo1", "Ptprm", 
                                                 "Zfp804b", "Cdh9", 
@@ -202,12 +216,14 @@ DoHeatmap(obj.mouse.glutamatergic, features = c("Ccbe1", "Mdga1", "Stard8", "Cux
                                      slot = "scale.data", 
                                      group.colors = as.character(colors_list[mouse.levels]), 
                                      size = 3, disp.min = 0, disp.max = 3) + scale_fill_viridis(option = "A")
+ggsave("E:/Opossum_Poster/Mouse-P38_Glutamatergic_Heatmap.svg", plot = p, width = 10, height = 5, dpi = 300)
+ggsave("E:/Opossum_Poster/Mouse-P38_Glutamatergic_Heatmap.png", plot = p, width = 10, height = 5, dpi = 300)
 
 DefaultAssay(obj.opossum.glutamatergic) <- "SCT"
 Idents(obj.opossum.glutamatergic) <- "subclass"
 opossum.levels <- c("IT_A", "IT_C", "IT_B", "IT_D", "L5NP", "L5PT", "L6CT", "L6b")
 levels(obj.opossum.glutamatergic) <- opossum.levels
-DoHeatmap(obj.opossum.glutamatergic, features = c("Ccbe1", "Mdga1", "Stard8", "Cux2", 
+p <- DoHeatmap(obj.opossum.glutamatergic, features = c("Ccbe1", "Mdga1", "Stard8", "Cux2", 
                                                   "Whrn", "Rorb", 
                                                   "Deptor", "Foxo1", "Ptprm", 
                                                   "Zfp804b", "Cdh9", 
@@ -218,6 +234,8 @@ DoHeatmap(obj.opossum.glutamatergic, features = c("Ccbe1", "Mdga1", "Stard8", "C
                                      slot = "scale.data", 
                                      group.colors = as.character(colors_list[opossum.levels]), 
                                      size = 3, disp.min = 0, disp.max = 3) + scale_fill_viridis(option = "A")
+ggsave("E:/Opossum_Poster/Opossum_Glutamatergic_Heatmap.svg", plot = p, width = 10, height = 5, dpi = 300)
+ggsave("E:/Opossum_Poster/Opossum_Glutamatergic_Heatmap.png", plot = p, width = 10, height = 5, dpi = 300)
 
 ```
 
@@ -257,7 +275,7 @@ DefaultAssay(obj.mouse.gabaergic) <- "SCT"
 Idents(obj.mouse.gabaergic) <- "subclass"
 mouse.levels <- c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")
 levels(obj.mouse.gabaergic) <- mouse.levels
-DoHeatmap(obj.mouse.gabaergic, features = c("Pvalb", "Myo1e", "Syt2", "Myo5b", "Cemip", "Plcxd3", "Nek7", 
+p <- DoHeatmap(obj.mouse.gabaergic, features = c("Pvalb", "Myo1e", "Syt2", "Myo5b", "Cemip", "Plcxd3", "Nek7", 
                                             "Sst", "Unc13c", "Lama4", "Ptpru", "Grik3", "Tmcc3", 
                                             "Vip", "Sema5b", 
                                             "Lamp5", "Sv2c", "Ndnf", "Crispld1", "Atp6ap1l", 
@@ -266,12 +284,14 @@ DoHeatmap(obj.mouse.gabaergic, features = c("Pvalb", "Myo1e", "Syt2", "Myo5b", "
                                      slot = "scale.data", 
                                      group.colors = as.character(colors_list[mouse.levels]), 
                                      size = 3, disp.min = 0, disp.max = 3) + scale_fill_viridis(option = "A")
+ggsave("E:/Opossum_Poster/Mouse-P38_GABAergic_Heatmap.svg", plot = p, width = 10, height = 5.5, dpi = 300)
+ggsave("E:/Opossum_Poster/Mouse-P38_GABAergic_Heatmap.png", plot = p, width = 10, height = 5.5, dpi = 300)
 
 DefaultAssay(obj.opossum.gabaergic) <- "SCT"
 Idents(obj.opossum.gabaergic) <- "subclass"
 opossum.levels <- c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1")
 levels(obj.opossum.gabaergic) <- opossum.levels
-DoHeatmap(obj.opossum.gabaergic, features = c("Pvalb", "Myo1e", "Syt2", "Myo5b", "Cemip", "Plcxd3", "Nek7", 
+p <- DoHeatmap(obj.opossum.gabaergic, features = c("Pvalb", "Myo1e", "Syt2", "Myo5b", "Cemip", "Plcxd3", "Nek7", 
                                               "Sst", "Unc13c", "Lama4", "Ptpru", "Grik3", "Tmcc3", 
                                               "Vip", "Sema5b", 
                                               "Lamp5", "Sv2c", "Ndnf", "Crispld1", "Atp6ap1l", 
@@ -280,6 +300,8 @@ DoHeatmap(obj.opossum.gabaergic, features = c("Pvalb", "Myo1e", "Syt2", "Myo5b",
                                      slot = "scale.data", 
                                      group.colors = as.character(colors_list[opossum.levels]), 
                                      size = 3, disp.min = 0, disp.max = 3) + scale_fill_viridis(option = "A")
+ggsave("E:/Opossum_Poster/Opossum_GABAergic_Heatmap.svg", plot = p, width = 10, height = 5.5, dpi = 300)
+ggsave("E:/Opossum_Poster/Opossum_GABAergic_Heatmap.png", plot = p, width = 10, height = 5.5, dpi = 300)
 
 ```
 
@@ -290,27 +312,33 @@ DefaultAssay(obj.mouse.nonneuronal) <- "SCT"
 Idents(obj.mouse.nonneuronal) <- "subclass"
 mouse.levels <- c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC")
 levels(obj.mouse.nonneuronal) <- mouse.levels
-DoHeatmap(obj.mouse.nonneuronal, features = c("Aldh1l1", "Grin2c", "Phkg1", 
+p <- DoHeatmap(obj.mouse.nonneuronal, features = c("Aldh1l1", "Grin2c", "Phkg1", 
                                             "Cx3cr1", "Arhgap45", "Inpp5d", 
                                             "Enpp6", "St18", 
                                             "Pdgfra", "Cacng4", 
-                                            "Pecam1", "Mecom", "Flt1"), 
+                                            "Pecam1", "Mecom", "Flt1", 
+                                            "Slc6a13", "Slc47a1", "Bnc2"), 
                                      slot = "scale.data", 
                                      group.colors = as.character(colors_list[mouse.levels]), 
                                      size = 3, disp.min = 0, disp.max = 3) + scale_fill_viridis(option = "A")
+ggsave("E:/Opossum_Poster/Mouse-P38_Nonneuronal_Heatmap.svg", plot = p, width = 10, height = 3.5, dpi = 300)
+ggsave("E:/Opossum_Poster/Mouse-P38_Nonneuronal_Heatmap.png", plot = p, width = 10, height = 3.5, dpi = 300)
 
 DefaultAssay(obj.opossum.nonneuronal) <- "SCT"
 Idents(obj.opossum.nonneuronal) <- "subclass"
 opossum.levels <- c("Astro", "Micro", "OD", "OPC", "Endo")
 levels(obj.opossum.nonneuronal) <- opossum.levels
-DoHeatmap(obj.opossum.nonneuronal, features = c("Aldh1l1", "Grin2c", "Phkg1", 
+p <- DoHeatmap(obj.opossum.nonneuronal, features = c("Aldh1l1", "Grin2c", "Phkg1", 
                                               "Cx3cr1", "Arhgap45", "Inpp5d", 
                                               "Enpp6", "St18", 
                                               "Pdgfra", "Cacng4", 
-                                              "Pecam1", "Mecom", "Flt1"), 
+                                              "Pecam1", "Mecom", "Flt1", 
+                                              "Slc6a13", "Slc47a1", "Bnc2"), 
                                      slot = "scale.data", 
                                      group.colors = as.character(colors_list[opossum.levels]), 
                                      size = 3, disp.min = 0, disp.max = 3) + scale_fill_viridis(option = "A")
+ggsave("E:/Opossum_Poster/Opossum_Nonneuronal_Heatmap.svg", plot = p, width = 10, height = 3.5, dpi = 300)
+ggsave("E:/Opossum_Poster/Opossum_Nonneuronal_Heatmap.png", plot = p, width = 10, height = 3.5, dpi = 300)
 
 ```
 
@@ -328,6 +356,23 @@ saveRDS(objs.m.mouse, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/objs_
 saveRDS(objs.m.opossum, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/objs_m_opossum.rds")
 saveRDS(obj.m.mouse, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_m_mouse.rds")
 saveRDS(obj.m.opossum, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_m_opossum.rds")
+
+```
+
+
+```{r}
+
+gene <- "Hapln4"
+
+Idents(obj.mouse) <- "subclass"
+DimPlot(obj.mouse, group.by = "subclass", pt.size = 1, raster = FALSE, label = TRUE) + NoLegend() + xlim(-20, 20) + ylim(-20, 20) + coord_equal()
+FeaturePlot(obj.mouse, gene, pt.size = 0.5, raster = FALSE, order = TRUE) + NoLegend() + xlim(-20, 20) + ylim(-20, 20) + coord_equal()
+VlnPlot(obj.mouse, gene, pt.size = 0.5, raster = FALSE)
+
+Idents(obj.opossum) <- "subclass"
+DimPlot(obj.opossum, group.by = "subclass", pt.size = 1, raster = FALSE, label = TRUE) + NoLegend() + xlim(-20, 20) + ylim(-20, 20) + coord_equal()
+FeaturePlot(obj.opossum, gene, pt.size = 0.5, raster = FALSE, order = TRUE) + NoLegend() + xlim(-20, 20) + ylim(-20, 20) + coord_equal()
+VlnPlot(obj.opossum, gene, pt.size = 0.5, raster = FALSE)
 
 ```
 

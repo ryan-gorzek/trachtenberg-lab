@@ -1,0 +1,230 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(SeuratWrappers)
+library(monocle3)
+library(pheatmap)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
+obj.mouse.P6.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P6_glutamatergic_processed.rds")
+obj.mouse.P8.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P8_glutamatergic_processed.rds")
+obj.mouse.P38.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+
+```
+
+
+```{r}
+
+colors_list <- list(
+              # Glutamatergic
+              IT = "#FF6C88",
+              IT_A = "#FFB3B3",
+              `L2/3` = "#FFB3B3",
+              IT_B = "#FFA07A",
+              L4 = "#FF7F50",
+              IT_C = "#FF7F50",
+              L5IT = "#FFA07A",
+              IT_D = "#FF6347",
+              L6IT = "#FF6347",
+              L5NP = "#FF4500",
+              L5PT = "#32a852", 
+              L6IT = "#7de89a",
+              L6b = "#206633",
+            
+              # GABAergic
+              Pvalb = "#1E90FF",
+              Sst = "#87CEEB",
+              Vip = "#87CEFA",
+              Lamp5 = "#4682B4",
+              Frem1 = "#ADD8E6",
+              Stac = "#5F9EA0",
+            
+              # Non-neuronal
+              Astro = "#8C8C8C",
+              Micro = "#A0A0A0",
+              OD = "#B4B4B4",
+              OPC = "#C8C8C8",
+              Endo = "#505050",
+              VLMC = "#B4B4B4"
+)
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.glutamatergic) <- "subclass"
+obj.opossum.IT <- subset(obj.opossum.glutamatergic, idents = c("IT_A", "IT_B", "IT_C", "IT_D"))
+obj.opossum.IT <- NormalizePCA(obj.opossum.IT)
+
+Idents(obj.mouse.P6.glutamatergic) <- "subclass"
+obj.mouse.P6.IT <- subset(obj.mouse.P6.glutamatergic, idents = c("L2/3", "L4", "L5IT", "L6IT"))
+obj.mouse.P6.IT <- NormalizePCA(obj.mouse.P6.IT)
+
+Idents(obj.mouse.P8.glutamatergic) <- "subclass"
+obj.mouse.P8.IT <- subset(obj.mouse.P8.glutamatergic, idents = c("L2/3", "L4", "L5IT", "L6IT"))
+obj.mouse.P8.IT <- NormalizePCA(obj.mouse.P8.IT)
+
+Idents(obj.mouse.P38.glutamatergic) <- "subclass"
+obj.mouse.P38.IT <- subset(obj.mouse.P38.glutamatergic, idents = c("L2/3", "L4", "L5IT", "L6IT"))
+obj.mouse.P38.IT <- NormalizePCA(obj.mouse.P38.IT)
+
+```
+
+
+```{r}
+
+shared.HVFs <- SelectIntegrationFeatures(object.list = c(obj.opossum.IT, obj.mouse.P6.IT, obj.mouse.P8.IT, obj.mouse.P38.IT), nfeatures = 3000)
+obj.opossum.IT.SHVF <- NormalizePCA(obj.opossum.IT, features = shared.HVFs)
+obj.mouse.P6.IT.SHVF <- NormalizePCA(obj.mouse.P6.IT, features = shared.HVFs)
+obj.mouse.P8.IT.SHVF <- NormalizePCA(obj.mouse.P8.IT, features = shared.HVFs)
+obj.mouse.P38.IT.SHVF <- NormalizePCA(obj.mouse.P38.IT, features = shared.HVFs)
+
+```
+
+
+```{r}
+
+obj.opossum.IT.Proj <- PCAProject(obj.opossum.IT, obj.mouse.P38.IT)
+obj.mouse.P6.IT.Proj <- PCAProject(obj.mouse.P6.IT, obj.mouse.P38.IT)
+obj.mouse.P8.IT.Proj <- PCAProject(obj.mouse.P8.IT, obj.mouse.P38.IT)
+
+```
+
+
+```{r}
+
+DimPlot(obj.mouse.P38.IT, reduction = "pca", dims = c(1, 2), pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal()
+DimPlot(obj.opossum.IT.Proj, reduction = "pca", dims = c(1, 2), pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal()
+DimPlot(obj.mouse.P6.IT.Proj, reduction = "pca", dims = c(1, 2), pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal()
+DimPlot(obj.mouse.P8.IT.Proj, reduction = "pca", dims = c(1, 2), pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-17, 25) + coord_equal()
+
+```
+
+
+```{r}
+
+library(ggplot2)
+library(dplyr)
+
+# Extract embeddings and metadata from each Seurat object
+mouse_P38 <- as.data.frame(Embeddings(obj.mouse.P38.IT, "pca")[, 1:2]) %>%
+  mutate(species = "mouse_P38")
+
+opossum_Proj <- as.data.frame(Embeddings(obj.opossum.IT.Proj, "pca")[, 1:2]) %>%
+  mutate(species = "opossum_Proj")
+colnames(opossum_Proj) <- c("PC_1", "PC_2", "species")
+
+mouse_P8_Proj <- as.data.frame(Embeddings(obj.mouse.P8.IT.Proj, "pca")[, 1:2]) %>%
+  mutate(species = "mouse_P8_Proj")
+colnames(mouse_P8_Proj) <- c("PC_1", "PC_2", "species")
+
+# Combine all data frames
+combined_data <- bind_rows(mouse_P38, opossum_Proj, mouse_P8_Proj)
+
+# Rename the columns to make it clearer
+colnames(combined_data) <- c("PC1", "PC2", "species")
+
+# Plot using ggplot2 with new colors and alpha adjustment
+ggplot(combined_data, aes(x = PC1, y = PC2, color = species)) +
+  geom_point(alpha = 0.5) +
+  theme_minimal() +
+  labs(title = "Projection of Cells onto PC1 and PC2",
+       x = "PC1",
+       y = "PC2") +
+  scale_color_manual(values = c("mouse_P38" = "gray", "opossum_Proj" = "purple", "mouse_P8_Proj" = "#fcba03"))
+
+```
+
+
+```{r}
+
+obj.mouse.P6.IT$species <- "Mouse-P6"
+obj.mouse.P8.IT$species <- "Mouse-P8"
+obj.mouse.P38.IT$species <- "Mouse-P38"
+obj.combined.IT <- merge(obj.mouse.P38.IT, y = c(obj.opossum.IT, obj.mouse.P6.IT, obj.mouse.P8.IT))
+obj.combined.IT <- SubsampleClasses(obj.combined.IT, "species")
+obj.combined.IT <- SCTransform(obj.combined.IT, vst.flavor = "v2", residual.features = shared.HVFs, return.only.var.genes = FALSE, verbose = FALSE) %>%
+                   RunPCA(npcs = 30, verbose = FALSE)
+
+```
+
+
+```{r}
+
+PlotPCLoadingsCorrelation(c(obj.opossum.IT.SHVF, obj.combined.IT), c("Opossum", "Combined"))
+PlotPCLoadingsCorrelation(c(obj.mouse.P6.IT.SHVF, obj.combined.IT), c("Mouse-P6", "Combined"))
+PlotPCLoadingsCorrelation(c(obj.mouse.P8.IT.SHVF, obj.combined.IT), c("Mouse-P8", "Combined"))
+PlotPCLoadingsCorrelation(c(obj.mouse.P38.IT.SHVF, obj.combined.IT), c("Mouse-P38", "Combined"))
+
+```
+
+
+```{r}
+
+subclasses.mouse <- c("L2/3", "L4", "L5IT", "L6IT")
+Idents(obj.mouse.P38.IT.SHVF) <- "subclass"
+levels(obj.mouse.P38.IT.SHVF) <- subclasses.mouse
+DimPlot(obj.mouse.P38.IT.SHVF, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-16, 20) + ylim(-22, 14) + coord_equal()
+
+subclasses.mouse <- c("L2/3", "L4", "L5IT", "L6IT")
+Idents(obj.mouse.P6.IT.SHVF) <- "subclass"
+levels(obj.mouse.P6.IT.SHVF) <- subclasses.mouse
+DimPlot(obj.mouse.P6.IT.SHVF, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-16, 20) + ylim(-22, 14) + coord_equal()
+
+subclasses.mouse <- c("L2/3", "L4", "L5IT", "L6IT")
+Idents(obj.mouse.P8.IT.SHVF) <- "subclass"
+levels(obj.mouse.P8.IT.SHVF) <- subclasses.mouse
+DimPlot(obj.mouse.P8.IT.SHVF, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-16, 20) + ylim(-22, 14) + coord_equal()
+
+subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D")
+Idents(obj.opossum.IT.SHVF) <- "subclass"
+levels(obj.opossum.IT.SHVF) <- subclasses.opossum
+DimPlot(obj.opossum.IT.SHVF, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-18, 24) + coord_equal()
+
+```
+
+
+```{r, fig.height=6, fig.width=12}
+
+subclasses.opossum.mouse <- c("L2/3", "L4", "L5IT", "L6IT", "IT_A", "IT_B", "IT_C", "IT_D")
+DimPlot(obj.combined.IT, reduction = "pca", dims = c(3, 4), cols = c("#aaaaaa", "#111111", "#545454", "#c692b8"), group.by = "species", pt.size = 0.5, label = FALSE, shuffle = TRUE, raster = FALSE) + xlim(-25, 45) + ylim(-35, 35) + coord_equal()
+DimPlot(obj.combined.IT, reduction = "pca", dims = c(3, 4), cols = colors_list[subclasses.opossum.mouse], group.by = "subclass", split.by = "species", pt.size = 0.5, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-25, 45) + ylim(-35, 35) + coord_equal()
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
