@@ -8,10 +8,11 @@ output: html_notebook
 
 library(rbioapi)
 
-subclass <- "L5PT"
-mouse.genes <- read.table(paste0("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/subclass_markers/All/", subclass, "_vs_", subclass, "_mouse_genes.txt"))$V1
-opossum.genes <- read.table(paste0("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/subclass_markers/All/", subclass, "_vs_", subclass, "_opossum_genes.txt"))$V1
-shared.genes <- read.table(paste0("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/subclass_markers/All/", subclass, "_vs_", subclass, "_intersecting_genes.txt"))$V1
+mouse.subclass <- "Endo"
+opossum.subclass <- "Endo"
+mouse.genes <- read.table(paste0("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/subclass_markers/All/", mouse.subclass, "_vs_", opossum.subclass, "_mouse_genes.txt"))$V1
+opossum.genes <- read.table(paste0("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/subclass_markers/All/", mouse.subclass, "_vs_", opossum.subclass, "_opossum_genes.txt"))$V1
+shared.genes <- read.table(paste0("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/subclass_markers/All/", mouse.subclass, "_vs_", opossum.subclass, "_intersecting_genes.txt"))$V1
 ortho.genes <- read.table(paste0("E:/Transcriptomics_V1/Integration/All_Shared_Genes.txt"))$V1
 
 enr.shared <- rba_panther_enrich(genes = shared.genes, organism = 10090, annot_dataset = "ANNOT_TYPE_ID_PANTHER_PC", cutoff = 1, ref_genes = ortho.genes, ref_organism = 10090)

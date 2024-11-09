@@ -35,13 +35,14 @@ obj.mouse$timepoint <- obj.mouse$biosample_id
 obj.mouse$timepoint[obj.mouse$biosample_id == "E18_S1"] <- "E18"
 obj.mouse$timepoint[obj.mouse$biosample_id == "E18_S3"] <- "E18"
 obj.mouse$timepoint[obj.mouse$biosample_id == "P1_S1"] <- "P1"
+obj.mouse <- obj.mouse[, obj.mouse$biosample_id != "P1_S1"]
 
 ```
 
 
 ```{r}
 
-timepoints <- unique(obj.mouse$timepoint)
+timepoints <- c("P1", "P4") # unique(obj.mouse$timepoint)
 objs.mouse <- list()
 for (t in timepoints) {
   obj.temp <- subset(obj.mouse, timepoint == t)
@@ -65,18 +66,12 @@ DimPlot(obj.mouse.P4, reduction = "umap", group.by = "New_cellType", label = T, 
 
 ```{r}
 
-
-
-```
-
-
-```{r}
-
-timepoints <- c("E16", "E17", "P4")
+timepoints <- c("P1", "P4")
+objs.IT <- list()
 for (t in timepoints) {
-  obj.IT <- subset(objs.mouse[[t]], New_cellType == c("UL CPN", "Layer 4", "DL CPN", "DL_CPN_1", "DL_CPN_2"))
-  obj.IT <- NormalizePCA(obj.IT)
-  p <- DimPlot(obj.IT, reduction = "pca", group.by = "New_cellType", label = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-20, 20) + coord_equal()
+  objs.IT[[t]] <- subset(objs.mouse[[t]], New_cellType == c("UL CPN", "Layer 4", "DL CPN", "DL_CPN_1", "DL_CPN_2"))
+  objs.IT[[t]] <- NormalizePCA(objs.IT[[t]])
+  p <- DimPlot(objs.IT[[t]], reduction = "pca", group.by = "New_cellType", label = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-20, 20) + coord_equal()
   print(p)
 }
 
@@ -85,10 +80,8 @@ for (t in timepoints) {
 
 ```{r}
 
-DimPlot(obj.IT, reduction = "pca", group.by = "New_cellType", label = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-20, 20) + coord_equal()
-FeaturePlot(obj.IT, "Zfp804b", reduction = "pca", raster = FALSE) + xlim(-20, 20) + ylim(-20, 20) + coord_equal()
-
-obj.mouse.IT <- obj.IT
+obj.mouse.P1.IT <- objs.IT$P1
+obj.mouse.P4.IT <- objs.IT$P4
 
 ```
 
@@ -145,7 +138,78 @@ DimPlot(obj.mouse.IT.Proj, reduction = "pca", group.by = "New_cellType", label =
 ```
 
 
+```{r}
+
+obj.mouse.P6.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P6_glutamatergic_processed.rds")
+Idents(obj.mouse.P6.glutamatergic) <- "subclass"
+obj.mouse.P6.IT <- subset(obj.mouse.P6.glutamatergic, idents = c("L2/3", "L4", "L5IT", "L6IT"))
+obj.mouse.P6.IT <- NormalizePCA(obj.mouse.P6.IT)
+
+```
 
 
+```{r}
 
+obj.mouse.P1.IT.Proj <- PCAProject(obj.mouse.P1.IT, obj.mouse.P6.IT)
+DimPlot(obj.mouse.P6.IT, reduction = "pca", group.by = "subclass", label = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-20, 20) + coord_equal()
+DimPlot(obj.mouse.P1.IT.Proj, reduction = "pca", group.by = "New_cellType", label = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-20, 20) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.mouse.P4.IT.Proj <- PCAProject(obj.mouse.P4.IT, obj.mouse.P6.IT)
+DimPlot(obj.mouse.P6.IT, reduction = "pca", group.by = "subclass", label = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-20, 20) + coord_equal()
+DimPlot(obj.mouse.P4.IT.Proj, reduction = "pca", group.by = "New_cellType", label = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-20, 20) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.opossum.IT.Proj <- PCAProject(obj.opossum.IT, obj.mouse.P6.IT)
+DimPlot(obj.mouse.P6.IT, reduction = "pca", group.by = "subclass", label = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-20, 20) + coord_equal()
+DimPlot(obj.opossum.IT.Proj, reduction = "pca", group.by = "subclass", label = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-20, 20) + coord_equal()
+
+```
+
+
+```{r}
+
+library(ggplot2)
+library(dplyr)
+
+# Extract embeddings and metadata from each Seurat object
+mouse_P6 <- as.data.frame(Embeddings(obj.mouse.P6.IT, "pca")[, 1:2]) %>%
+  mutate(species = "mouse_P6")
+
+mouse_P1_Proj <- as.data.frame(Embeddings(obj.mouse.P1.IT.Proj, "pca")[, 1:2]) %>%
+  mutate(species = "mouse_P1_Proj")
+colnames(mouse_P1_Proj) <- c("PC_1", "PC_2", "species")
+
+mouse_P4_Proj <- as.data.frame(Embeddings(obj.mouse.P4.IT.Proj, "pca")[, 1:2]) %>%
+  mutate(species = "mouse_P4_Proj")
+colnames(mouse_P4_Proj) <- c("PC_1", "PC_2", "species")
+
+opossum_Proj <- as.data.frame(Embeddings(obj.opossum.IT.Proj, "pca")[, 1:2]) %>%
+  mutate(species = "opossum_Proj")
+colnames(opossum_Proj) <- c("PC_1", "PC_2", "species")
+
+# Combine all data frames
+combined_data <- bind_rows(mouse_P6, mouse_P1_Proj, mouse_P4_Proj, opossum_Proj)
+
+# Rename the columns to make it clearer
+colnames(combined_data) <- c("PC1", "PC2", "species")
+
+# Plot using ggplot2 with new colors and alpha adjustment
+ggplot(combined_data, aes(x = PC1, y = PC2, color = species)) +
+  geom_point(alpha = 0.5) +
+  theme_minimal() +
+  labs(title = "Projection of Cells onto PC1 and PC2",
+       x = "PC1",
+       y = "PC2") +
+  scale_color_manual(values = c("mouse_P6" = "gray", "mouse_P1_Proj" = "purple", "mouse_P4_Proj" = "#fcba03", "opossum_Proj" = "#FF0000"))
+
+```
 
