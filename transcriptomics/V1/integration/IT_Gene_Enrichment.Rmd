@@ -1,0 +1,45 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+ 
+
+```{r}
+
+library(rbioapi)
+
+mouse.subclasses <- c("L23", "L4", "L5IT", "L6IT")
+opossum.subclasses <- c("IT_A", "IT_B", "IT_C", "IT_D")
+
+mouse.genes <- c()
+opossum.genes <- c()
+shared.genes <- c()
+
+for (s in 1:4) {
+  
+  mouse.subclass <- mouse.subclasses[s]
+  opossum.subclass <- opossum.subclasses[s]
+
+  mouse.genes <- c(mouse.genes, read.table(paste0("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/subclass_markers/All/", mouse.subclass, "_vs_", opossum.subclass, "_mouse_genes.txt"))$V1)
+  opossum.genes <- c(opossum.genes, read.table(paste0("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/subclass_markers/All/", mouse.subclass, "_vs_", opossum.subclass, "_opossum_genes.txt"))$V1)
+  shared.genes <- c(shared.genes, read.table(paste0("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/subclass_markers/All/", mouse.subclass, "_vs_", opossum.subclass, "_intersecting_genes.txt"))$V1)
+
+}
+
+ortho.genes <- read.table(paste0("E:/Transcriptomics_V1/Integration/All_Shared_Genes.txt"))$V1
+
+enr.shared <- rba_panther_enrich(genes = shared.genes, organism = 10090, annot_dataset = "ANNOT_TYPE_ID_PANTHER_PC", cutoff = 1, ref_genes = ortho.genes, ref_organism = 10090)
+enr.mouse <- rba_panther_enrich(genes = mouse.genes, organism = 10090, annot_dataset = "ANNOT_TYPE_ID_PANTHER_PC", cutoff = 1, ref_genes = ortho.genes, ref_organism = 10090)
+enr.opossum <- rba_panther_enrich(genes = opossum.genes, organism = 10090, annot_dataset = "ANNOT_TYPE_ID_PANTHER_PC", cutoff = 1, ref_genes = ortho.genes, ref_organism = 10090)
+
+```
+
+
+```{r}
+
+View(enr.opossum$result)
+View(enr.mouse$result)
+View(enr.shared$result)
+
+```
+

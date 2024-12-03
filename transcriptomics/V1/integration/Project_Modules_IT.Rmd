@@ -1,0 +1,144 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+obj.mouse.IT <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_it_wgcna.rds")
+obj.opossum.IT <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_it_wgcna.rds")
+
+```
+
+
+```{r}
+
+library(hdWGCNA)
+
+shared.genes <- intersect(rownames(obj.mouse.IT), rownames(obj.opossum.IT))
+obj.mouse.IT <- obj.mouse.IT[shared.genes,]
+obj.opossum.IT <- obj.opossum.IT[shared.genes,]
+
+obj.opossum.IT.Proj <- ProjectModules(
+                          obj.opossum.IT,
+                          seurat_ref = obj.mouse.IT,
+                          group.by.vars = "sample",
+                          wgcna_name_proj = "IT"
+                               )
+
+```
+
+
+```{r}
+
+# compute module hub scores for projected modules:
+obj.opossum.IT.Proj <- ModuleExprScore(
+  obj.opossum.IT.Proj,
+  n_genes = 25,
+  method='Seurat'
+)
+
+```
+
+
+```{r}
+
+library(patchwork)
+
+# make a featureplot of hub scores for each module
+plot_list <- ModuleFeaturePlot(
+  obj.opossum.IT.Proj,
+  features='scores',
+  order="shuffle"
+)
+
+# stitch together with patchwork
+# png(paste0(fig_dir, 'mouse_featureplot.png'), width=12, height=6, units='in', res=400)
+print(wrap_plots(plot_list, ncol=3))
+# dev.off()
+
+```
+
+
+```{r, fig.height=5, fig.width=10}
+
+ModuleRadarPlot(
+        obj.opossum.IT.Proj,
+        group.by = 'subclass',
+        barcodes = obj.opossum.IT.Proj@meta.data %>% rownames(),
+        axis.label.size=4,
+        grid.label.size=4
+                )
+
+```
+
+
+```{r}
+
+# set dat expr for single-cell dataset:
+obj.opossum.IT.Proj <- SetDatExpr(
+                            obj.opossum.IT.Proj,
+                            group_name = c("IT_A", "IT_B", "IT_C", "IT_D"),
+                            group.by = "subclass",
+                            use_metacells = FALSE
+                                  )
+
+# run module preservation function
+obj.opossum.IT.Proj <- ModulePreservation(
+                                obj.opossum.IT.Proj,
+                                seurat_ref = obj.mouse.IT,
+                                name="IT",
+                                verbose=3
+                                          )
+
+```
+
+
+```{r}
+
+plot_list <- PlotModulePreservation(
+  obj.opossum.IT.Proj,
+  name="IT",
+  statistics = "summary"
+)
+
+print(plot_list)
+
+```
+
+
+```{r, fig.width=10, fig.height=8}
+
+# plot all of the stats togehter
+plot_list <- PlotModulePreservation(
+  obj.opossum.IT.Proj,
+  name="IT",
+  statistics = "all",
+  plot_labels=FALSE
+)
+
+# png(paste0(fig_dir, 'mouse_preservation_all.png'), width=20, height=20*(2/3), res=400, units='in')
+print(wrap_plots(plot_list, ncol=6))
+# dev.off()
+
+```
+
+
+```{r}
+
+saveRDS(obj.opossum.IT.Proj, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/opossum_v1_it_proj_wgcna.rds")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,234 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(tidyverse)
+library(cowplot)
+library(patchwork)
+library(WGCNA)
+library(hdWGCNA)
+
+seurat_obj <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+
+```
+
+
+```{r}
+
+seurat_obj <- SetupForWGCNA(
+                                seurat_obj,
+                                gene_select = "fraction", # the gene selection approach
+                                fraction = 0.05, # fraction of cells that a gene needs to be expressed in order to be included
+                                wgcna_name = "test" # the name of the hdWGCNA experiment
+                                       )
+
+```
+
+
+```{r}
+
+# construct metacells in each group
+seurat_obj <- MetacellsByGroups(
+                                seurat_obj = seurat_obj,
+                                group.by = c("subclass", "sample"), # specify the columns in seurat_obj@meta.data to group by
+                                reduction = 'pca', # select the dimensionality reduction to perform KNN on
+                                k = 25, # nearest-neighbors parameter
+                                max_shared = 10, # maximum number of shared cells between two metacells
+                                ident.group = 'subclass' # set the Idents of the metacell seurat object
+                                           )
+
+# normalize metacell expression matrix
+seurat_obj <- NormalizeMetacells(seurat_obj)
+
+```
+
+
+```{r}
+
+seurat_obj <- SetDatExpr(
+                              seurat_obj,
+                              group_name = c("L2/3", "L4", "L5IT", "L5NP", "L5PT", "L6IT", "L6CT"), # the name of the group of interest in the group.by column
+                              group.by = 'subclass', # the metadata column containing the cell type info. This same column should have also been used in MetacellsByGroups
+                              assay = 'RNA', # using SCT assay
+                              slot = 'data' # using normalized data
+                                    )
+
+```
+
+
+```{r}
+
+# Test different soft powers:
+seurat_obj <- TestSoftPowers(
+                                seurat_obj,
+                                networkType = 'signed' # you can also use "unsigned" or "signed hybrid"
+                                        )
+
+# plot the results:
+plot_list <- PlotSoftPowers(seurat_obj)
+
+# assemble with patchwork
+wrap_plots(plot_list, ncol=2)
+
+```
+
+
+```{r}
+
+# construct co-expression network:
+seurat_obj <- ConstructNetwork(
+  seurat_obj,
+  tom_name = 'EXC-MOUSE', # name of the topological overlap matrix written to disk
+  overwrite_tom = TRUE
+)
+
+```
+
+
+```{r}
+
+PlotDendrogram(seurat_obj, main='Glutamatergic hdWGCNA Dendrogram')
+
+```
+
+
+```{r}
+
+seurat_obj <- ScaleData(seurat_obj, features = VariableFeatures(seurat_obj))
+
+# compute all MEs in the full single-cell dataset
+seurat_obj <- ModuleEigengenes(
+ seurat_obj,
+ group.by.vars="sample"
+)
+
+```
+
+
+```{r}
+
+# compute eigengene-based connectivity (kME):
+seurat_obj <- ModuleConnectivity(
+  seurat_obj,
+  group.by = 'subclass', group_name = c("L2/3", "L4", "L5IT", "L5NP", "L5PT", "L6IT", "L6CT")
+)
+
+```
+
+
+```{r}
+
+# rename the modules
+seurat_obj <- ResetModuleNames(
+  seurat_obj,
+  new_name = "EXC-M"
+)
+
+```
+
+
+```{r, fig.height=3, fig.width=10}
+
+PlotKMEs(seurat_obj, ncol=5)
+
+```
+
+
+```{r}
+
+ModuleNetworkPlot(
+  seurat_obj,
+  outdir = 'E:/Transcriptomics_V1/Mouse/seurat/wgcna/Glutamatergic/module_networks'
+)
+
+```
+
+
+```{r}
+
+DimPlot(seurat_obj, group.by = "subclass", label = TRUE) + NoLegend() + xlim(-18, 15) + ylim(-18, 15) + coord_equal()
+
+```
+
+
+```{r, fig.height=5, fig.width=10}
+
+# make a featureplot of hMEs for each module
+plot_list <- ModuleFeaturePlot(
+  seurat_obj,
+  features='hMEs', # plot the hMEs
+  order=TRUE # order so the points with highest hMEs are on top
+)
+
+# stitch together with patchwork
+wrap_plots(plot_list, ncol=6)
+
+```
+
+
+```{r, fig.height=5, fig.width=10}
+
+# seurat_obj$cluster <- do.call(rbind, strsplit(as.character(seurat_obj$annotation), ' '))[,1]
+
+ModuleRadarPlot(
+  seurat_obj,
+  group.by = 'subclass',
+  barcodes = seurat_obj@meta.data %>% rownames(),
+  axis.label.size=2,
+  grid.label.size=2
+)
+
+```
+
+
+```{r}
+
+library(enrichR)
+
+# enrichr databases to test
+dbs <- c('GO_Biological_Process_2021', 'GO_Cellular_Component_2021', 'GO_Molecular_Function_2021')
+
+# perform enrichment tests
+seurat_obj <- RunEnrichr(
+  seurat_obj,
+  dbs=dbs, # character vector of enrichr databases to test
+  max_genes = 100, # number of genes per module to test. use max_genes = Inf to choose all genes!
+  wait_time = 5,
+)
+
+# retrieve the output table
+enrich_df <- GetEnrichrTable(seurat_obj)
+
+```
+
+
+```{r, fig.height=11, fig.width=8}
+
+# enrichr dotplot
+EnrichrDotPlot(
+  seurat_obj,
+  mods = "all", # use all modules (this is the default behavior)
+  database = 'GO_Biological_Process_2021', # this has to be one of the lists we used above!!!
+  n_terms=4 # number of terms for each module
+)
+
+```
+
+
+```{r}
+
+# make GO term plots:
+EnrichrBarPlot(
+  seurat_obj,
+  outdir = "E:/Transcriptomics_V1/Mouse/seurat/wgcna/GABAergic/enrichr_plots", # name of output directory
+  n_terms = 10, # number of enriched terms to show (sometimes more show if there are ties!!!)
+  plot_size = c(5,7), # width, height of the output .pdfs
+  logscale=TRUE # do you want to show the enrichment as a log scale?
+)
+
+```
+

@@ -485,6 +485,77 @@ PlotIdentDEIntersection <- function(list1, list2, all_genes1, all_genes2, sample
     ) # Make cells square
 }
 
+WriteSubclassDEIntersectionGenes <- function(list1, list2, all_genes1, all_genes2, sample.name1, sample.name2, subclass.order, log2FC_thresholds, output_path, percentage = FALSE) {
+  # Find intersecting genes
+  intersecting_genes <- intersect(all_genes1, all_genes2)
+  
+   # Filter dataframes based on thresholds and subclass order
+  df1 <- list1$subclass %>%
+    filter(pct.1 >= 0.2, p_val_adj < 0.05, gene %in% intersecting_genes) %>%
+    filter(cluster %in% subclass.order)
+  df1$cluster <- factor(df1$cluster, levels = subclass.order)
+  
+  df2 <- list2$subclass %>%
+    filter(pct.1 >= 0.2, p_val_adj < 0.05, gene %in% intersecting_genes) %>%
+    filter(cluster %in% subclass.order)
+  df2$cluster <- factor(df2$cluster, levels = subclass.order)
+  
+  # Create grid of subclass combinations
+  cluster_combinations <- expand.grid(
+    Cluster1 = unique(df1$cluster), 
+    Cluster2 = unique(df2$cluster)
+  )
+  
+  # Iterate over log2FC thresholds
+  for (log2FC_threshold in log2FC_thresholds) {
+    # Filter by log2FC threshold
+    df1_filtered <- df1 %>% filter(avg_log2FC > log2FC_threshold)
+    df2_filtered <- df2 %>% filter(avg_log2FC > log2FC_threshold)
+    
+    # Initialize an empty dataframe for intersection counts or percentages
+    intersection_counts <- data.frame()
+    
+    # Process each cluster pair
+    for (i in 1:nrow(cluster_combinations)) {
+      cluster1 <- cluster_combinations$Cluster1[i]
+      cluster2 <- cluster_combinations$Cluster2[i]
+      
+      # Filter for specific cluster pair
+      df1_cluster <- df1_filtered %>% filter(cluster == cluster1)
+      df2_cluster <- df2_filtered %>% filter(cluster == cluster2)
+      
+      # Find intersecting and unique DE genes
+      intersecting_de_genes <- intersect(df1_cluster$gene, df2_cluster$gene)
+      de_genes_1 <- setdiff(df1_cluster$gene, intersecting_de_genes)
+      de_genes_2 <- setdiff(df2_cluster$gene, intersecting_de_genes)
+      
+      # Count intersections or calculate percentages
+      count <- length(intersecting_de_genes)
+      if (percentage) {
+        total_genes <- length(union(df1_cluster$gene, df2_cluster$gene))
+        percent <- (count / total_genes) * 100
+        intersection_counts <- rbind(intersection_counts, data.frame(Cluster1 = cluster1, Cluster2 = cluster2, Value = percent))
+      } else {
+        intersection_counts <- rbind(intersection_counts, data.frame(Cluster1 = cluster1, Cluster2 = cluster2, Value = count))
+      }
+      
+      # Format log2FC threshold for filename
+      threshold_label <- formatC(log2FC_threshold, format = "e", digits = 1)
+      threshold_label <- gsub("\\.", "e", threshold_label)
+      
+      # Write output files
+      intersect_file <- paste0(output_path, "/", gsub("/", "", cluster1), "_vs_", gsub("/", "", cluster2), "_intersecting_genes_", threshold_label, ".txt")
+      write.table(intersecting_de_genes, file = intersect_file, quote = FALSE, row.names = FALSE, col.names = FALSE)
+      
+      de_file_1 <- paste0(output_path, "/", gsub("/", "", cluster1), "_vs_", gsub("/", "", cluster2), "_", tolower(sample.name1),"_genes_", threshold_label, ".txt")
+      write.table(de_genes_1, file = de_file_1, quote = FALSE, row.names = FALSE, col.names = FALSE)
+      
+      de_file_2 <- paste0(output_path, "/", gsub("/", "", cluster1), "_vs_", gsub("/", "", cluster2), "_", tolower(sample.name2),"_genes_", threshold_label, ".txt")
+      write.table(de_genes_2, file = de_file_2, quote = FALSE, row.names = FALSE, col.names = FALSE)
+    }
+  }
+}
+
 PlotSubclassDEIntersectionHeatmap <- function(list1, list2, all_genes1, all_genes2, sample.name1, sample.name2, subclass.order, log2FC_threshold, output_path, percentage = FALSE) {
   # Extract dataframes
   df1 <- list1$subclass %>%
