@@ -1,0 +1,144 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+obj.mouse.CGE <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_cge_wgcna.rds")
+obj.opossum.CGE <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_cge_wgcna.rds")
+
+```
+
+
+```{r}
+
+library(hdWGCNA)
+
+shared.genes <- intersect(rownames(obj.mouse.CGE), rownames(obj.opossum.CGE))
+obj.mouse.CGE <- obj.mouse.CGE[shared.genes,]
+obj.opossum.CGE <- obj.opossum.CGE[shared.genes,]
+
+obj.opossum.CGE.Proj <- ProjectModules(
+                          obj.opossum.CGE,
+                          seurat_ref = obj.mouse.CGE,
+                          group.by.vars = "sample",
+                          wgcna_name_proj = "CGE"
+                               )
+
+```
+
+
+```{r}
+
+# compute module hub scores for projected modules:
+obj.opossum.CGE.Proj <- ModuleExprScore(
+  obj.opossum.CGE.Proj,
+  n_genes = 25,
+  method='Seurat'
+)
+
+```
+
+
+```{r}
+
+library(patchwork)
+
+# make a featureplot of hub scores for each module
+plot_list <- ModuleFeaturePlot(
+  obj.opossum.CGE.Proj,
+  features='scores',
+  order="shuffle"
+)
+
+# stitch together with patchwork
+# png(paste0(fig_dir, 'mouse_featureplot.png'), width=12, height=6, units='in', res=400)
+print(wrap_plots(plot_list[c(1, 2, 3, 5, 6, 7)], ncol=3))
+# dev.off()
+
+```
+
+
+```{r, fig.height=5, fig.width=10}
+
+ModuleRadarPlot(
+        obj.opossum.CGE.Proj,
+        group.by = 'subclass',
+        barcodes = obj.opossum.CGE.Proj@meta.data %>% rownames(),
+        axis.label.size=4,
+        grid.label.size=4
+                )
+
+```
+
+
+```{r}
+
+# set dat expr for single-cell dataset:
+obj.opossum.CGE.Proj <- SetDatExpr(
+                            obj.opossum.CGE.Proj,
+                            group_name = c("Vip", "Lamp5", "Frem1"),
+                            group.by = "subclass",
+                            use_metacells = FALSE
+                                  )
+
+# run module preservation function
+obj.opossum.CGE.Proj <- ModulePreservation(
+                                obj.opossum.CGE.Proj,
+                                seurat_ref = obj.mouse.CGE,
+                                name="CGE",
+                                verbose=3
+                                          )
+
+```
+
+
+```{r}
+
+plot_list <- PlotModulePreservation(
+  obj.opossum.CGE.Proj,
+  name="CGE",
+  statistics = "summary"
+)
+
+print(plot_list)
+
+```
+
+
+```{r, fig.width=10, fig.height=8}
+
+# plot all of the stats togehter
+plot_list <- PlotModulePreservation(
+  obj.opossum.CGE.Proj,
+  name="CGE",
+  statistics = "all",
+  plot_labels=FALSE
+)
+
+# png(paste0(fig_dir, 'mouse_preservation_all.png'), width=20, height=20*(2/3), res=400, units='in')
+print(wrap_plots(plot_list, ncol=6))
+# dev.off()
+
+```
+
+
+```{r}
+
+saveRDS(obj.opossum.CGE.Proj, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/opossum_v1_cge_proj_wgcna.rds")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+

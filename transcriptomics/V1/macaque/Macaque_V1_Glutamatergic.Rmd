@@ -1,0 +1,207 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.macaque.glutamatergic <- readRDS("E:/Transcriptomics_V1/macaque/seurat/macaque_v1_glutamatergic.rds")
+
+```
+
+
+```{r}
+
+obj.macaque.glutamatergic <- ClusterSCT(obj.macaque.glutamatergic, c(1))
+
+```
+
+
+```{r}
+
+obj.macaque.glutamatergic$sample <- obj.macaque.glutamatergic$MonkeyID
+DimPlot(obj.macaque.glutamatergic, reduction = "umap", group.by = "sample", label = FALSE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.macaque.glutamatergic, reduction = "umap", group.by = "subclass_1", label = FALSE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.macaque.glutamatergic, reduction = "umap", group.by = "subclass_2", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.macaque.glutamatergic) <- "sample"
+obj.macaque.glutamatergic <- subset(obj.macaque.glutamatergic, idents = c("FM90731", "FM90801", "FM90812"))
+obj.macaque.glutamatergic <- ClusterSCT(obj.macaque.glutamatergic, c(1))
+
+DimPlot(obj.macaque.glutamatergic, reduction = "umap", group.by = "sample", label = FALSE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.macaque.glutamatergic, reduction = "umap", group.by = "subclass_1", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
+DimPlot(obj.macaque.glutamatergic, reduction = "umap", group.by = "subclass_2", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.macaque.glutamatergic, reduction = "umap", group.by = "cell_label", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.macaque.glutamatergic) <- "subclass_1"
+obj.macaque.IT <- subset(obj.macaque.glutamatergic, idents = c("IT even", "L2/3 NPY", "L2/3 IT", "IT L23 biased", "IT OSTN", "IT L56 biased", "L5 IT", "L6 IT"))
+obj.macaque.IT <- ClusterSCT(obj.macaque.IT, c(1))
+
+```
+
+
+```{r}
+
+DimPlot(obj.macaque.IT, reduction = "umap", group.by = "sample", label = FALSE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.macaque.IT, reduction = "umap", group.by = "subclass_1", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
+DimPlot(obj.macaque.IT, reduction = "umap", group.by = "subclass_2", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+DimPlot(obj.macaque.IT, reduction = "umap", group.by = "cell_label", label = TRUE, raster = FALSE, shuffle = TRUE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+# DimPlot(obj.macaque.IT, reduction = "pca", group.by = "sample", pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-50, 50) + ylim(-50, 50) + coord_equal()
+DimPlot(obj.macaque.IT, reduction = "pca", dims = c(1, 2), group.by = "subclass_1", pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-50, 50) + ylim(-50, 50) + coord_equal()
+
+# Mouse (Original Space)
+pc_data <- as.data.frame(Embeddings(obj.macaque.IT, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+pc_data$subclass <- obj.macaque.IT@meta.data$subclass_1  # Add subclass metadata
+write.csv(pc_data, "E:/Transcriptomics_V1/Integration/PCs/macaque_pc_data_with_subclass.csv", row.names = FALSE)
+
+```
+
+
+```{r}
+
+# Load necessary library
+library(Seurat)
+library(dplyr)
+
+# Load the mapping file (ensure it's in the correct directory)
+mapping <- read.csv("E:/Transcriptomics_V1/Macaque/all_cells/outs/filtered_feature_bc_matrix/features.csv", header = TRUE, stringsAsFactors = FALSE)
+
+# Rename columns for clarity
+colnames(mapping) <- c("gene_name", "ensembl_id")
+
+# Ensure gene names are unique
+mapping <- mapping %>% distinct(ensembl_id, .keep_all = TRUE)
+
+# Function to convert gene names to mouse format
+convert_to_mouse <- function(genes) {
+  sapply(genes, function(g) {
+    paste0(toupper(substr(g, 1, 1)), tolower(substr(g, 2, nchar(g))))
+  })
+}
+
+obj.macaque.IT.df <- as.data.frame(as.matrix(obj.macaque.IT[["RNA"]]@counts))
+
+# Extract the current rownames (Ensembl IDs) of the Seurat object
+current_genes <- rownames(obj.macaque.IT.df)
+
+# Replace Ensembl IDs with gene names where possible
+updated_genes <- mapping$gene_name[match(current_genes, mapping$ensembl_id)]
+
+# Keep Ensembl IDs where no match is found
+updated_genes[is.na(updated_genes)] <- current_genes[is.na(updated_genes)]
+
+# Convert gene names to mouse format
+updated_genes <- convert_to_mouse(updated_genes)
+rownames(obj.macaque.IT.df) <- as.character(updated_genes)
+obj.macaque.IT.temp <- CreateSeuratObject(counts = obj.macaque.IT.df, meta.data = obj.macaque.IT[[]])
+# obj.macaque.IT <- obj.macaque.IT.temp
+
+```
+
+
+```{r}
+
+obj.macaque.IT.temp <- NormalizePCA(obj.macaque.IT.temp)
+
+obj.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+Idents(obj.mouse.glutamatergic) <- "subclass"
+obj.mouse.IT <- subset(obj.mouse.glutamatergic, idents = c("L2/3", "L4", "L5IT", "L6IT"))
+obj.mouse.IT <- NormalizePCA(obj.mouse.IT)
+
+macaque.VFs <- VariableFeatures(obj.macaque.IT.temp)
+mouse.VFs <- VariableFeatures(obj.mouse.IT)
+shared.VFs <- intersect(macaque.VFs, mouse.VFs)
+obj.macaque.IT.SVF <- NormalizePCA(obj.macaque.IT.temp, features = shared.VFs)
+obj.mouse.IT.SVF <- NormalizePCA(obj.mouse.IT, features = shared.VFs)
+
+obj.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
+Idents(obj.opossum.glutamatergic) <- "subclass"
+obj.opossum.IT <- subset(obj.opossum.glutamatergic, idents = c("IT_A", "IT_B", "IT_C", "IT_D"))
+obj.opossum.IT <- NormalizePCA(obj.opossum.IT)
+
+macaque.VFs <- VariableFeatures(obj.macaque.IT.temp)
+opossum.VFs <- VariableFeatures(obj.opossum.IT)
+shared.VFs <- intersect(macaque.VFs, opossum.VFs)
+obj.macaque.IT.SVF <- NormalizePCA(obj.macaque.IT.temp, features = shared.VFs)
+obj.opossum.IT.SVF <- NormalizePCA(obj.opossum.IT, features = shared.VFs)
+
+```
+
+
+```{r}
+
+# Project onto Mouse
+obj.macaque.IT.SVF <- PCAProject(obj.macaque.IT.SVF, obj.mouse.IT.SVF)
+
+macaque_pc_data <- as.data.frame(Embeddings(obj.macaque.IT.SVF, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+mouse_pc_data <- as.data.frame(Embeddings(obj.mouse.IT.SVF, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+colnames(macaque_pc_data) <- colnames(mouse_pc_data)
+pc_data <- rbind(macaque_pc_data, mouse_pc_data)
+pc_data$subclass <- c(obj.macaque.IT.SVF@meta.data$subclass_1, obj.mouse.IT.SVF@meta.data$subclass)  # Add subclass metadata
+obj.mouse.IT.SVF$species <- "Mouse"
+pc_data$species <- c(obj.macaque.IT.SVF@meta.data$species, obj.mouse.IT.SVF@meta.data$species)  # Add subclass metadata
+write.csv(pc_data, "E:/mouse_macaque_shared_pc_data_subsample_with_subclass.csv", row.names = FALSE)
+
+# Project onto Opossum
+obj.opossum.IT.SVF <- PCAProject(obj.opossum.IT.SVF, obj.macaque.IT.SVF)
+
+macaque_pc_data <- as.data.frame(Embeddings(obj.macaque.IT.SVF, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+opossum_pc_data <- as.data.frame(Embeddings(obj.opossum.IT.SVF, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+colnames(macaque_pc_data) <- colnames(opossum_pc_data)
+pc_data <- rbind(macaque_pc_data, opossum_pc_data)
+pc_data$subclass <- c(obj.macaque.IT.SVF@meta.data$subclass_1, obj.opossum.IT.SVF@meta.data$subclass)  # Add subclass metadata
+obj.opossum.IT.SVF$species <- "opossum"
+pc_data$species <- c(obj.macaque.IT.SVF@meta.data$species, obj.opossum.IT.SVF@meta.data$species)  # Add subclass metadata
+write.csv(pc_data, "E:/opossum_macaque_shared_pc_data_subsample_with_subclass.csv", row.names = FALSE)
+
+# Opossum (Original Space)
+pc_data <- as.data.frame(Embeddings(obj.opossum.IT.SVF, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+pc_data$subclass <- obj.opossum.IT.SVF@meta.data$subclass  # Add subclass metadata
+write.csv(pc_data, "E:/opossum_pc_data_shared_with_subclass.csv", row.names = FALSE)
+
+# Opossum (Original Space)
+pc_data <- as.data.frame(Embeddings(obj.macaque.IT.SVF, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+pc_data$subclass <- obj.macaque.IT.SVF@meta.data$cell_label # Add subclass metadata
+write.csv(pc_data, "E:/macaque_pc_data_shared_with_subclass.csv", row.names = FALSE)
+
+```
+
+
+
+```{r}
+
+saveRDS(obj.macaque.glutamatergic, "E:/Transcriptomics_V1/macaque/seurat/macaque_v1_P38_glutamatergic_IT_processed.rds")
+
+```
+

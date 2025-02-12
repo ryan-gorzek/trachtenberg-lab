@@ -6,9 +6,9 @@ GetColors <- function() {
     IT = "#FF6C88",
     IT_A = "#FFB3B3",
     `L2/3` = "#FFB3B3",
-    IT_B = "#FFA07A",
+    IT_C = "#FFA07A",
     L4 = "#FF7F50",
-    IT_C = "#FF7F50",
+    IT_B = "#FF7F50",
     L5IT = "#FFA07A",
     IT_D = "#FF6347",
     L6IT = "#FF6347",
@@ -37,7 +37,7 @@ GetColors <- function() {
     
 }
 
-PreprocessData <- function(sample_IDs, data_path, project_name, mapping_path) {
+PreprocessData <- function(sample_IDs, data_path, project_name, mapping_path, gene.column = 2) {
   
   # Load the data.
   print("Loading 10x data...")
@@ -47,7 +47,7 @@ PreprocessData <- function(sample_IDs, data_path, project_name, mapping_path) {
   for (sample in sample_IDs) {
     
     temp.obj.path <- paste(data_path, sample, "/outs/filtered_feature_bc_matrix/", sep = "")
-    temp.obj.data <- Read10X(temp.obj.path)
+    temp.obj.data <- Read10X(temp.obj.path, gene.column = gene.column)
     temp.obj <- CreateSeuratObject(counts = temp.obj.data, project = project_name)
     temp.obj$sample <- sample
     temp.obj <- scrublet_R(seurat_obj = temp.obj)
@@ -117,6 +117,48 @@ PreprocessData <- function(sample_IDs, data_path, project_name, mapping_path) {
   genes$post.filt <- rownames(obj)
   
   return(list(obj = obj, obj.prefilt = obj.prefilt, genes = genes))
+  
+}
+
+MapGenes <- function(obj, mapping_path, use_ids = FALSE) {
+  
+  genes.mapping <- read.csv(mapping_path)
+  para.idx <- genes.mapping$Gene.stable.ID %in% unique(genes.mapping$Gene.stable.ID[duplicated(genes.mapping$Gene.stable.ID)])
+  genes.mapping <- genes.mapping[!para.idx,]
+  genes.mapping.other <- as.list(genes.mapping[, 3])
+  genes.mapping.self <- as.list(genes.mapping[, 1])
+  ids.mapping.self <- as.list(genes.mapping[, 2])
+  genes.self <- rownames(obj)
+  for (gene in genes.mapping.other) {
+    
+    idx.other <- which(genes.mapping.other %in% gene)
+    
+    if (length(idx.other) == 1) {
+      
+      gene.self <- genes.mapping.self[idx.other]
+      id.self <- ids.mapping.self[idx.other]
+      
+      if ((gene.self == "") | (use_ids == TRUE)) {
+        
+        idx.self <- which(genes.self %in% id.self)
+        genes.self[idx.self] <- gene
+        
+      } else {
+        
+        idx.self <- which(genes.self %in% gene.self)
+        genes.self[idx.self] <- gene
+        
+      }
+    }
+  }
+  # Rebuild Seurat object.
+  print("Rebuilding object...")
+  obj.df <- as.data.frame(as.matrix(obj[["RNA"]]@counts))
+  rownames(obj.df) <- genes.self
+  obj.temp <- CreateSeuratObject(counts = obj.df, meta.data = obj[[]])
+  obj <- obj.temp
+  
+  return(obj)
   
 }
 

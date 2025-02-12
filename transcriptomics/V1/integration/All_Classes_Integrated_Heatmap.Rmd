@@ -1,0 +1,95 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(SeuratWrappers)
+library(monocle3)
+library(pheatmap)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
+obj.opossum.gabaergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_gabaergic_processed.rds")
+obj.opossum.nonneuronal <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_nonneuronal_processed.rds")
+
+obj.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+obj.mouse.gabaergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_gabaergic_processed.rds")
+obj.mouse.nonneuronal <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_nonneuronal_processed.rds")
+
+obj.opossum <- merge(obj.opossum.glutamatergic, y = c(obj.opossum.gabaergic, obj.opossum.nonneuronal))
+obj.mouse <- merge(obj.mouse.glutamatergic, y = c(obj.mouse.gabaergic, obj.mouse.nonneuronal))
+
+```
+
+
+```{r}
+
+obj.mouse.glutamatergic$species <- "Mouse"
+saveRDS(obj.mouse.gabaergic, "E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_gabaergic_processed.rds")
+
+```
+
+
+```{r}
+
+obj.integrated <- IntegrateObjects(obj.mouse, obj.opossum, nfeatures = 3000, subsample = TRUE)
+
+```
+
+
+```{r}
+
+subclass.order.mouse <- c("IT", "L5PT", "L6CT", "L6b", "L5NP", 
+                          "Pvalb", "Sst", "Vip", "Stac", "Frem1", "Lamp5",
+                          "OD", "OPC", "Astro", "Micro", "Endo", "VLMC")
+
+subclass.order.opossum <- c("IT", "L5PT", "L6CT", "L6b", "L5NP", 
+                            "Pvalb", "Sst", "Vip", "Frem1", "Lamp5",
+                            "OD", "OPC", "Astro", "Micro", "Endo")
+
+#### obj.integrated$species[is.na(obj.integrated$species)] <- "Mouse"
+
+obj.integrated$subclass.IT <- obj.integrated$subclass
+obj.integrated$subclass.IT[obj.integrated$subclass.IT %in% c("L2/3", "L4", "L5IT", "L6IT", "IT_A", "IT_B", "IT_C", "IT_D")] <- "IT"
+
+library(viridisLite)
+# Create a modified color function
+custom_viridis <- function(n = 256) {
+  # Get viridis colors
+  viridis_colors <- viridis(n, option = "D", direction = -1)  # Option "D" gives the default viridis palette
+  
+  # Modify the lowest color to white
+  viridis_colors <- c(rep("#FFFFFF", 8), viridis_colors[1:235])  # White
+  
+  return(colorRampPalette(viridis_colors)(n))
+}
+
+p <- IntegratedClusterOverlapHeatmap(obj.integrated, "species", "subclass.IT", "integrated_snn_res.1", subclass.order.mouse, subclass.order.opossum, col.high = "black", show_text = FALSE) + scale_fill_gradientn(colors = custom_viridis())
+print(p)
+# scale_fill_viridis(option = "D", direction = -1)
+
+ggsave("E:/Opossum_Paper/Figure 1/Integrated_Overlap_Heatmap.svg", plot = p)
+
+```
+
+

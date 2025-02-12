@@ -1,0 +1,53 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratObject)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+
+obj <- readRDS("E:/STOmics/seurat/opossum_stereoseq_all.rds")
+
+```
+
+
+```{r, fig.width=10}
+
+ImageDimPlot(obj, cols = "red")
+ImageFeaturePlot(obj, "nCount_RNA", max.cutoff = 1000)
+ImageFeaturePlot(obj, "nCount_RNA", max.cutoff = 1000, size = 3) + xlim(8000, 16000) + ylim(5000, 9000)
+
+```
+
+
+```{r, fig.height=8}
+
+library(ggplot2)
+
+# create a Crop
+cropped.coords <- Crop(obj[["FOV"]], x = c(8000, 16000), y = c(5000, 9000), coords = "plot")
+# set a new field of view (fov)
+obj[["CTX"]] <- cropped.coords
+ImageDimPlot(obj, fov = "CTX", cols = "red", size = 3)
+ImageFeaturePlot(obj, "Rorb", fov = "CTX", size = 3)
+
+```
+
+
+```{r}
+
+obj.ctx <- subset(obj, cells = Cells(obj[["CTX"]]))
+
+```
+
+
+```{r}
+
+saveRDS(obj.ctx, "E:/STOmics/seurat/opossum_stereoseq_ctx_1.rds")
+
+```
+

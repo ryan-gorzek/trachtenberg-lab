@@ -1,0 +1,230 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+colors_list <- GetColors()
+
+obj.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
+obj.gabaergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_gabaergic_processed.rds")
+obj.nonneuronal <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_nonneuronal_processed.rds")
+
+obj <- merge(obj.glutamatergic, y = c(obj.gabaergic, obj.nonneuronal))
+
+obj.ctx <- readRDS("E:/STOmics/seurat/opossum_stereoseq_ctx_1.rds")
+
+```
+
+
+```{r}
+
+VlnPlot(obj.ctx, "nFeature_RNA")
+VlnPlot(obj.ctx, "nCount_RNA")
+summary(obj.ctx$nFeature_RNA)
+summary(obj.ctx$nCount_RNA)
+
+```
+
+
+```{r, fig.width=12}
+
+ImageDimPlot(obj.ctx, size = 2.5)
+
+```
+
+
+```{r}
+
+cell_mask <- Reduce(intersect,list(WhichCells(obj.ctx, expression = nFeature_RNA > 50),
+                                   WhichCells(obj.ctx, expression = nCount_RNA > 100)))
+  
+gene_mask <- rownames(obj.ctx)[Matrix::rowSums(obj.ctx[["RNA"]]@counts > 0) > 8]
+
+obj.ctx <- subset(obj.ctx, features = gene_mask, cells = cell_mask)
+
+```
+
+
+```{r}
+
+VlnPlot(obj.ctx, "nFeature_RNA")
+VlnPlot(obj.ctx, "nCount_RNA")
+summary(obj.ctx$nFeature_RNA)
+summary(obj.ctx$nCount_RNA)
+
+```
+
+
+```{r, fig.width=12}
+
+ImageDimPlot(obj.ctx, size = 2.5)
+
+```
+
+
+```{r}
+
+obj <- ClusterSCT(obj, resolutions = 1)
+obj.ctx <- ClusterSCT(obj.ctx, resolutions = c(0.5, 1))
+
+```
+
+
+```{r}
+
+opossum.subclass.levels <- c("IT_A", "IT_C", "IT_B", "IT_D", "L5NP", "L5PT", "L6CT", "L6b", "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "OD", "OPC", "Astro", "Micro", "Endo")
+
+DimPlot(obj, group.by = "subclass", cols = colors_list[opossum.subclass.levels]) + NoLegend() + xlim(-20, 20) + ylim(-20, 20) + coord_equal()
+DimPlot(obj.ctx, group.by = "SCT_snn_res.0.5") + NoLegend() + xlim(-8, 8) + ylim(-8, 8) + coord_equal()
+DimPlot(obj.ctx, group.by = "SCT_snn_res.1") + NoLegend() + xlim(-8, 8) + ylim(-8, 8) + coord_equal()
+
+```
+
+
+```{r, fig.width=12}
+
+ImageDimPlot(obj.ctx, group.by = "SCT_snn_res.0.5", size = 2.5)
+ImageDimPlot(obj.ctx, group.by = "SCT_snn_res.1", size = 2.5)
+
+```
+
+
+```{r}
+
+obj.ctx <- MapObject(obj, obj.ctx, "class", do.norm = FALSE)
+
+```
+
+
+```{r, fig.width=12}
+
+ImageDimPlot(obj.ctx, group.by = "predicted.class", size = 2.5)
+
+```
+
+
+```{r}
+
+saveRDS(obj.ctx, "E:/STOmics/seurat/opossum_stereoseq_ctx_1_clustered_mapped.rds")
+# obj.ctx <- readRDS("E:/STOmics/seurat/opossum_stereoseq_ctx_1_clustered.rds")
+
+```
+
+
+```{r}
+
+obj.ctx.glutamatergic <- subset(obj.ctx, predicted.class == "glutamatergic")
+obj.ctx.glutamatergic <- ClusterSCT(obj.ctx.glutamatergic, resolutions = 1)
+obj.glutamatergic <- ClusterSCT(obj.glutamatergic, resolutions = 1)
+obj.ctx.glutamatergic <- MapObject(obj.glutamatergic, obj.ctx.glutamatergic, "subclass", do.norm = FALSE)
+
+```
+
+
+```{r}
+
+saveRDS(obj.glutamatergic, "E:/STOmics/seurat/opossum_glutamatergic_reference.rds")
+saveRDS(obj.ctx.glutamatergic, "E:/STOmics/seurat/opossum_stereoseq_glutamatergic_1_clustered_mapped.rds")
+
+obj.glutamatergic <- readRDS("E:/STOmics/seurat/opossum_glutamatergic_reference.rds")
+obj.ctx.glutamatergic <- readRDS("E:/STOmics/seurat/opossum_stereoseq_glutamatergic_1_clustered_mapped.rds")
+
+```
+
+
+```{r, fig.width=12}
+
+Idents(obj.ctx.glutamatergic) <- "predicted.subclass"
+# , cols = c("#B4B4B4", "#128e27", "#1E90FF", "#881bd1", "#fcba03", "#0febf2"
+ImageDimPlot(obj.ctx.glutamatergic, group.by = "predicted.subclass", size = 2.5)
+
+```
+
+
+```{r, fig.width=6}
+
+column.coords <- Crop(obj.ctx.glutamatergic[["CTX"]], x = c(6750, 8500), y = c(10000, 12000), coords = "tissue")
+obj.ctx.glutamatergic[["COL"]] <- column.coords
+ImageDimPlot(obj.ctx.glutamatergic, fov = "COL", size = 3)
+
+```
+
+
+```{r}
+
+obj.ctx.glutamatergic.COL <- subset(obj.ctx.glutamatergic, cells = Cells(obj.ctx.glutamatergic[["COL"]]))
+obj.ctx.glutamatergic.COL <- ClusterSCT(obj.ctx.glutamatergic.COL, resolutions = 1)
+
+```
+
+
+```{r}
+
+obj.ctx.glutamatergic.COL <- MapObject(obj.glutamatergic, obj.ctx.glutamatergic.COL, "subclass", do.norm = FALSE)
+
+```
+
+
+```{r}
+
+Idents(obj.ctx.glutamatergic.COL) <- "predicted.subclass"
+ImageDimPlot(obj.ctx.glutamatergic.COL, fov = "COL", size = 3)
+
+```
+
+
+```{r}
+
+DimPlot(obj.ctx.glutamatergic.COL, group.by = "SCT_snn_res.1", label = TRUE) + NoLegend() + xlim(-8, 8) + ylim(-8, 8) + coord_equal()
+DimPlot(obj.ctx.glutamatergic.COL, group.by = "predicted.subclass") + xlim(-8, 8) + ylim(-8, 8) + coord_equal()
+FeaturePlot(obj.ctx.glutamatergic.COL, "Foxp2") + xlim(-8, 8) + ylim(-8, 8) + coord_equal()
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

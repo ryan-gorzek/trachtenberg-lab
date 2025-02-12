@@ -1,0 +1,301 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+
+obj.mouse <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_mouse.rds")
+obj.opossum <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_opossum.rds")
+
+objs <- c(obj.opossum, obj.mouse)
+
+subclass.markers.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/Glutamatergic/Ex5kB/markerdict_subclass.rds")$subclass
+subclass.markers.opossum.gabaergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/GABAergic/markerdict_subclass.rds")$subclass
+subclass.markers.opossum.nonneuronal <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/marker_genes/Nonneuronal/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Glutamatergic/P38/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.gabaergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/GABAergic/P38/markerdict_subclass.rds")$subclass
+subclass.markers.mouse.nonneuronal <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/marker_genes/Nonneuronal/P38/markerdict_subclass.rds")$subclass
+
+subclass.markers.opossum <- list(subclass = rbind(subclass.markers.opossum.glutamatergic, subclass.markers.opossum.gabaergic, subclass.markers.opossum.nonneuronal))
+subclass.markers.mouse <- list(subclass = rbind(subclass.markers.mouse.glutamatergic, subclass.markers.mouse.gabaergic, subclass.markers.mouse.nonneuronal))
+
+subclasses <- c("IT_A", "IT_C", "IT_B", "IT_D", "L2/3", "L4", "L5IT", "L6IT", "L5PT", "L5NP", "L6CT", "L6b", 
+                "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac", 
+                "Astro", "Micro", "OD", "OPC", "Endo", "VLMC")
+
+WriteSubclassDEIntersectionGenes(subclass.markers.mouse, subclass.markers.opossum, 
+                                 rownames(objs[[1]]), rownames(objs[[2]]),
+                                 "Mouse", "Opossum",
+                                 subclasses, c(0.2, 0.5, 1, 1.5), "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/subclass_markers/All/")
+
+```
+
+
+```{r}
+
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+# Define a list of subclass pairs
+subclass_pairs <- list(
+  c("L23", "IT_A"),
+  c("L4", "IT_C"),
+  c("L5IT", "IT_B"),
+  c("L6IT", "IT_D"),
+  c("L5NP", "L5NP"),
+  c("L5PT", "L5PT"),
+  c("L6CT", "L6CT"),
+  c("L6b", "L6b"),
+  c("Pvalb", "Pvalb"),
+  c("Sst", "Sst"),
+  c("Vip", "Vip"),
+  c("Lamp5", "Lamp5"),
+  c("Frem1", "Frem1"), 
+  c("Astro", "Astro"),
+  c("Micro", "Micro"), 
+  c("OD", "OD"), 
+  c("OPC", "OPC"), 
+  c("Endo", "Endo")
+)
+
+# List of log2FC thresholds
+log2FC_thresholds <- c(0.2, 0.5, 1.0, 1.5)
+
+# Base file path
+base_path <- "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/subclass_markers/All/"
+
+# Iterate over log2FC thresholds
+for (log2FC_threshold in log2FC_thresholds) {
+  # Initialize an empty dataframe for counts
+  counts <- data.frame()
+  
+  # Format log2FC threshold for file paths
+  threshold_label <- formatC(log2FC_threshold, format = "e", digits = 1)
+  threshold_label <- gsub("\\.", "e", threshold_label)
+  
+  # Loop through each subclass pair
+  for (pair in subclass_pairs) {
+    mouse_subclass <- pair[1]
+    opossum_subclass <- pair[2]
+    
+    # Define file paths
+    mouse_genes_path <- paste0(base_path, mouse_subclass, "_vs_", opossum_subclass, "_mouse_genes_", threshold_label, ".txt")
+    opossum_genes_path <- paste0(base_path, mouse_subclass, "_vs_", opossum_subclass, "_opossum_genes_", threshold_label, ".txt")
+    intersect_genes_path <- paste0(base_path, mouse_subclass, "_vs_", opossum_subclass, "_intersecting_genes_", threshold_label, ".txt")
+    
+    # Initialize counts for this pair
+    mouse_count <- 0
+    opossum_count <- 0
+    intersect_count <- 0
+    
+    # Check if files exist and are not empty
+    if (file.exists(mouse_genes_path) && file.info(mouse_genes_path)$size > 0) {
+      mouse_genes <- read.table(mouse_genes_path, header = FALSE)
+      mouse_count <- nrow(mouse_genes)
+    }
+    
+    if (file.exists(opossum_genes_path) && file.info(opossum_genes_path)$size > 0) {
+      opossum_genes <- read.table(opossum_genes_path, header = FALSE)
+      opossum_count <- nrow(opossum_genes)
+    }
+    
+    if (file.exists(intersect_genes_path) && file.info(intersect_genes_path)$size > 0) {
+      intersect_genes <- read.table(intersect_genes_path, header = FALSE)
+      intersect_count <- nrow(intersect_genes)
+    }
+    
+    # Add counts for this pair
+    counts <- rbind(
+      counts,
+      data.frame(
+        SubclassPair = paste(mouse_subclass, "vs", opossum_subclass),
+        Category = c("Unique", "Shared"),
+        Count = c(mouse_count + opossum_count, intersect_count)
+      )
+    )
+  }
+  
+  # Order the Category factor to ensure consistent order in the plot
+  counts$Category <- factor(counts$Category, levels = c("Shared", "Unique"))
+  
+  # Order SubclassPair to match the order in subclass_pairs
+  counts$SubclassPair <- factor(
+    counts$SubclassPair,
+    levels = sapply(subclass_pairs, function(pair) paste(pair[1], "vs", pair[2]))
+  )
+  
+  # Define custom colors for the fill
+  custom_colors <- c("Shared" = "#b3cde3", "Unique" = "#005b96")  # Light blue for shared, dark blue for unique
+  
+  # Plot the data
+  plot <- ggplot(counts, aes(x = SubclassPair, y = Count, fill = Category)) +
+    geom_bar(stat = "identity") +
+    scale_fill_manual(values = custom_colors) +
+    labs(title = paste("DE Genes in Mouse and Opossum Subclass Pairs (log2FC >", log2FC_threshold, ")"),
+         x = "Subclass Pair",
+         y = "Number of DE Genes",
+         fill = "Category") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  # Save the plot
+  plot_path <- paste0(base_path, "barplot_log2FC_", threshold_label, ".png")
+  ggsave(plot_path, plot, width = 10, height = 6)
+  
+  # Print the plot to console (optional)
+  print(plot)
+}
+
+```
+
+
+```{r}
+
+library(Seurat)
+library(ggplot2)
+library(dplyr)
+
+# Define a list of subclass pairs
+subclass_pairs <- list(
+  c("L2/3", "IT_A"),
+  c("L4", "IT_C"),
+  c("L5IT", "IT_B"),
+  c("L6IT", "IT_D"),
+  c("L5NP", "L5NP"),
+  c("L5PT", "L5PT"),
+  c("L6CT", "L6CT"),
+  c("L6b", "L6b"),
+  c("Pvalb", "Pvalb"),
+  c("Sst", "Sst"),
+  c("Vip", "Vip"),
+  c("Lamp5", "Lamp5"),
+  c("Frem1", "Frem1"), 
+  c("Astro", "Astro"),
+  c("Micro", "Micro"), 
+  c("OD", "OD"), 
+  c("OPC", "OPC"), 
+  c("Endo", "Endo")
+)
+
+# Log2FC thresholds
+log2FC_thresholds <- c(0.2, 0.5, 1.0, 1.5)
+
+# Output directory
+output_dir <- "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/subclass_markers/All/"
+dir.create(output_dir, showWarnings = FALSE)
+
+# Combine mouse and opossum objects
+Idents(obj.mouse) <- "subclass"
+Idents(obj.opossum) <- "subclass"
+combined_obj <- merge(obj.mouse, obj.opossum)
+Idents(combined_obj) <- "subclass"
+combined_obj <- PrepSCTFindMarkers(combined_obj)
+
+# Initialize a list to store DE gene counts for all subclass pairs and thresholds
+all_counts <- list()
+
+# Iterate over each subclass pair
+for (pair in subclass_pairs) {
+  mouse_subclass <- pair[1]
+  opossum_subclass <- pair[2]
+  
+  # Subset cells by subclass
+  mouse_cells <- WhichCells(obj.mouse, idents = mouse_subclass)
+  opossum_cells <- WhichCells(obj.opossum, idents = opossum_subclass)
+  
+  # Skip if no cells in either subclass
+  if (length(mouse_cells) == 0 || length(opossum_cells) == 0) next
+  
+  # Perform DE analysis with `only.pos = TRUE`
+  markers <- FindMarkers(
+    combined_obj,
+    ident.1 = mouse_cells,
+    ident.2 = opossum_cells,
+    logfc.threshold = 0,
+    min.pct = 0.1
+  )
+  
+  markers <- markers[rownames(markers) %in% intersect(rownames(obj.mouse), rownames(obj.opossum)),]
+  
+  # Loop over log2FC thresholds
+  for (log2FC_threshold in log2FC_thresholds) {
+    # Filter markers based on log2FC threshold and adjusted p-value
+    de_genes_count <- sum(markers$avg_log2FC > log2FC_threshold & markers$p_val_adj < 0.01)
+    
+    # Add count to dataframe
+    all_counts[[paste0(mouse_subclass, "_vs_", opossum_subclass, "_log2FC_", log2FC_threshold)]] <- data.frame(
+      SubclassPair = paste(mouse_subclass, "vs", opossum_subclass),
+      Log2FCThreshold = log2FC_threshold,
+      Count = de_genes_count
+    )
+  }
+}
+
+# Combine all counts into a single dataframe
+all_counts_df <- do.call(rbind, all_counts)
+
+# Plot data for each threshold separately
+for (log2FC_threshold in log2FC_thresholds) {
+  # Filter data for the current threshold
+  threshold_data <- all_counts_df %>% filter(Log2FCThreshold == log2FC_threshold)
+  
+  # Order SubclassPair to match the order in subclass_pairs
+  threshold_data$SubclassPair <- factor(
+    threshold_data$SubclassPair,
+    levels = sapply(subclass_pairs, function(pair) paste(pair[1], "vs", pair[2]))
+  )
+  
+  # Plot the data
+  plot <- ggplot(threshold_data, aes(x = SubclassPair, y = Count)) +
+    geom_bar(stat = "identity", fill = "#005b96") +  # Dark blue fill
+    labs(title = paste("DE Genes in Mouse and Opossum Subclass Pairs (log2FC >", log2FC_threshold, ")"),
+         x = "Subclass Pair",
+         y = "Number of DE Genes") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  # Save the plot
+  plot_path <- paste0(output_dir, "barplot_log2FC_", log2FC_threshold, ".png")
+  ggsave(plot_path, plot, width = 10, height = 6)
+  
+  # Print the plot to console (optional)
+  print(plot)
+}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

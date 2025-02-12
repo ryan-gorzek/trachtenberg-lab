@@ -36,6 +36,9 @@ obj.opossum <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/obj_
 obj.mouse <- NormalizePCA(obj.mouse, npcs = 100)
 obj.opossum <- NormalizePCA(obj.opossum, npcs = 100)
 
+ElbowPlot(obj.mouse, ndims = 100)
+ElbowPlot(obj.opossum, ndims = 100)
+
 ```
 
 
@@ -45,13 +48,10 @@ obj.mouse$subclass.plot <- obj.mouse$subclass
 obj.mouse$subclass.plot[obj.mouse$subclass %in% c("IT_A", "IT_B", "IT_C", "IT_D", "IT_E", 
                                                         "L2/3", "L4", "L5IT", "L6IT")] <- "IT"
 Idents(obj.mouse) <- "subclass.plot"
-obj.mouse <- BuildClusterTree(obj.mouse, assay = "SCT", dims = 1:30)
+obj.mouse <- BuildClusterTree(obj.mouse, assay = "SCT", dims = 1:25)
 tree.mouse <- Tool(object = obj.mouse, slot = "BuildClusterTree")
-# svg("E:/Opossum_Paper/Figure 1/Mouse_Subclass_Cladogram.svg")
+svg("E:/Opossum_Paper/Figure 1/Mouse_Subclass_Cladogram.svg")
 ape::plot.phylo(x = tree.mouse, show.node.label = FALSE, direction = "rightwards")
-# ggsave("E:/Opossum_Paper/Figure 1/Mouse_Subclass_Cladogram.png", plot = p, dpi = 300)
-# ggsave("E:/Opossum_Paper/Figure 1/Mouse_Subclass_Cladogram.svg", plot = p, dpi = 300)
-
 
 ```
 
@@ -62,9 +62,9 @@ obj.opossum$subclass.plot <- obj.opossum$subclass
 obj.opossum$subclass.plot[obj.opossum$subclass %in% c("IT_A", "IT_B", "IT_C", "IT_D", "IT_E", 
                                                         "L2/3", "L4", "L5IT", "L6IT")] <- "IT"
 Idents(obj.opossum) <- "subclass.plot"
-obj.opossum <- BuildClusterTree(obj.opossum, assay = "SCT", dims = 1:100)
+obj.opossum <- BuildClusterTree(obj.opossum, assay = "SCT", dims = 1:25)
 tree.opossum <- Tool(object = obj.opossum, slot = "BuildClusterTree")
-# svg("E:/Opossum_Paper/Figure 1/Opossum_Subclass_Cladogram.svg")
+svg("E:/Opossum_Paper/Figure 1/Opossum_Subclass_Cladogram.svg")
 ape::plot.phylo(x = tree.opossum, show.node.label = FALSE, direction = "rightwards")
 
 ```

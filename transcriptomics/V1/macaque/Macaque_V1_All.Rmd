@@ -1,0 +1,99 @@
+---
+title: "Opossum M1 Object"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(tidyverse)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+
+data.path <- "E:/Transcriptomics_V1/Macaque/all_cells/outs/filtered_feature_bc_matrix/"
+expression_matrix <- ReadMtx(
+                        mtx = paste0(data.path, "matrix.mtx.gz"), 
+                        features = paste0(data.path, "features.tsv.gz"),
+                        cells = paste0(data.path, "barcodes.tsv.gz"), 
+                        mtx.transpose = TRUE, 
+                        skip.cell = 1, 
+                        skip.feature = 1
+                      )
+
+obj.macaque <- CreateSeuratObject(counts = expression_matrix)
+obj.macaque$species <- "Macaque"
+
+metadata <- read.csv(paste0(data.path, "barcodes.csv"), header = TRUE)
+for (c in setdiff(colnames(metadata), "X")) {
+  obj.macaque[[c]] <- metadata[[c]]
+}
+
+```
+
+
+```{r}
+
+# initial clustering
+rm(expression_matrix)
+obj.macaque <- ClusterSCT(obj.macaque, c(1))
+obj.macaque$sample <- obj.macaque$batch
+obj.macaque$predicted_doublets <- FALSE
+PlotClusters(obj.macaque)
+
+
+```
+
+
+```{r}
+
+DimPlot(obj.macaque, reduction = "umap", group.by = "subclass_1", label = TRUE, raster = FALSE) + NoLegend() + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+Idents(obj.macaque) <- "subclass_1"
+
+cells.glutamatergic <- WhichCells(obj.macaque, ident = c("IT even", "IT L23 biased", "IT L56 biased", "L5 ET", "IT OSTN", "L5 IT", "L2/3 IT", "L6 IT", "L2/3 NPY", "L6b", "L5/6 NP", "L6 IT Car3", "L6 CT"))
+obj.macaque$class <- ifelse(colnames(obj.macaque) %in% cells.glutamatergic, "glutamatergic", "ambiguous")
+
+cells.gabaergic <- WhichCells(obj.macaque, ident = c("PVALB", "ADARB2_PAX6", "VIP", "LAMP5", "SST"))
+obj.macaque$class[cells.gabaergic] <- "gabaergic"
+
+cells.nonneuronal <- WhichCells(obj.macaque, ident = c("Astrocyte", "OPC", "Microglia", "Pericyte", "Oligo"))
+obj.macaque$class[cells.nonneuronal] <- "nonneuronal"
+
+```
+
+
+```{r}
+
+DimPlot(obj.macaque, reduction = "umap", group.by = "class", label = FALSE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.macaque$all_SCT_snn_res.1 <- obj.macaque$SCT_snn_res.1
+Idents(obj.macaque) <- "class"
+
+obj.macaque.glutamatergic <- subset(obj.macaque, idents = "glutamatergic")
+saveRDS(obj.macaque.glutamatergic, "E:/Transcriptomics_V1/Macaque/seurat/macaque_v1_glutamatergic.rds")
+
+obj.macaque.gabaergic <- subset(obj.macaque, idents = "gabaergic")
+saveRDS(obj.macaque.gabaergic, "E:/Transcriptomics_V1/Macaque/seurat/macaque_v1_gabaergic.rds")
+
+obj.macaque.nonneuronal <- subset(obj.macaque, idents = "nonneuronal")
+saveRDS(obj.macaque.nonneuronal, "E:/Transcriptomics_V1/Macaque/seurat/macaque_v1_nonneuronal.rds")
+
+```
+

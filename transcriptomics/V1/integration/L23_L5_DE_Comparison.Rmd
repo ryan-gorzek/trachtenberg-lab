@@ -1,0 +1,208 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(SeuratWrappers)
+library(monocle3)
+library(pheatmap)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+colors_list <- GetColors()
+
+obj.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
+obj.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.glutamatergic) <- "subclass"
+obj.opossum.IT <- subset(obj.opossum.glutamatergic, idents = c("IT_A", "IT_B", "IT_C", "IT_D"))
+obj.opossum.IT <- NormalizePCA(obj.opossum.IT)
+
+Idents(obj.mouse.glutamatergic) <- "subclass"
+obj.mouse.IT <- subset(obj.mouse.glutamatergic, idents = c("L2/3", "L4", "L5IT", "L6IT"))
+obj.mouse.IT <- NormalizePCA(obj.mouse.IT)
+
+```
+
+
+```{r, fig.height=6, fig.width=5}
+
+# Compute DE genes (Mouse)
+de_genes_L2_L5 <- FindMarkers(
+  object = obj.mouse.IT,
+  ident.1 = "L2/3",
+  ident.2 = "L5IT",
+  logfc.threshold = 0.25,  # Adjust as needed
+  min.pct = 0.1,  # Filter genes expressed in at least 10% of cells
+  test.use = "wilcox"  # Wilcoxon test
+)
+
+# Compute DE genes (Opossum)
+de_genes_A_C <- FindMarkers(
+  object = obj.opossum.IT,
+  ident.1 = "IT_A",
+  ident.2 = "IT_C",
+  logfc.threshold = 0.25,  # Adjust as needed
+  min.pct = 0.1,  # Filter genes expressed in at least 10% of cells
+  test.use = "wilcox"  # Wilcoxon test
+)
+
+library(EnhancedVolcano)
+
+EnhancedVolcano(de_genes_L2_L5, lab = rownames(de_genes_L2_L5), x = 'avg_log2FC', y = 'p_val_adj')
+EnhancedVolcano(de_genes_A_C, lab = rownames(de_genes_A_C), x = 'avg_log2FC', y = 'p_val_adj')
+
+```
+
+
+```{r}
+
+L2_L5 <- rownames(de_genes_L2_L5[abs(de_genes_L2_L5$avg_log2FC) > 0.75 & de_genes_L2_L5$pct.1 > 0.25 & de_genes_L2_L5$p_val_adj < 0.05, ])
+A_C <- rownames(de_genes_A_C[abs(de_genes_A_C$avg_log2FC) > 0.75 & de_genes_A_C$pct.1 > 0.25 & de_genes_A_C$p_val_adj < 0.05, ])
+
+```
+
+
+```{r}
+
+length(setdiff(L2_L5, A_C)) / length(L2_L5)
+L2_L5.diff <- setdiff(L2_L5, A_C)
+A_C.diff <- setdiff(A_C, L2_L5)
+
+shared.genes <- intersect(L2_L5, A_C)
+
+```
+
+
+```{r}
+
+all_genes <- rownames(obj.mouse.IT)[rownames(obj.mouse.IT) %in% rownames(obj.opossum.IT)]
+
+L2_L5_genes_df <- data.frame(gene_id = all_genes, 
+                             candidate = ifelse(all_genes %in% L2_L5.diff, 1, 0))
+
+# Perform GO enrichment for L2/3 upregulated genes
+go_L2_L5_results <- go_enrich(
+  genes = as.data.frame(L2_L5_genes_df),
+  organismDb = "Mus.musculus",  # Ensures correct annotation source
+  silent = TRUE
+)
+
+all_genes <- rownames(obj.opossum.IT)[rownames(obj.opossum.IT) %in% rownames(obj.mouse.IT)]
+
+A_C_genes_df <- data.frame(gene_id = all_genes, 
+                           candidate = ifelse(all_genes %in% A_C.diff, 1, 0))
+
+# Perform GO enrichment for IT_A upregulated genes
+go_A_C_results <- go_enrich(
+  genes = as.data.frame(A_C_genes_df),
+  organismDb = "Mus.musculus",  # Ensures correct annotation source
+  silent = TRUE
+)
+
+all_genes <- rownames(obj.opossum.IT)[rownames(obj.opossum.IT) %in% rownames(obj.mouse.IT)]
+
+shared_genes_df <- data.frame(gene_id = all_genes, 
+                              candidate = ifelse(all_genes %in% shared.genes, 1, 0))
+
+# Perform GO enrichment for IT_A upregulated genes
+go_shared_results <- go_enrich(
+  genes = as.data.frame(shared_genes_df),
+  organismDb = "Mus.musculus",  # Ensures correct annotation source
+  silent = TRUE
+)
+
+```
+
+
+```{r}
+
+View(go_L2_L5_results$results[go_L2_L5_results$results$ontology == "biological_process" & go_L2_L5_results$results$FWER_overrep < 0.05, ])
+View(go_A_C_results$results[go_A_C_results$results$ontology == "biological_process" & go_A_C_results$results$FWER_overrep < 0.05, ])
+View(go_shared_results$results[go_shared_results$results$ontology == "biological_process" & go_shared_results$results$FWER_overrep < 0.05, ])
+
+```
+
+
+```{r}
+
+go_L2_L5_genes <- data.frame()
+ontologies <- go_L2_L5_results$results$ontology[go_L2_L5_results$results$ontology == "biological_process" & go_L2_L5_results$results$FWER_overrep < 0.05]
+node_ids <- go_L2_L5_results$results$node_id[go_L2_L5_results$results$ontology == "biological_process" & go_L2_L5_results$results$FWER_overrep < 0.05]
+node_names <- go_L2_L5_results$results$node_name[go_L2_L5_results$results$ontology == "biological_process" & go_L2_L5_results$results$FWER_overrep < 0.05]
+for (i in 1:length(node_ids)) {
+  ontology <- ontologies[i]
+  id <- node_ids[i]
+  name <- node_names[i]
+  FWER <- go_L2_L5_results$results$FWER_overrep[i]
+  genes <- get_anno_genes(id, database = "Mus.musculus")
+  genes.of.interest <- genes$gene[genes$gene %in% L2_L5.diff]
+  for (g in genes.of.interest) {
+    go_L2_L5_genes <- rbind(go_L2_L5_genes, data.frame(ontology = ontology, id = id, name = name, gene = g, FWER = FWER))
+  }
+}
+
+go_A_C_genes <- data.frame()
+ontologies <- go_A_C_results$results$ontology[go_A_C_results$results$ontology == "biological_process" & go_A_C_results$results$FWER_overrep < 0.05]
+node_ids <- go_A_C_results$results$node_id[go_A_C_results$results$ontology == "biological_process" & go_A_C_results$results$FWER_overrep < 0.05]
+node_names <- go_A_C_results$results$node_name[go_A_C_results$results$ontology == "biological_process" & go_A_C_results$results$FWER_overrep < 0.05]
+for (i in 1:length(node_ids)) {
+  ontology <- ontologies[i]
+  id <- node_ids[i]
+  name <- node_names[i]
+  FWER <- go_A_C_results$results$FWER_overrep[i]
+  genes <- get_anno_genes(id, database = "Mus.musculus")
+  genes.of.interest <- genes$gene[genes$gene %in% A_C.diff]
+  for (g in genes.of.interest) {
+    go_A_C_genes <- rbind(go_A_C_genes, data.frame(ontology = ontology, id = id, name = name, gene = g, FWER = FWER))
+  }
+}
+
+```
+
+
+```{r}
+
+View(go_L2_L5_genes)
+View(go_A_C_genes)
+
+```
+
+
+```{r}
+
+setdiff(go_L2_L5_results$results$node_name[go_L2_L5_results$results$ontology == "biological_process" & go_L2_L5_results$results$FWER_overrep < 0.05], 
+        go_A_C_results$results$node_name[go_A_C_results$results$ontology == "biological_process" & go_A_C_results$results$FWER_overrep < 0.05])
+
+```
+
+
+
+
+
+
+
+

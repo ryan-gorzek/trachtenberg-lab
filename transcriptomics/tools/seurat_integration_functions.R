@@ -121,6 +121,44 @@ MapObjects <- function(seurat_obj1, seurat_obj2, idents, assay = "SCT") {
   return(objs.mapped)
 }
 
+MapObject <- function(seurat_obj1, seurat_obj2, idents, assay = "SCT", do.norm = TRUE) {
+  
+  objs <- list(seurat_obj1, seurat_obj2)
+  # Perform SCTransform v2 on each object
+  if (assay == "integrated") {
+    objs <- lapply(objs, function(x) {
+      # SCTransform(x, vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE) %>%
+      x <- RunPCA(x, npcs = 30, assay = "integrated", verbose = FALSE) %>%
+        RunUMAP(reduction = "pca", dims = 1:30, assay = "integrated", return.model = TRUE, verbose = FALSE)
+      return(x)
+    })
+  } else if (assay == "SCT") {
+    objs <- lapply(objs, function(x) {
+      x <- SCTransform(x, vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE) %>%
+        RunPCA(npcs = 30, verbose = FALSE) %>%
+        RunUMAP(reduction = "pca", dims = 1:30, return.model = TRUE, verbose = FALSE)
+      return(x)
+    })
+  } else if (do.norm == FALSE) { objs <- objs }
+  
+  refdata <- list()
+  for (id in idents) { refdata[[id]] <- id }
+    
+  # Transfer data from reference to query
+  reference <- objs[[1]]
+  query <- objs[[2]]
+  anchors.query <- FindTransferAnchors(reference = reference, query = query, reference.reduction = "pca", dims = 1:30)
+  # if (nrow(anchors.query@anchors) < 50) { k.weight = 10 } # floor(nrow(anchors.query@anchors) * 0.25)
+  # else { k.weight = 50 }
+  obj.mapped <- MapQuery(anchorset = anchors.query, 
+                         reference = reference, query = query, 
+                         refdata = refdata, 
+                         reference.reduction = "pca", 
+                         reduction.model = "umap")
+    
+  return(obj.mapped)
+}
+
 PlotMapping <- function(objs, idents = c("subclass", "type"), ident.order = NULL, title.key = "species") {
   
   for (obj.idx in c(1, 2)) {
@@ -147,8 +185,10 @@ PlotMapping <- function(objs, idents = c("subclass", "type"), ident.order = NULL
   
 }
 
-IntegratedClusterOverlapHeatmap <- function(integrated.obj, integvar.col, ident.col, cluster.col, primary_order,
-                                     col.low = "white", col.high = "red", x.lab.rot = TRUE) {
+IntegratedClusterOverlapHeatmap <- function(integrated.obj, integvar.col, ident.col, cluster.col, 
+                                            primary_order_row, primary_order_col, 
+                                            col.low = "white", col.high = "red", 
+                                            x.lab.rot = TRUE, show_text = TRUE) {
   
   # Extract the relevant columns
   metadata <- integrated.obj@meta.data %>% select(all_of(c(integvar.col, cluster.col, ident.col)))
@@ -162,7 +202,7 @@ IntegratedClusterOverlapHeatmap <- function(integrated.obj, integvar.col, ident.
   # Initialize an empty list to store overlap matrices for each pair of integvar levels
   overlap_matrices <- list()
   
-  # Sorting function
+  # Sorting function with separate primary orders for rows and columns
   sort_ident <- function(ident, primary_order) {
     primary <- sapply(ident, function(x) str_extract(x, paste(primary_order, collapse = "|")))
     suffix <- sapply(ident, function(x) str_extract(x, "(?<=_)[A-Za-z0-9]+$"))
@@ -188,9 +228,9 @@ IntegratedClusterOverlapHeatmap <- function(integrated.obj, integvar.col, ident.
       ident_levels1 <- unique(data_integvar1$ident)
       ident_levels2 <- unique(data_integvar2$ident)
       
-      # Sort ident levels
-      sorted_ident_levels1 <- sort_ident(ident_levels1, primary_order)
-      sorted_ident_levels2 <- sort_ident(ident_levels2, primary_order)
+      # Sort ident levels separately for rows and columns
+      sorted_ident_levels1 <- sort_ident(ident_levels1, primary_order_row)
+      sorted_ident_levels2 <- sort_ident(ident_levels2, primary_order_col)
       
       # Get unique clusters
       clusters <- unique(metadata$cluster)
@@ -230,7 +270,6 @@ IntegratedClusterOverlapHeatmap <- function(integrated.obj, integvar.col, ident.
     p <- ggplot(melted, aes(y = row, x = col)) + 
       geom_tile(aes(fill = Percentage)) + 
       scale_fill_gradient(low = col.low, high = col.high, limits = c(0, 100)) + 
-      geom_text(aes(label = sprintf("%.0f", Percentage)), size = 5) +
       theme_bw() + 
       xlab(integvar_levels[2]) + 
       ylab(integvar_levels[1]) + 
@@ -240,6 +279,11 @@ IntegratedClusterOverlapHeatmap <- function(integrated.obj, integvar.col, ident.
             axis.title.y = element_text(size=16)) +
       coord_fixed()
     
+    # Add text labels if show_text is TRUE
+    if (show_text) {
+      p <- p + geom_text(aes(label = sprintf("%.0f", Percentage)), size = 5)
+    }
+    
     # Ensure correct rotation
     if (x.lab.rot) {
       p <- p + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
@@ -247,9 +291,10 @@ IntegratedClusterOverlapHeatmap <- function(integrated.obj, integvar.col, ident.
       p <- p + theme(axis.text.x = element_text(angle = 0, vjust = 0.5, hjust=0.5))
     }
     
-    # print(p + ggtitle(paste("Overlap Heatmap:", name, ident.col, "at", cluster.col)))
+    # Add title
     p <- p + ggtitle(paste(name, ident.col, "at", cluster.col))
   }
+  
   return(p)
 }
 
@@ -483,6 +528,77 @@ PlotIdentDEIntersection <- function(list1, list2, all_genes1, all_genes2, sample
       axis.text.x = element_text(size = 12),  # Increase x-axis tick label size
       axis.text.y = element_text(size = 12)   # Increase y-axis tick label size
     ) # Make cells square
+}
+
+WriteSubclassDEIntersectionGenes <- function(list1, list2, all_genes1, all_genes2, sample.name1, sample.name2, subclass.order, log2FC_thresholds, output_path, percentage = FALSE) {
+  # Find intersecting genes
+  intersecting_genes <- intersect(all_genes1, all_genes2)
+  
+   # Filter dataframes based on thresholds and subclass order
+  df1 <- list1$subclass %>%
+    filter(pct.1 >= 0.2, p_val_adj < 0.05, gene %in% intersecting_genes) %>%
+    filter(cluster %in% subclass.order)
+  df1$cluster <- factor(df1$cluster, levels = subclass.order)
+  
+  df2 <- list2$subclass %>%
+    filter(pct.1 >= 0.2, p_val_adj < 0.05, gene %in% intersecting_genes) %>%
+    filter(cluster %in% subclass.order)
+  df2$cluster <- factor(df2$cluster, levels = subclass.order)
+  
+  # Create grid of subclass combinations
+  cluster_combinations <- expand.grid(
+    Cluster1 = unique(df1$cluster), 
+    Cluster2 = unique(df2$cluster)
+  )
+  
+  # Iterate over log2FC thresholds
+  for (log2FC_threshold in log2FC_thresholds) {
+    # Filter by log2FC threshold
+    df1_filtered <- df1 %>% filter(avg_log2FC > log2FC_threshold)
+    df2_filtered <- df2 %>% filter(avg_log2FC > log2FC_threshold)
+    
+    # Initialize an empty dataframe for intersection counts or percentages
+    intersection_counts <- data.frame()
+    
+    # Process each cluster pair
+    for (i in 1:nrow(cluster_combinations)) {
+      cluster1 <- cluster_combinations$Cluster1[i]
+      cluster2 <- cluster_combinations$Cluster2[i]
+      
+      # Filter for specific cluster pair
+      df1_cluster <- df1_filtered %>% filter(cluster == cluster1)
+      df2_cluster <- df2_filtered %>% filter(cluster == cluster2)
+      
+      # Find intersecting and unique DE genes
+      intersecting_de_genes <- intersect(df1_cluster$gene, df2_cluster$gene)
+      de_genes_1 <- setdiff(df1_cluster$gene, intersecting_de_genes)
+      de_genes_2 <- setdiff(df2_cluster$gene, intersecting_de_genes)
+      
+      # Count intersections or calculate percentages
+      count <- length(intersecting_de_genes)
+      if (percentage) {
+        total_genes <- length(union(df1_cluster$gene, df2_cluster$gene))
+        percent <- (count / total_genes) * 100
+        intersection_counts <- rbind(intersection_counts, data.frame(Cluster1 = cluster1, Cluster2 = cluster2, Value = percent))
+      } else {
+        intersection_counts <- rbind(intersection_counts, data.frame(Cluster1 = cluster1, Cluster2 = cluster2, Value = count))
+      }
+      
+      # Format log2FC threshold for filename
+      threshold_label <- formatC(log2FC_threshold, format = "e", digits = 1)
+      threshold_label <- gsub("\\.", "e", threshold_label)
+      
+      # Write output files
+      intersect_file <- paste0(output_path, "/", gsub("/", "", cluster1), "_vs_", gsub("/", "", cluster2), "_intersecting_genes_", threshold_label, ".txt")
+      write.table(intersecting_de_genes, file = intersect_file, quote = FALSE, row.names = FALSE, col.names = FALSE)
+      
+      de_file_1 <- paste0(output_path, "/", gsub("/", "", cluster1), "_vs_", gsub("/", "", cluster2), "_", tolower(sample.name1),"_genes_", threshold_label, ".txt")
+      write.table(de_genes_1, file = de_file_1, quote = FALSE, row.names = FALSE, col.names = FALSE)
+      
+      de_file_2 <- paste0(output_path, "/", gsub("/", "", cluster1), "_vs_", gsub("/", "", cluster2), "_", tolower(sample.name2),"_genes_", threshold_label, ".txt")
+      write.table(de_genes_2, file = de_file_2, quote = FALSE, row.names = FALSE, col.names = FALSE)
+    }
+  }
 }
 
 PlotSubclassDEIntersectionHeatmap <- function(list1, list2, all_genes1, all_genes2, sample.name1, sample.name2, subclass.order, log2FC_threshold, output_path, percentage = FALSE) {
@@ -1067,6 +1183,125 @@ PlotSubclassDEIntersectionOverlapScatter <- function(list1, list2, all_genes1, a
   
   # Return the plots as a list
   list(plot1 = plot1, plot2 = plot2)
+}
+
+PlotSubclassGeneCountCDFDiff <- function(de_df_1, de_df_2, subclass_pairs, subclass_colors, min.pct = 0.1, max.pval = 0.05) {
+  # Initialize an empty data frame to store cumulative counts
+  cdf_data <- data.frame()
+  
+  for (pair in subclass_pairs) {
+    sbcl_1 <- pair[1]
+    sbcl_2 <- pair[2]
+    
+    # Filter dataframes for the specific subclass
+    df_filtered_1 <- de_df_1$subclass %>% filter(cluster == sbcl_1, pct.1 >= min.pct, p_val_adj < max.pval)
+    df_filtered_2 <- de_df_2$subclass %>% filter(cluster == sbcl_2, pct.1 >= min.pct, p_val_adj < max.pval)
+    
+    # Calculate the max avg_log2FC for each group
+    max_log2FC_1 <- max(df_filtered_1$avg_log2FC, na.rm = TRUE)
+    max_log2FC_2 <- max(df_filtered_2$avg_log2FC, na.rm = TRUE)
+    
+    # Create a common log2FC grid
+    log2FC_grid <- seq(0.2, min(max(max_log2FC_1, max_log2FC_2), 2), length.out = 50)
+    
+    count_1 <- sapply(log2FC_grid, function(l) sum(df_filtered_1$avg_log2FC > l, na.rm = TRUE))
+    count_2 <- sapply(log2FC_grid, function(l) sum(df_filtered_2$avg_log2FC > l, na.rm = TRUE))
+    
+    # Calculate the difference in the number of DE genes
+    diff_counts <- count_1 - count_2
+    
+    # Create data frame
+    diff_gene_counts <- data.frame(
+      avg_log2FC = log2FC_grid,
+      count_difference = diff_counts,
+      Comparison = paste(sbcl_1, "vs", sbcl_2)
+    )
+    
+    # Combine with existing data
+    cdf_data <- rbind(cdf_data, diff_gene_counts)
+  }
+  
+  # Plot cumulative distribution function
+  ggplot(cdf_data, aes(x = avg_log2FC, y = count_difference, color = Comparison, group = Comparison)) +
+    geom_line(size = 1) +
+    scale_color_manual(values = subclass_colors) +
+    labs(title = paste0("Comparison of DE Gene Counts"),
+         x = "avg_log2FC",
+         y = "Difference in Number of DE Genes",
+         color = "Subclass Comparison") +
+    theme_minimal() +
+    scale_x_continuous(limits = c(0.2, 2)) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "black") +
+    theme(
+      axis.title.x = element_text(size = 14),
+      axis.title.y = element_text(size = 14),
+      axis.text.x = element_text(size = 12),
+      axis.text.y = element_text(size = 12)
+    )
+}
+
+PlotPairwiseSubclassGeneCountCDFDiff <- function(de_results_list_1, de_results_list_2, subclass_pairs, subclass_colors, min.pct = 0.1, max.pval = 0.05) {
+  # Initialize an empty data frame to store cumulative counts
+  cdf_data <- data.frame()
+  
+  for (pair in subclass_pairs) {
+    sbcl_1_1 <- pair[[1]][1]
+    sbcl_1_2 <- pair[[1]][2]
+    sbcl_2_1 <- pair[[2]][1]
+    sbcl_2_2 <- pair[[2]][2]
+    
+    de_results_1 <- de_results_list_1[[paste(sbcl_1_1, sbcl_1_2, sep = "_vs_")]]
+    de_results_2 <- de_results_list_2[[paste(sbcl_2_1, sbcl_2_2, sep = "_vs_")]]
+    
+    de_results_1 <- de_results_1[de_results_1$pct.1 > min.pct & de_results_1$p_val_adj < max.pval, ]
+    de_results_2 <- de_results_2[de_results_2$pct.1 > min.pct & de_results_2$p_val_adj < max.pval, ]
+    
+    # Separate DE genes for each subclass
+    df_filtered_1 <- de_results_1[de_results_1$avg_log2FC > 0, ]
+    df_filtered_2 <- de_results_2[de_results_2$avg_log2FC > 0, ]
+    
+    # Calculate the max avg_log2FC for each group
+    max_log2FC_1 <- max(df_filtered_1$avg_log2FC, na.rm = TRUE)
+    max_log2FC_2 <- max(df_filtered_2$avg_log2FC, na.rm = TRUE)
+    
+    # Create a common log2FC grid
+    log2FC_grid <- seq(0.2, min(max(max_log2FC_1, max_log2FC_2), 2), length.out = 50)
+    
+    count_1 <- sapply(log2FC_grid, function(l) sum(df_filtered_1$avg_log2FC > l, na.rm = TRUE))
+    count_2 <- sapply(log2FC_grid, function(l) sum(df_filtered_2$avg_log2FC > l, na.rm = TRUE))
+    
+    # Calculate the difference in the number of DE genes between species
+    diff_counts <- count_1 - count_2
+    
+    # Create data frame
+    diff_gene_counts <- data.frame(
+      avg_log2FC = log2FC_grid,
+      count_difference = diff_counts,
+      Comparison = paste(sbcl_1_1, "vs", sbcl_1_2, "minus", sbcl_2_1, "vs", sbcl_2_2)
+    )
+    
+    # Combine with existing data
+    cdf_data <- rbind(cdf_data, diff_gene_counts)
+  }
+  
+  # Plot cumulative distribution function
+  ggplot(cdf_data, aes(x = avg_log2FC, y = count_difference, color = Comparison, group = Comparison)) +
+    geom_line(size = 1) +
+    scale_color_manual(values = subclass_colors) +
+    labs(title = paste0("Pairwise Comparison of DE Gene Counts between Species"),
+         x = "avg_log2FC",
+         y = "Difference in Number of DE Genes",
+         color = "Subclass Comparison") +
+    theme_minimal() +
+    scale_x_continuous(limits = c(0.5, 2)) +
+    scale_y_continuous(limits = c(-150, 150)) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "black") +
+    theme(
+      axis.title.x = element_text(size = 14),
+      axis.title.y = element_text(size = 14),
+      axis.text.x = element_text(size = 12),
+      axis.text.y = element_text(size = 12)
+    )
 }
 
 PlotIdentCrossConfusionMatrices <- function(obj1, obj2, sample.name1, sample.name2, assay = "SCT", subclass.labels, ident.labels, n_iters = 10, all.genes = FALSE, ident.genes = FALSE, upsample = FALSE, downsample = FALSE) {
@@ -1920,4 +2155,57 @@ PlotCCAFeatureLoadings <- function(seurat_obj1, seurat_obj2) {
       y = "CC2"
     ) +
     theme_minimal()
+}
+
+ElbowPlotComparison <- function(obj.mouse, obj.opossum, num.pcs = 30, colors = c("blue", "red")) {
+  
+  # Compute variance explained for mouse
+  stdev.mouse <- obj.mouse@reductions$pca@stdev
+  var.explained.mouse <- (stdev.mouse^2) / sum(stdev.mouse^2) * 100
+  cum.var.mouse <- cumsum(var.explained.mouse)  # Cumulative VE
+  df.mouse <- data.frame(PC = seq_along(var.explained.mouse), Variance = var.explained.mouse, 
+                         CumulativeVariance = cum.var.mouse, Species = "Mouse")
+  
+  # Compute variance explained for opossum
+  stdev.opossum <- obj.opossum@reductions$pca@stdev
+  var.explained.opossum <- (stdev.opossum^2) / sum(stdev.opossum^2) * 100
+  cum.var.opossum <- cumsum(var.explained.opossum)  # Cumulative VE
+  df.opossum <- data.frame(PC = seq_along(var.explained.opossum), Variance = var.explained.opossum, 
+                           CumulativeVariance = cum.var.opossum, Species = "Opossum")
+  
+  # Combine data
+  df <- rbind(df.mouse, df.opossum)
+  
+  # Limit PCs for plotting
+  df <- df[df$PC <= num.pcs, ]
+  
+  # Define a scaling factor to align the right y-axis (cumulative VE) with the left y-axis
+  max_var <- max(df$Variance)  # Max single-PC variance explained
+  max_cum_var <- max(df$CumulativeVariance)  # Max cumulative variance explained
+  scale_factor <- max_var / max_cum_var  # Scale factor to align axes
+  
+  # Create the elbow plot with dual y-axes
+  p <- ggplot(df, aes(x = PC, group = Species)) +
+    # Left y-axis: Variance explained per PC (solid line)
+    geom_line(aes(y = Variance, color = Species), size = 1) +  
+    geom_point(aes(y = Variance, color = Species), size = 2) +
+    
+    # Right y-axis: Cumulative variance explained (dashed line + dots)
+    geom_line(aes(y = CumulativeVariance * scale_factor, color = Species), linetype = "dashed", size = 1) +
+    geom_point(aes(y = CumulativeVariance * scale_factor, color = Species), size = 2, shape = 21, fill = "white") +
+    
+    # Custom color mapping
+    scale_color_manual(values = colors) +
+    
+    # Labels and theme
+    labs(title = "Elbow Plot: Variance Explained by PCs",
+         x = "Principal Component",
+         y = "Percentage of Variance Explained") +
+    
+    # Secondary y-axis for cumulative VE (rescaled)
+    scale_y_continuous(sec.axis = sec_axis(~ . / scale_factor, name = "Cumulative Variance Explained (%)")) +
+    
+    theme_minimal(base_size = 14)
+  
+  print(p)
 }

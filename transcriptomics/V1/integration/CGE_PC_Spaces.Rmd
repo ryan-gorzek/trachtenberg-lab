@@ -1,0 +1,117 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(SeuratWrappers)
+library(monocle3)
+library(pheatmap)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.opossum.gabaergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_gabaergic_processed.rds")
+obj.mouse.gabaergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_gabaergic_processed.rds")
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.gabaergic) <- "subclass"
+obj.opossum.CGE <- subset(obj.opossum.gabaergic, idents = c("Vip", "Frem1", "Lamp5"))
+obj.opossum.CGE <- NormalizePCA(obj.opossum.CGE)
+
+Idents(obj.mouse.gabaergic) <- "subclass"
+obj.mouse.CGE <- subset(obj.mouse.gabaergic, idents = c("Vip", "Frem1", "Lamp5", "Stac"))
+obj.mouse.CGE <- NormalizePCA(obj.mouse.CGE)
+
+```
+
+
+```{r}
+
+obj.opossum.CGE.SS <- SubsampleObject(obj.opossum.CGE, "subclass", min(table(obj.opossum.CGE$subclass)))
+obj.opossum.CGE.SS <- NormalizePCA(obj.opossum.CGE.SS)
+obj.opossum.CGE.SSP <- PCAProject(obj.opossum.CGE, obj.opossum.CGE.SS)
+obj.mouse.CGE.SS <- SubsampleObject(obj.mouse.CGE, "subclass", min(table(obj.mouse.CGE$subclass)))
+obj.mouse.CGE.SS <- NormalizePCA(obj.mouse.CGE.SS)
+obj.mouse.CGE.SSP <- PCAProject(obj.mouse.CGE, obj.mouse.CGE.SS)
+
+opossum.SS.VFs <- VariableFeatures(obj.opossum.CGE.SS)
+mouse.SS.VFs <- VariableFeatures(obj.mouse.CGE.SS)
+shared.SS.VFs <- intersect(opossum.SS.VFs, mouse.SS.VFs)
+obj.opossum.CGE.SS.SVF <- NormalizePCA(obj.opossum.CGE.SS, features = shared.SS.VFs)
+obj.mouse.CGE.SS.SVF <- NormalizePCA(obj.mouse.CGE.SS, features = shared.SS.VFs)
+obj.mouse.CGE.SSP.SVF <- PCAProject(obj.mouse.CGE, obj.mouse.CGE.SS.SVF)
+obj.opossum.CGE.SSP.SVF <- PCAProject(obj.opossum.CGE, obj.mouse.CGE.SS.SVF)
+
+```
+
+
+```{r}
+
+ElbowPlotComparison(obj.mouse.CGE, obj.opossum.CGE, num.pcs = 30, colors = c('#AAAAAA', '#C692B8'))
+
+```
+
+
+```{r}
+
+# Mouse (Original Space)
+pc_data <- as.data.frame(Embeddings(obj.mouse.CGE, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+pc_data$subclass <- obj.mouse.CGE@meta.data$subclass  # Add subclass metadata
+write.csv(pc_data, "E:/Transcriptomics_V1/Integration/PCs/CGE/mouse_pc_data_with_subclass.csv", row.names = FALSE)
+
+# Mouse (Subsampled Space)
+pc_data <- as.data.frame(Embeddings(obj.mouse.CGE.SSP, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+pc_data$subclass <- obj.mouse.CGE.SSP@meta.data$subclass  # Add subclass metadata
+write.csv(pc_data, "E:/Transcriptomics_V1/Integration/PCs/CGE/mouse_pc_data_subsample_with_subclass.csv", row.names = FALSE)
+
+# Mouse (Shared & Subsampled Space)
+pc_data <- as.data.frame(Embeddings(obj.mouse.CGE.SSP.SVF, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+pc_data$subclass <- obj.mouse.CGE.SSP.SVF@meta.data$subclass  # Add subclass metadata
+pc_data$species <- "Mouse"
+write.csv(pc_data, "E:/Transcriptomics_V1/Integration/PCs/CGE/mouse_pc_data_shared_subsample_with_subclass.csv", row.names = FALSE)
+
+# Opossum (Original Space)
+pc_data <- as.data.frame(Embeddings(obj.opossum.CGE, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+pc_data$subclass <- obj.opossum.CGE@meta.data$subclass  # Add subclass metadata
+write.csv(pc_data, "E:/Transcriptomics_V1/Integration/PCs/CGE/opossum_pc_data_with_subclass.csv", row.names = FALSE)
+
+# Opossum (Subsampled Space without Projection)
+pc_data <- as.data.frame(Embeddings(obj.opossum.CGE.SS, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+pc_data$subclass <- obj.opossum.CGE.SS@meta.data$subclass  # Add subclass metadata
+write.csv(pc_data, "E:/Transcriptomics_V1/Integration/PCs/CGE/opossum_pc_data_subsample_noproject_with_subclass.csv", row.names = FALSE)
+
+# Opossum (Subsampled Space)
+pc_data <- as.data.frame(Embeddings(obj.opossum.CGE.SSP, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+pc_data$subclass <- obj.opossum.CGE.SSP@meta.data$subclass  # Add subclass metadata
+write.csv(pc_data, "E:/Transcriptomics_V1/Integration/PCs/CGE/opossum_pc_data_subsample_with_subclass.csv", row.names = FALSE)
+
+# Opossum (Shared & Subsampled Space)
+pc_data <- as.data.frame(Embeddings(obj.opossum.CGE.SSP.SVF, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+pc_data$subclass <- obj.opossum.CGE.SSP.SVF@meta.data$subclass  # Add subclass metadata
+pc_data$species <- "Opossum"
+write.csv(pc_data, "E:/Transcriptomics_V1/Integration/PCs/CGE/opossum_pc_data_shared_subsample_with_subclass.csv", row.names = FALSE)
+
+```
+
