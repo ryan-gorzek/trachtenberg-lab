@@ -1,4 +1,4 @@
 .ipynb_checkpoints
 _gsdata_
-.asv
-.html
+*.asv
+*.html
