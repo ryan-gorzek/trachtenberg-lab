@@ -62,13 +62,34 @@ print(wrap_plots(plot_list, ncol=3))
 
 ```{r, fig.height=5, fig.width=10}
 
+obj.mouse.IT$subclass <- factor(obj.mouse.IT$subclass, levels = c("L2/3", "L4", "L5IT", "L6IT"))
+
+ModuleRadarPlot(
+        obj.mouse.IT,
+        group.by = 'subclass',
+        barcodes = obj.mouse.IT@meta.data %>% rownames(),
+        axis.label.size=4,
+        grid.label.size=4
+                )
+
+# ggsave("E:/Opossum_Paper/Figure 2/WGCNA_IT_ModuleRadar_Mouse.svg", plot = p)
+
+```
+
+
+```{r, fig.height=5, fig.width=10}
+
+obj.opossum.IT.Proj$subclass <- factor(obj.opossum.IT.Proj$subclass, levels = c("IT_A", "IT_B", "IT_C", "IT_D"))
+
 ModuleRadarPlot(
         obj.opossum.IT.Proj,
-        group.by = 'subclass',
+        group.by = "subclass",
         barcodes = obj.opossum.IT.Proj@meta.data %>% rownames(),
         axis.label.size=4,
         grid.label.size=4
                 )
+
+# ggsave("E:/Opossum_Paper/Figure 2/WGCNA_IT_ModuleRadar_Opossum.svg", plot = p)
 
 ```
 
@@ -94,7 +115,9 @@ obj.opossum.IT.Proj <- ModulePreservation(
 ```
 
 
-```{r}
+```{r, fig.height=3, fig.width=3}
+
+library(ggplot2)
 
 plot_list <- PlotModulePreservation(
   obj.opossum.IT.Proj,
@@ -102,7 +125,8 @@ plot_list <- PlotModulePreservation(
   statistics = "summary"
 )
 
-print(plot_list)
+print(plot_list$Zsummary.pres)
+ggsave("E:/Opossum_Paper/Figure 2/WGCNA_Module_Preservation.svg", plot = plot_list$Zsummary.pres)
 
 ```
 
@@ -128,13 +152,176 @@ print(wrap_plots(plot_list, ncol=6))
 
 saveRDS(obj.opossum.IT.Proj, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/opossum_v1_it_proj_wgcna.rds")
 
+library(hdWGCNA)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+
+obj.opossum.IT.Proj <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/opossum_v1_it_proj_wgcna.rds")
+
 ```
 
 
+```{r}
+
+obj.opossum.IT.Proj <- NormalizePCA(obj.opossum.IT.Proj)
+DimPlot(obj.opossum.IT.Proj, reduction = "pca", pt.size = 1)
+
+```
 
 
+```{r, fig.width=15}
+
+# get the list of modules:
+modules <- GetModules(obj.mouse.IT)
+mods <- levels(modules$module); mods <- mods[mods %in% c("EXC-M4", "EXC-M7", "EXC-M10")]
+modules$color[modules$module == "EXC-M4"] <- "#2BB673"
+modules$color[modules$module == "EXC-M7"] <- "#00AEEF"
+modules$color[modules$module == "EXC-M10"] <- "#939598"
+obj.mouse.IT@misc[["test"]]$wgcna_modules <- modules
+
+# hubgene network
+svg("E:/Opossum_Paper/Figure 2/Module_Networks.svg")
+HubGeneNetworkPlot(
+  obj.mouse.IT,
+  n_hubs = 10, n_other=20,
+  edge_prop = 0.75,
+  mods = mods # only select 5 modules
+)
+
+# ggsave(, plot = p)
+
+```
 
 
+```{r}
+
+EnrichrBarPlot <- function(
+  seurat_obj, outdir = "enrichr_plots",
+  n_terms = 25, plot_size = c(6,15),
+  logscale=FALSE, 
+  plot_bar_color=NULL,
+  plot_text_color=NULL,
+  wgcna_name=NULL,
+   ...
+){
+
+  # get data from active assay if wgcna_name is not given
+  if(is.null(wgcna_name)){wgcna_name <- seurat_obj@misc$active_wgcna}
+
+  # get modules:
+  modules <- GetModules(seurat_obj, wgcna_name)
+  mods <- levels(modules$module)
+  mods <- mods[mods != 'grey']
+
+  # get Enrichr table
+  enrichr_df <- GetEnrichrTable(seurat_obj, wgcna_name)
+
+  # helper function to wrap text
+  wrapText <- function(x, len) {
+      sapply(x, function(y) paste(strwrap(y, len), collapse = "\n"), USE.NAMES = FALSE)
+  }
+
+  # # make output dir if it doesn't exist:
+  # if(!dir.exists(outdir)){dir.create(outdir)}
+  plot_list <- list()
+  
+  # loop through modules:
+  for(i in 1:length(mods)){
+
+    cur_mod <- mods[i]
+    plot_list[[cur_mod]] <- list()
+    cur_terms <- subset(enrichr_df, module == cur_mod)
+    print(cur_mod)
+    # get color for this module:
+    cur_color <- modules %>% subset(module == cur_mod) %>% .$color %>% unique %>% as.character
+    if(!is.null(plot_bar_color)){
+      cur_color <- plot_bar_color
+    }
+
+    # skip if there are not any terms for this module:
+    if(nrow(cur_terms) == 0){next}
+    cur_terms$wrap <- wrapText(cur_terms$Term, 45)
+
+    # plot top n_terms as barplot
+    dbs <- c("GO_Biological_Process_2021")
+    for(cur_db in dbs){
+
+      plot_df <- subset(cur_terms, db==cur_db) %>% top_n(n_terms, wt=Combined.Score)
+
+      # text color:
+      if(is.null(plot_text_color)){
+        if(cur_color == 'black'){
+            text_color = 'grey'
+          } else {
+            text_color = 'black'
+          }
+      } else{
+        text_color <- plot_text_color
+      }
+ 
+
+      # logscale?
+      if(logscale){
+        plot_df$Combined.Score <- log(plot_df$Combined.Score)
+        lab <- 'Enrichment log(combined score)'
+        x <- 0.2
+      } else{lab <- 'Enrichment (combined score)'; x <- 5}
+
+      # make bar plot:
+      plot_list[[cur_mod]][[cur_db]] <- ggplot(plot_df, aes(x=Combined.Score, y=reorder(wrap, Combined.Score)))+
+        geom_bar(stat='identity', position='identity', color='white', fill=cur_color) +
+        geom_text(aes(label=wrap), x=x, color=text_color, size=3.5, hjust='left') +
+        ylab('Term') + xlab(lab) + ggtitle(cur_db) +
+        theme(
+          panel.grid.major=element_blank(),
+          panel.grid.minor=element_blank(),
+          legend.title = element_blank(),
+          axis.ticks.y=element_blank(),
+          axis.text.y=element_blank(),
+          plot.title = element_text(hjust = 0.5)
+        )
+    }
+
+    # # make pdfs in output dir
+    # pdf(paste0(outdir, '/', cur_mod, '.pdf'), width=plot_size[1], height=plot_size[2])
+    # for(plot in plot_list){
+    #   print(plot)
+    # }
+    # dev.off()
+  }
+  return(plot_list)
+}
+
+```
+
+
+```{r}
+
+# make GO term plots:
+plot_list <- EnrichrBarPlot(
+  obj.mouse.IT,
+  n_terms = 6, # number of enriched terms to show (sometimes more are shown if there are ties)
+  plot_size = c(5,7), # width, height of the output .pdfs
+  logscale=TRUE # do you want to show the enrichment as a log scale?
+)
+
+```
+
+```{r}
+
+p4 <- plot_list$`EXC-M4`$GO_Biological_Process_2021 + xlim(0, 8)
+print(p4)
+ggsave("E:/Opossum_Paper/Figure 2/M4_Enrichment.svg", plot = p4)
+
+p7 <- plot_list$`EXC-M7`$GO_Biological_Process_2021 + xlim(0, 8)
+print(p7)
+ggsave("E:/Opossum_Paper/Figure 2/M7_Enrichment.svg", plot = p7)
+
+p10 <- plot_list$`EXC-M10`$GO_Biological_Process_2021 + xlim(0, 8)
+print(p10)
+ggsave("E:/Opossum_Paper/Figure 2/M10_Enrichment.svg", plot = p10)
+
+```
 
 
 

@@ -1,4 +1,22 @@
 
+PlotClusterImageDim <- function(seurat_obj) {
+  Idents(seurat_obj) <- "seurat_clusters"  # Ensure correct identities
+  all_clusters <- levels(seurat_obj)
+  
+  for (cluster in all_clusters) {
+    # Assign grey to all clusters except the one being plotted
+    cluster_colors <- rep("grey80", length(all_clusters))
+    names(cluster_colors) <- all_clusters
+    cluster_colors[cluster] <- scales::hue_pal()(length(all_clusters))[which(all_clusters == cluster)]
+    
+    # Generate and print the plot
+    plot <- ImageDimPlot(seurat_obj, group.by = "seurat_clusters", 
+                         cols = cluster_colors, 
+                         size = 3) + ggtitle(paste("Cluster", cluster))
+    print(plot)
+  }
+}
+
 GetColors <- function() {
   
   colors_list <- list(

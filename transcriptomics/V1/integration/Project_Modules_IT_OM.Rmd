@@ -126,7 +126,9 @@ print(wrap_plots(plot_list, ncol=6))
 
 ```{r}
 
-saveRDS(obj.mouse.IT.Proj, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/mouse_v1_it_proj_wgcna.rds")
+# saveRDS(obj.mouse.IT.Proj, "E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/mouse_v1_it_proj_wgcna.rds")
+
+# obj.mouse.IT.Proj <- readRDS("E:/Transcriptomics_V1/Integration/Opossum_Mouse-P38/mouse_v1_it_proj_wgcna.rds")
 
 ```
 

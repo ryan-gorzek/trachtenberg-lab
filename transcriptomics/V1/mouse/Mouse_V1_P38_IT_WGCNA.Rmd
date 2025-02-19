@@ -84,7 +84,7 @@ wrap_plots(plot_list, ncol=2)
 # construct co-expression network:
 seurat_obj <- ConstructNetwork(
   seurat_obj,
-  tom_name = 'EXC-MOUSE', # name of the topological overlap matrix written to disk
+  tom_name = 'IT-MOUSE', # name of the topological overlap matrix written to disk
   overwrite_tom = TRUE
 )
 

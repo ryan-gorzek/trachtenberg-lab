@@ -103,7 +103,7 @@ grid on;
 %% Shared
 
 % Load data from CSV
-data = readtable('E:/Transcriptomics_V1/Integration/PCs/shared_pc_data_subsample_with_subclass.csv');
+data = readtable('E:/Transcriptomics_V1/Integration/PCs/IT/shared_pc_data_subsample_with_subclass.csv');
 
 % Extract the first three PCs
 pc1 = data.pca_1 * -1;  % Assuming first column is PC1
@@ -140,7 +140,7 @@ end
 
 axis equal;
 axis square;
-view(160, 20);
+view(135, 135);
 hold off;
 
 xlabel('PC1');

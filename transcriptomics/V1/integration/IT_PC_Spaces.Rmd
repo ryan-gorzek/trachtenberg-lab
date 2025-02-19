@@ -150,6 +150,16 @@ pc_data <- as.data.frame(Embeddings(obj.opossum.IT.SSP.SVF, reduction = "pca")[,
 pc_data$subclass <- obj.opossum.IT.SSP.SVF@meta.data$subclass  # Add subclass metadata
 write.csv(pc_data, "E:/Transcriptomics_V1/Integration/PCs/IT/opossum_pc_data_shared_subsample_with_subclass.csv", row.names = FALSE)
 
+# Shared Space
+mouse_pc_data <- as.data.frame(Embeddings(obj.mouse.IT.SSP.SVF, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+mouse_pc_data$subclass <- obj.mouse.IT.SSP@meta.data$subclass  # Add subclass metadata
+mouse_pc_data$species <- "Mouse"
+opossum_pc_data <- as.data.frame(Embeddings(obj.opossum.IT.SSP.SVF, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+opossum_pc_data$subclass <- obj.opossum.IT.SSP@meta.data$subclass  # Add subclass metadata
+opossum_pc_data$species <- "Opossum"
+pc_data <- rbind(mouse_pc_data, opossum_pc_data)
+write.csv(pc_data, "E:/Transcriptomics_V1/Integration/PCs/IT/shared_pc_data_subsample_with_subclass.csv", row.names = FALSE)
+
 ```
 
 

@@ -92,10 +92,10 @@ p <- PlotPairwiseSubclassGeneCountCDFDiff(de_results_opossum, de_results_mouse,
                                       subclass_pairs, 
                                       as.character(colors_list[c("IT_A", "IT_B", "Lamp5", "IT_D", "Vip", "Frem1")]), 
                                       min.pct = 0.25, 
-                                      max.pval = 0.05)
+                                      max.pval = 0.05) + ylim(-100, 100)
 
 print(p)
-ggsave("E:/Opossum_Paper/Figure S2/IT_DE_Difference.svg", plot = p)
+ggsave("E:/Opossum_Paper/Figure 2/IT_DE_Difference.svg", plot = p)
 
 ```
 

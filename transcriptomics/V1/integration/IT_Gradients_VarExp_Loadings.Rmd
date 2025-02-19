@@ -109,7 +109,9 @@ PlotPCVarianceExplained(c(obj.opossum.IT, obj.mouse.IT), c("Opossum", "Mouse"))
 
 ```{r}
 
-PlotPCLoadingsCorrelation(c(obj.opossum.IT, obj.mouse.IT), c("Opossum", "Mouse"))
+p <- PlotPCLoadingsCorrelation(c(obj.opossum.IT, obj.mouse.IT), c("Opossum", "Mouse"))
+print(p)
+ggsave("E:/Opossum_Paper/Figure 2/PC_Loadings_Correlation.svg", plot = p)
 
 ```
 

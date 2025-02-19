@@ -1293,7 +1293,7 @@ PlotPairwiseSubclassGeneCountCDFDiff <- function(de_results_list_1, de_results_l
          y = "Difference in Number of DE Genes",
          color = "Subclass Comparison") +
     theme_minimal() +
-    scale_x_continuous(limits = c(0.5, 2)) +
+    scale_x_continuous(limits = c(0.49, 2)) +
     scale_y_continuous(limits = c(-150, 150)) +
     geom_hline(yintercept = 0, linetype = "dashed", color = "black") +
     theme(
