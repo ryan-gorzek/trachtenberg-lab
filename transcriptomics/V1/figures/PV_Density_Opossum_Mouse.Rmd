@@ -1,0 +1,205 @@
+---
+title: "PV Density in Opossum & Mouse Sections"
+output: html_notebook
+---
+
+```{r}
+
+library(dplyr)
+library(tidyverse)
+
+# Opossum <- c(144.624 * 1.5, 242.664, 251.631, 219.856, NA) # , 
+Opossum <- c(242.881, 184.212, 144.624 * 1.5, 242.664, 251.631, 219.856, NA)
+# Mouse <- c(186.904, 178.584, 166.083, 187.631, 169.930) # , 
+Mouse <- c(169.750, 159.227, 186.904, 178.584, 166.083, 187.631, 169.930)
+
+df <- data.frame(Opossum, Mouse)
+df <- df %>%
+  pivot_longer(cols = c("Opossum", "Mouse"), names_to = "species", values_to = "density")
+df
+
+```
+
+
+```{r, fig.height=3, fig.width=2.15}
+
+df$species <- factor(df$species, levels = c("Opossum", "Mouse"))
+
+# class.counts <- df[df$species %in% c("L2.3.IT"), ]
+
+p <- ggplot(df, aes(x = factor(species, level = c("density")), y = density, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("")) +
+    scale_y_continuous(breaks = c(0, 50, 100, 150, 200, 250, 300), expand = c(0, 0), limits = c(0, 300)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = NULL, fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa"))
+
+ggsave(file="E:/Opossum_Paper/Figure 4/PV_Density.svg", plot=p, width=2.15, height=3, dpi=500)
+
+```
+
+
+```{r}
+
+res.aov <- aov(density ~ species, data = df)
+tukey <- TukeyHSD(res.aov, which = "species")
+
+```
+
+
+```{r}
+
+wilcox.test(Opossum, Mouse)
+
+```
+
+
+```{r}
+
+library(ggplot2)
+
+df <- read.csv("E:/Opossum_Paper/Figure 4/pv_density.csv")
+
+```
+
+
+```{r, fig.height=3.1, fig.width=4}
+
+df$species <- factor(df$species, levels = c("Opossum", "Mouse"))
+
+# class.counts <- df[df$species %in% c("L2.3.IT"), ]
+
+p <- ggplot(df, aes(x = factor(layer, level = c("L1", "L2/3", "L4", "L5", "L6")), y = pv_density, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("L1", "L2/3", "L4", "L5", "L6")) +
+    scale_y_continuous(breaks = c(0, 100, 200, 300, 400, 500), expand = c(0, 0), limits = c(0, 500)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "Fraction of Neuronal Cells", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa")) + 
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+
+ggsave(file="E:/Opossum_Paper/Figure 4/PV_Density_Layers.svg", plot=p, width=4, height=3.1, dpi=500)
+
+```
+
+
+```{r}
+
+res.aov <- aov(pv_density ~ species:layer, data = df)
+tukey <- TukeyHSD(res.aov, which = "species:layer")
+
+```
+
+
+```{r}
+
+library(ggplot2)
+
+df <- read.csv("E:/Opossum_Paper/Figure 4/pv_wfa_density_in_out.csv")
+
+```
+
+
+```{r, fig.height=3.1, fig.width=4}
+
+df$species <- factor(df$species, levels = c("O1", "M1"))
+
+# class.counts <- df[df$species %in% c("L2.3.IT"), ]
+
+# ggplot(df, aes(x = factor(layer, level = c("V1_2", "V1_1", "O1_1", "O1_2")), y = density, fill = species)) +
+#     geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+#     geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+#     scale_x_discrete(labels = c("V1_2", "V1_1", "O1_1", "O1_2")) +
+#     scale_y_continuous(breaks = c(0, 100, 200, 300, 400, 500), expand = c(0, 0), limits = c(0, 500)) +
+#     guides(fill = guide_legend(override.aes = list(shape = NA))) +
+#     theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+#     labs(x = NULL, y = "Fraction of Neuronal Cells", fill = NULL) + 
+#     scale_fill_manual("legend", values = c("O1" = "#c692b8", "M1" = "#aaaaaa")) + 
+#     theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+
+library(tidyverse)
+df <- df[df$species == "O1",]
+df_long <- df %>%
+    select(layer, density, fluor) %>%
+    pivot_longer(cols = c(density, fluor), names_to = "measurement", values_to = "value")
+
+ggplot(df_long, aes(x = factor(layer, levels = c("V1_2", "V1_1", "O1_1", "O1_2")), 
+                    y = value, 
+                    color = measurement, 
+                    group = measurement)) +
+    stat_summary(geom = "line", fun = median, size = 1) +
+    geom_point(position = position_dodge(width = 0.8), size = 2, alpha = 0.8) +
+    scale_x_discrete(labels = c("V1_2", "V1_1", "O1_1", "O1_2")) +
+    scale_y_continuous(breaks = seq(0, 300, 100), expand = c(0, 0), limits = c(0, 300)) +
+    theme_classic() +
+    theme(axis.text = element_text(color = "black"), 
+          legend.text = element_text(size = 10),
+          axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+    labs(x = NULL, y = "Fraction of Neuronal Cells", color = NULL) + 
+    scale_color_manual(values = c("density" = "#c692b8", "fluor" = "#aaaaaa"))
+
+# ggsave(file="E:/Opossum_Paper/Figure 4/PV_Density_Layers.svg", plot=p, width=4, height=3.1, dpi=500)
+
+```
+
+
+```{r}
+
+library(tidyverse)
+
+# Filter for species O1
+df <- df[df$species == "O1",]
+
+# Define limits for the two variables
+density_min <- 0
+density_max <- 300
+fluor_min <- 0
+fluor_max <- 1  # Adjust based on your actual fluor range
+
+# Scale fluor to match density axis range
+df <- df %>%
+    mutate(fluor_scaled = scales::rescale(fluor, to = c(density_min, density_max))) 
+
+p <- ggplot(df, aes(x = factor(layer, levels = c("V1_2", "V1_1", "O1_1", "O1_2")))) +
+    # Density Line
+    stat_summary(aes(y = density, color = "Density", group = 1), 
+                 fun = median, geom = "line", size = 1) +
+    geom_point(aes(y = density, color = "Density"), position = position_dodge(width = 0.8), size = 2, alpha = 0.8) +
+    
+    # Fluor Line (on secondary axis)
+    stat_summary(aes(y = fluor_scaled, color = "Fluor", group = 1), 
+                 fun = median, geom = "line", size = 1, linetype = "dashed") +
+    geom_point(aes(y = fluor_scaled, color = "Fluor"), position = position_dodge(width = 0.8), size = 2, alpha = 0.8) +
+    
+    # Primary y-axis for Density
+    scale_y_continuous(
+        name = "Fraction of Neuronal Cells (Density)", 
+        limits = c(density_min, density_max),
+        breaks = seq(density_min, density_max, 100),
+        
+        # Secondary y-axis for Fluor
+        sec.axis = sec_axis(
+            trans = ~ scales::rescale(., from = c(density_min, density_max), to = c(fluor_min, fluor_max)), 
+            name = "Fluorescence Intensity"
+        )
+    ) +
+    
+    scale_x_discrete(labels = c("V1_2", "V1_1", "O1_1", "O1_2")) +
+    theme_classic() +
+    theme(
+        axis.text = element_text(color = "black"), 
+        legend.text = element_text(size = 10),
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)
+    ) +
+    labs(x = NULL, color = NULL) + 
+    scale_color_manual(values = c("Density" = "#c692b8", "Fluor" = "#aaaaaa"))
+
+ggsave(file="E:/Opossum_Paper/Figure 4/PV_WFA_V1_Edge.svg", plot=p, width=5, height=4, dpi=500)
+
+```
+

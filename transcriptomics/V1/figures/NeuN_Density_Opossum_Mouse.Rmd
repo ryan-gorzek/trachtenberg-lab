@@ -1,0 +1,57 @@
+---
+title: "PV Density in Opossum & Mouse Sections"
+output: html_notebook
+---
+
+```{r}
+
+library(ggplot2)
+
+df <- read.csv("E:/Opossum_Paper/Figure 4/neun_density.csv")
+
+```
+
+
+```{r, fig.height=3.1, fig.width=4}
+
+df$species <- factor(df$species, levels = c("Opossum", "Mouse"))
+
+# class.counts <- df[df$species %in% c("L2.3.IT"), ]
+
+ggplot(df, aes(x = factor(layer, level = c("L1", "L2/3", "L4", "L5", "L6")), y = neun_density, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("L1", "L2/3", "L4", "L5", "L6")) +
+    scale_y_continuous(breaks = c(0, 1000, 2000, 3000, 4000), expand = c(0, 0), limits = c(0, 4000)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "Fraction of Neuronal Cells", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa")) + 
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+
+# ggsave(file="E:/Opossum_Paper/Figure 4/NeuN_Density.svg", plot=p, width=4, height=3.1, dpi=500)
+
+```
+
+
+```{r}
+
+res.aov <- aov(neun_density ~ species * layer, data = df)
+tukey <- TukeyHSD(res.aov, which = "species:layer")
+
+```
+
+
+```{r}
+
+summary(res.aov)
+
+```
+
+
+```{r}
+
+tukey
+
+```
+

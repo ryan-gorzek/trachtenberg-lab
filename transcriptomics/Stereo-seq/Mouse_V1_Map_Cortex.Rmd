@@ -25,13 +25,25 @@ source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R"
 source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
 colors_list <- GetColors()
 
-obj.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
-obj.gabaergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_gabaergic_processed.rds")
-obj.nonneuronal <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_nonneuronal_processed.rds")
+obj.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+obj.glutamatergic$class <- "glutamatergic"
+obj.gabaergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_gabaergic_processed.rds")
+obj.gabaergic$class <- "gabaergic"
+obj.nonneuronal <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_nonneuronal_processed.rds")
 
 obj <- merge(obj.glutamatergic, y = c(obj.gabaergic, obj.nonneuronal))
 
-obj.ctx <- readRDS("E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_1.rds")
+obj.ctx <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_1.rds")
+
+```
+
+
+```{r}
+
+ImageFeaturePlot(obj.ctx, "Cux2", size = 1.5, cols = c("lightgrey", "firebrick1"), max.cutoff = 1)
+ImageFeaturePlot(obj.ctx, "Rorb", size = 1.5, cols = c("lightgrey", "firebrick1"), max.cutoff = 1)
+ImageFeaturePlot(obj.ctx, "Scnn1a", size = 1.5, cols = c("lightgrey", "firebrick1"), max.cutoff = 1)
+ImageFeaturePlot(obj.ctx, "Foxp2", size = 1.5, cols = c("lightgrey", "firebrick1"), max.cutoff = 1)
 
 ```
 
@@ -92,9 +104,9 @@ obj.ctx <- ClusterSCT(obj.ctx, resolutions = c(0.5, 1))
 
 ```{r}
 
-opossum.subclass.levels <- c("IT_A", "IT_C", "IT_B", "IT_D", "L5NP", "L5PT", "L6CT", "L6b", "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "OD", "OPC", "Astro", "Micro", "Endo")
+mouse.subclass.levels <- c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b", "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac", "OD", "OPC", "Astro", "Micro", "Endo", "VLMC")
 
-DimPlot(obj, group.by = "subclass", cols = colors_list[opossum.subclass.levels]) + NoLegend() + xlim(-20, 20) + ylim(-20, 20) + coord_equal()
+DimPlot(obj, group.by = "subclass", cols = colors_list[mouse.subclass.levels]) + NoLegend() + xlim(-20, 20) + ylim(-20, 20) + coord_equal()
 DimPlot(obj.ctx, group.by = "SCT_snn_res.0.5") + NoLegend() + xlim(-8, 8) + ylim(-8, 8) + coord_equal()
 DimPlot(obj.ctx, group.by = "SCT_snn_res.1") + NoLegend() + xlim(-8, 8) + ylim(-8, 8) + coord_equal()
 
@@ -125,8 +137,8 @@ ImageDimPlot(obj.ctx, group.by = "predicted.class", size = 2.5)
 
 ```{r}
 
-saveRDS(obj.ctx, "E:/STOmics/seurat/opossum_stereoseq_ctx_1_clustered_mapped.rds")
-# obj.ctx <- readRDS("E:/STOmics/seurat/opossum_stereoseq_ctx_1_clustered.rds")
+saveRDS(obj.ctx, "E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_1_clustered_mapped.rds")
+# obj.ctx <- readRDS("E:/STOmics/seurat/mouse_stereoseq_ctx_1_clustered.rds")
 
 ```
 
@@ -143,11 +155,11 @@ obj.ctx.glutamatergic <- MapObject(obj.glutamatergic, obj.ctx.glutamatergic, "su
 
 ```{r}
 
-saveRDS(obj.glutamatergic, "E:/STOmics/seurat/opossum_glutamatergic_reference.rds")
-saveRDS(obj.ctx.glutamatergic, "E:/STOmics/seurat/opossum_stereoseq_glutamatergic_1_clustered_mapped.rds")
+saveRDS(obj.glutamatergic, "E:/STOmics/seurat/Mouse/mouse_glutamatergic_reference.rds")
+saveRDS(obj.ctx.glutamatergic, "E:/STOmics/seurat/Mouse/mouse_stereoseq_glutamatergic_1_clustered_mapped.rds")
 
-obj.glutamatergic <- readRDS("E:/STOmics/seurat/opossum_glutamatergic_reference.rds")
-obj.ctx.glutamatergic <- readRDS("E:/STOmics/seurat/opossum_stereoseq_glutamatergic_1_clustered_mapped.rds")
+# obj.glutamatergic <- readRDS("E:/STOmics/seurat/Mouse/mouse_glutamatergic_reference.rds")
+# obj.ctx.glutamatergic <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_glutamatergic_1_clustered_mapped.rds")
 
 ```
 
@@ -163,8 +175,8 @@ ImageFeaturePlot(obj.ctx.glutamatergic, "Rorb", size = 2.5, cols = c("lightgrey"
 ```{r, fig.width=12}
 
 Idents(obj.ctx.glutamatergic) <- "predicted.subclass"
-levels(obj.ctx.glutamatergic) <- c("IT_A", "IT_B", "IT_C", "L5PT", "L6CT", "L5NP")
-ImageDimPlot(obj.ctx.glutamatergic, size = 2.5, cols = c("#A0A0A0", "#FF7F50", "#FFA07A", "#128e27", "#1E90FF", "#C934EB"))
+levels(obj.ctx.glutamatergic) <- c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b")
+ImageDimPlot(obj.ctx.glutamatergic, size = 2.5, cols = c("#FF4500", "#A0A0A0", "#FFB3B3", "#FFA07A", "#128e27", "#1E90FF", "#C934EB", "#FFFFFF"))
 ImageDimPlot(obj.ctx.glutamatergic, size = 2.5, group.by = "SCT_snn_res.1")
 PlotClusterImageDim(obj.ctx.glutamatergic)
 
@@ -175,18 +187,25 @@ PlotClusterImageDim(obj.ctx.glutamatergic)
 
 DimPlot(obj.ctx.glutamatergic, group.by = "SCT_snn_res.1", label = TRUE) + NoLegend() + xlim(-8, 8) + ylim(-8, 8) + coord_equal()
 Idents(obj.ctx.glutamatergic) <- "predicted.subclass"
-levels(obj.ctx.glutamatergic) <- c("IT_A", "IT_B", "IT_C", "L5PT", "L6CT", "L5NP")
-DimPlot(obj.ctx.glutamatergic, cols = c("#A0A0A0", "#FF7F50", "#FFA07A", "#128e27", "#1E90FF", "#C934EB")) + xlim(-8, 8) + ylim(-8, 8) + coord_equal()
+levels(obj.ctx.glutamatergic) <- c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b")
+DimPlot(obj.ctx.glutamatergic, cols = c("#A0A0A0", "#FF4500", "#FFB3B3", "#FFA07A", "#128e27", "#1E90FF", "#C934EB", "#FFFFFF")) + xlim(-8, 8) + ylim(-8, 8) + coord_equal()
+
+```
+
+
+```{r}
+
+ImageDimPlot(obj.ctx.glutamatergic, size = 2.5, group.by = "SCT_snn_res.1") + xlim(10000, 12000) + ylim(-250, 1750)
 
 ```
 
 
 ```{r, fig.width=6}
 
-column.coords <- Crop(obj.ctx.glutamatergic[["CTX"]], x = c(6750, 8500), y = c(10000, 12000), coords = "tissue")
+column.coords <- Crop(obj.ctx.glutamatergic[["CTX"]], y = c(10000, 12000), x = c(-250, 1750), coords = "tissue")
 obj.ctx.glutamatergic[["COL"]] <- column.coords
-levels(obj.ctx.glutamatergic) <- c("IT_A", "IT_B", "IT_C", "L5PT", "L6CT", "L5NP")
-ImageDimPlot(obj.ctx.glutamatergic, fov = "COL", size = 3, cols = c("#A0A0A0", "#FF7F50", "#FFA07A", "#128e27", "#1E90FF", "#C934EB"))
+levels(obj.ctx.glutamatergic) <- c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b")
+ImageDimPlot(obj.ctx.glutamatergic, fov = "COL", size = 2, cols = c("#FF4500", "#A0A0A0", "#FFB3B3", "#FFA07A", "#128e27", "#1E90FF", "#C934EB", "#FFFFFF"))
 
 ```
 
@@ -208,7 +227,7 @@ obj.ctx.glutamatergic.COL <- MapObject(obj.glutamatergic, obj.ctx.glutamatergic.
 
 ```{r}
 
-saveRDS(obj.ctx.glutamatergic.COL, "E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_1_COL_clustered_mapped.rds")
+saveRDS(obj.ctx.glutamatergic.COL, "E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_1_COL_clustered_mapped.rds")
 
 ```
 
@@ -216,8 +235,8 @@ saveRDS(obj.ctx.glutamatergic.COL, "E:/STOmics/seurat/Opossum/opossum_stereoseq_
 ```{r}
 
 Idents(obj.ctx.glutamatergic.COL) <- "predicted.subclass"
-levels(obj.ctx.glutamatergic.COL) <- c("IT_A", "IT_B", "IT_C", "L5PT", "L6CT", "L5NP")
-ImageDimPlot(obj.ctx.glutamatergic.COL, fov = "COL", size = 3, cols = c("#A0A0A0", "#FF7F50", "#FFA07A", "#128e27", "#1E90FF", "#C934EB"))
+levels(obj.ctx.glutamatergic.COL) <- c("L4", "L5NP", "L5PT", "L6CT", "L6b")
+ImageDimPlot(obj.ctx.glutamatergic.COL, fov = "COL", size = 3, cols = c("#A0A0A0", "#128e27", "#1E90FF", "#C934EB", "#FFFFFF"))
 ImageFeaturePlot(obj.ctx.glutamatergic.COL, "Cux2", size = 2.5, cols = c("lightgrey", "firebrick1"), max.cutoff = 1)
 
 ```
@@ -226,7 +245,7 @@ ImageFeaturePlot(obj.ctx.glutamatergic.COL, "Cux2", size = 2.5, cols = c("lightg
 ```{r}
 
 DimPlot(obj.ctx.glutamatergic.COL, group.by = "SCT_snn_res.1", label = TRUE) + NoLegend() + xlim(-8, 8) + ylim(-8, 8) + coord_equal()
-DimPlot(obj.ctx.glutamatergic.COL, group.by = "predicted.subclass", cols = c("#A0A0A0", "#FF7F50", "#FFA07A", "#128e27", "#1E90FF")) + xlim(-8, 8) + ylim(-8, 8) + coord_equal()
+DimPlot(obj.ctx.glutamatergic.COL, group.by = "predicted.subclass", cols = c("#A0A0A0", "#128e27", "#1E90FF", "#C934EB", "#FFFFFF")) + xlim(-8, 8) + ylim(-8, 8) + coord_equal()
 FeaturePlot(obj.ctx.glutamatergic.COL, "Foxp2") + xlim(-8, 8) + ylim(-8, 8) + coord_equal()
 
 ```
@@ -275,59 +294,6 @@ DimPlot(obj.ctx.glutamatergic.COL.VFs, group.by = "predicted.subclass") + xlim(-
 
 ```{r}
 
-library(Seurat)
-library(dplyr)
-library(ComplexHeatmap)
-
-# Compute DE genes for obj1
-de_snRNAseq <- FindAllMarkers(
-  object = obj.glutamtergic,
-  only.pos = TRUE,
-  min.pct = pct.threshold,
-  logfc.threshold = logfc.threshold,
-  test.use = 'wilcox'
-) %>% filter(p_val_adj < pval.threshold)
-
-# Compute DE genes for obj2
-Idents(obj.ctx.glutamatergic.COL) <- ""
-de_Stereoseq <- FindAllMarkers(
-  object = obj.ctx.glutamatergic.COL,
-  only.pos = TRUE,
-  min.pct = pct.threshold,
-  logfc.threshold = logfc.threshold,
-  test.use = 'wilcox'
-) %>% filter(p_val_adj < pval.threshold)
-
-# Updated function to take precomputed DE genes as input
-ComputeOverlapHeatmap <- function(de_obj1, de_obj2, ident1 = 'subclass', ident2 = 'SCT_snn_res.1') {
-  library(Seurat)
-  library(dplyr)
-  library(ComplexHeatmap)
-
-  # Create lists of DE genes
-  de_list1 <- split(de_obj1$gene, de_obj1[[ident1]])
-  de_list2 <- split(de_obj2$gene, de_obj2[[ident2]])
-
-  # Create overlap matrix
-  overlap_matrix <- matrix(0, nrow = length(de_list1), ncol = length(de_list2),
-                           dimnames = list(names(de_list1), names(de_list2)))
-  for (i in seq_along(de_list1)) {
-    for (j in seq_along(de_list2)) {
-      overlap <- length(intersect(de_list1[[i]], de_list2[[j]]))
-      total <- length(unique(c(de_list1[[i]], de_list2[[j]])))
-      overlap_matrix[i, j] <- overlap / total
-    }
-  }
-
-  # Plot heatmap
-  Heatmap(overlap_matrix, name = 'Fraction Overlap', cluster_rows = TRUE, cluster_columns = TRUE)
-}
-
-```
-
-
-```{r}
-
 Idents(obj.glutamatergic) <- "subclass"
 markers.IT_B <- FindMarkers(obj.glutamatergic, ident.1 = "IT_B", only.pos = TRUE)
 
@@ -354,7 +320,7 @@ ImageFeaturePlot(obj.ctx.glutamatergic.COL, "Sema3e", size = 2.5, cols = c("ligh
 ```{r}
 
 ImageFeaturePlot(obj.ctx.glutamatergic.COL, "Rorb", size = 2.5, cols = c("lightgrey", "firebrick1"), max.cutoff = 1)
-ImageFeaturePlot(obj.ctx.glutamatergic.COL, "Tafa2", size = 2.5, cols = c("lightgrey", "firebrick1"), max.cutoff = 1)
+# ImageFeaturePlot(obj.ctx.glutamatergic.COL, "Tafa2", size = 2.5, cols = c("lightgrey", "firebrick1"), max.cutoff = 1)
 ImageFeaturePlot(obj.ctx.glutamatergic.COL, "Brinp3", size = 2.5, cols = c("lightgrey", "firebrick1"), max.cutoff = 1)
 ImageFeaturePlot(obj.ctx.glutamatergic.COL, "Pld5", size = 2.5, cols = c("lightgrey", "firebrick1"), max.cutoff = 1)
 ImageFeaturePlot(obj.ctx.glutamatergic.COL, "Kcnh5", size = 2.5, cols = c("lightgrey", "firebrick1"), max.cutoff = 1)

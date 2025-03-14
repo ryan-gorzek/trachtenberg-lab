@@ -1,0 +1,53 @@
+---
+title: "PV Density in Opossum & Mouse Sections"
+output: html_notebook
+---
+
+```{r}
+
+Opossum <- c(342.008, 331.829, 327.001, NA, NA)
+Mouse <- c(90.735, 85.126, 86.989, 116.453, 62.814)
+
+df <- data.frame(Opossum, Mouse)
+df <- df %>%
+  pivot_longer(cols = c("Opossum", "Mouse"), names_to = "species", values_to = "density")
+df
+
+```
+
+
+```{r, fig.height=3, fig.width=2.15}
+
+df$species <- factor(df$species, levels = c("Opossum", "Mouse"))
+
+# class.counts <- df[df$species %in% c("L2.3.IT"), ]
+
+p <- ggplot(df, aes(x = factor(species, level = c("density")), y = density, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("")) +
+    scale_y_continuous(breaks = c(0, 100, 200, 300, 400), expand = c(0, 0), limits = c(0, 400)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = NULL, fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa"))
+
+ggsave(file="E:/Opossum_Paper/Figure 4/OD_Density.svg", plot=p, width=2.15, height=3, dpi=500)
+
+```
+
+
+```{r}
+
+res.aov <- aov(density ~ species, data = df)
+tukey <- TukeyHSD(res.aov, which = "species")
+
+```
+
+
+```{r}
+
+wilcox.test(Opossum, Mouse)
+
+```
+

@@ -4,10 +4,86 @@ output: html_notebook
 ---
 
 
+```{r, fig.width = 6, fig.height = 5}
+
+library(ggplot2)
+library(dplyr)
+
+# Load the files and add a 'sample' column
+files <- list(
+  "E:/bams/opossum/dists_3A.bed" = "3A",
+  "E:/bams/opossum/dists_3B.bed" = "3B",
+  "E:/bams/opossum/dists_4A.bed" = "4A",
+  "E:/bams/opossum/dists_4B.bed" = "4B"
+)
+
+# Read and combine all files
+closest.bed <- bind_rows(lapply(names(files), function(path) {
+  df <- read.table(path, sep = "\t", header = FALSE)
+  df$sample <- files[[path]]
+  return(df)
+}))
+
+# Plot
+p <- ggplot(closest.bed, aes(x = V13, fill = sample, color = sample)) +
+  geom_histogram(
+    binwidth = 1000, 
+    boundary = 0,
+    aes(y = ..count.. / tapply(..count.., ..PANEL.., sum)[..PANEL..] * 100),
+    alpha = 0.4,
+    position = "identity"
+  ) +
+  scale_x_continuous(
+    limits = c(-50000, 50000),
+    oob = scales::squish
+  ) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_color_brewer(palette = "Set1") +
+  labs(
+    x = "Closest Gene (bp)",
+    y = "Percentage",
+    fill = "Sample",
+    color = "Sample"
+  ) +
+  theme_minimal()
+
+```
+
+
 ```{r}
 
-bed.path <- "E:/bams/introns/closest.bed"
-closest.bed <- read.table(bed.path, sep = "\t", header = F)
+ggsave("E:/Opossum_Paper/Figure S1/Intergenic_Reads_Dist_Opossum.svg", plot = p, width = 6, height = 5)
+
+```
+
+
+```{r}
+
+p <- ggplot(closest.bed, aes(x = V13, fill = sample, color = sample)) +
+  geom_histogram(
+    binwidth = 1000, 
+    boundary = 0,
+    aes(y = ..count.. / sum(..count..) * 100),  # per-facet percentage
+    fill = "lightblue", 
+    color = "black"
+  ) +
+  scale_x_continuous(
+    limits = c(-50000, 50000),
+    oob = scales::squish
+  ) +
+  labs(
+    x = "Closest Gene (bp)",
+    y = "Percentage"
+  ) +
+  facet_wrap(~ sample, ncol = 2) +  # 2x2 layout
+  theme_minimal()
+
+```
+
+
+```{r}
+
+ggsave("E:/Opossum_Paper/Figure S1/Intergenic_Reads_Dist_Opossum_Grid.svg", plot = p, width = 6, height = 5)
 
 ```
 
@@ -38,32 +114,6 @@ gtf <- gtf[, 1:8]
 gtf$gene.id <- get.var(variable.col, "gene_id")
 gtf$gene.name <- get.var(variable.col, "gene_name")
 gtf$gene.biotype <- get.var(variable.col, "gene_biotype")
-
-```
-
-
-```{r}
-
-library(ggplot2)
-
-# Plot histogram using ggplot2 with specified settings
-ggplot(closest.bed, aes(x = V13)) +
-  geom_histogram(
-    binwidth = 1000, 
-    fill = "lightblue", 
-    color = "black",
-    aes(y = ..count.. / sum(..count..) * 100)
-  ) +
-  scale_x_continuous(
-    limits = c(-50000, 50000),
-    oob = scales::squish
-  ) +
-  labs(
-    title = "Intergenic Reads",
-    x = "Closest Gene (bp)",
-    y = "Percentage"
-  ) +
-  theme_minimal()
 
 ```
 

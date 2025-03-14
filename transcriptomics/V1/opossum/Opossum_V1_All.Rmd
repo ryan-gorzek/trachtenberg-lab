@@ -40,7 +40,7 @@ PlotQC(data)
 
 # initial clustering
 obj.opossum <- ClusterSCT(obj.opossum, c(1))
-PlotClusters(obj.opossum)
+PlotClusters(obj.opossum, save.plots = TRUE)
 
 ```
 
@@ -90,6 +90,20 @@ DotPlot(obj.opossum, features = canon.markers, cols = c("lightgrey", "red"), sca
 ```
 
 
+```{r, fig.width=1.5, fig.height=6}
+
+# look for canonical markers
+DefaultAssay(obj.opossum) <- "RNA"
+# PlotFeatures(obj.opossum, canon.markers)
+p <- DotPlot(obj.opossum, features = c("Snap25", "Sv2b", "Gad1", "Gad2"), cols = c("lightgrey", "red"), scale = FALSE) + 
+                         theme(axis.text.x = element_text(angle = 90, vjust = 0.25)) + 
+                         theme(panel.background = element_rect(fill = "white", color = NA), plot.background = element_rect(fill = "white", color = NA)) + NoLegend()
+
+ggsave("E:/Opossum_Paper/Figure S1/Class_DotPlot.svg", plot = p)
+
+```
+
+
 ```{r}
 
 DefaultAssay(obj.opossum) <- "SCT"
@@ -127,6 +141,15 @@ obj.opossum$class[cells.nonneuronal] <- "nonneuronal"
 ```{r}
 
 DimPlot(obj.opossum, reduction = "umap", group.by = "class", label = FALSE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+```
+
+
+```{r}
+
+p <- DimPlot(obj.opossum, reduction = "umap", group.by = "class", label = FALSE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+
+ggsave("E:/Opossum_Paper/Figure S1/Class_DimPlot.svg", plot = p)
 
 ```
 

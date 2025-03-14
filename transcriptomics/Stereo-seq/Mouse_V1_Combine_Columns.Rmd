@@ -1,0 +1,242 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratObject)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+
+objs.col <- list(COL1 = NA, COL2 = NA, COL3 = NA, COL4 = NA)
+
+for (n in 1:4) {
+
+  path <- paste0("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COL", n, ".rds")
+  objs.col[[n]] <- readRDS(path)
+  
+}
+
+```
+
+
+```{r}
+
+obj.col <- merge(objs.col[[1]], y = objs.col[2:4])
+
+```
+
+
+```{r}
+
+heights <- sapply(1:4, function(i) {
+  ccoords <- objs.col[[i]][[paste0("COL", i)]]$centroids@coords
+  max(ccoords[,1]) - min(ccoords[,1])
+})
+
+max_height <- max(heights)
+
+counts <- list()
+coords <- data.frame()
+xshifts <- c(0, 2550, 3975, 5800)
+
+for (i in 1:4) {
+  
+  obj <- objs.col[[i]]
+
+  # Extract counts matrix
+  ccounts <- GetAssayData(obj, slot = "counts")
+  
+  # Access coordinates
+  ccoords <- obj[[paste0("COL", i)]]$centroids@coords
+  
+  # Get current FOV height
+  current_height <- max(ccoords[,1]) - min(ccoords[,1])
+
+  # Scale factor to make the height equal to max_height
+  scale_factor <- max_height / current_height
+  
+  # Scale y-axis (height) and x-axis (width) to preserve aspect ratio (optional)
+  ccoords <- ccoords * scale_factor
+  
+  # Calculate shifts
+  x_shift <- xshifts[i]
+  y_shift <- -min(ccoords[, 1])
+  
+  # Apply shifts
+  ccoords[, 2] <- ccoords[, 2] - min(ccoords[, 2]) + x_shift
+  ccoords[, 1] <- ccoords[, 1] + y_shift
+  
+  counts[[i]] <- ccounts
+  coords <- rbind(coords, ccoords)
+
+}
+
+# Merge all counts into a single matrix
+merged_counts <- do.call(cbind, counts)
+
+# Create the new Seurat object
+obj.combined <- CreateSeuratObject(counts = merged_counts)
+
+cents.df <- data.frame(coords[, 1], coords[, 2])
+colnames(cents.df) <- c("X", "Y")
+rownames(cents.df) <- colnames(obj.combined)
+cents <- CreateCentroids(cents.df)
+fov <- CreateFOV(
+  cents, 
+  type = "centroids",
+  assay = "RNA",
+  key = Key("COL", quiet = TRUE)
+)
+
+fov <- fov[Cells(obj.combined)]
+
+obj.combined[["COL"]] <- fov
+
+```
+
+
+```{r}
+
+ImageDimPlot(obj.combined, fov = "COL", cols = "red", size = 1) + NoLegend()
+
+```
+
+
+```{r}
+
+cell_mask <- Reduce(intersect, list(WhichCells(obj.combined, expression = nFeature_RNA > 50),
+                                    WhichCells(obj.combined, expression = nCount_RNA > 100)))
+  
+gene_mask <- rownames(obj.combined)[Matrix::rowSums(obj.combined[["RNA"]]@counts > 0) > 8]
+
+obj.combined <- subset(obj.combined, features = gene_mask, cells = cell_mask)
+
+```
+
+
+```{r}
+
+ImageDimPlot(obj.combined, fov = "COL", cols = "red", size = 1) + NoLegend()
+
+```
+
+
+```{r}
+
+saveRDS(obj.combined, "E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLS_spaced.rds")
+
+```
+
+
+```{r}
+
+widths <- sapply(1:4, function(i) {
+  ccoords <- objs.col[[i]][[paste0("COL", i)]]$centroids@coords
+  max(ccoords[,2]) - min(ccoords[,2])
+})
+
+heights <- sapply(1:4, function(i) {
+  ccoords <- objs.col[[i]][[paste0("COL", i)]]$centroids@coords
+  max(ccoords[,1]) - min(ccoords[,1])
+})
+
+max_width <- max(widths)
+max_height <- max(heights)
+
+counts <- list()
+coords <- data.frame()
+
+for (i in 1:4) {
+  
+  obj <- objs.col[[i]]
+
+  # Extract counts matrix
+  ccounts <- GetAssayData(obj, slot = "counts")
+  
+  # Access coordinates
+  ccoords <- obj[[paste0("COL", i)]]$centroids@coords
+  
+  # Get current FOV width and height
+  current_width <- max(ccoords[,2]) - min(ccoords[,2])
+  current_height <- max(ccoords[,1]) - min(ccoords[,1])
+
+  # Scale factor to make the height equal to max_height
+  scale_factor_w <- max_width / current_width
+  scale_factor_h <- max_height / current_height
+  
+  # Scale y-axis (height) and x-axis (width) to preserve aspect ratio (optional)
+  ccoords[,2] <- ccoords[,2] * scale_factor_w
+  ccoords[,1] <- ccoords[,1] * scale_factor_h
+  
+  # Calculate shifts
+  x_shift <- -min(ccoords[, 2])
+  y_shift <- -min(ccoords[, 1])
+  
+  # Apply shifts
+  ccoords[, 2] <- ccoords[, 2] + x_shift
+  ccoords[, 1] <- ccoords[, 1] + y_shift
+  
+  counts[[i]] <- ccounts
+  coords <- rbind(coords, ccoords)
+
+}
+
+# Merge all counts into a single matrix
+merged_counts <- do.call(cbind, counts)
+
+# Create the new Seurat object
+obj.combined <- CreateSeuratObject(counts = merged_counts)
+
+cents.df <- data.frame(coords[, 1], coords[, 2])
+colnames(cents.df) <- c("X", "Y")
+rownames(cents.df) <- colnames(obj.combined)
+cents <- CreateCentroids(cents.df)
+fov <- CreateFOV(
+  cents, 
+  type = "centroids",
+  assay = "RNA",
+  key = Key("COL", quiet = TRUE)
+)
+
+fov <- fov[Cells(obj.combined)]
+
+obj.combined[["COL"]] <- fov
+
+```
+
+
+```{r}
+
+ImageDimPlot(obj.combined, fov = "COL", cols = "red", size = 1) + NoLegend()
+
+```
+
+
+```{r}
+
+cell_mask <- Reduce(intersect, list(WhichCells(obj.combined, expression = nFeature_RNA > 50),
+                                    WhichCells(obj.combined, expression = nCount_RNA > 100)))
+  
+gene_mask <- rownames(obj.combined)[Matrix::rowSums(obj.combined[["RNA"]]@counts > 0) > 8]
+
+obj.combined <- subset(obj.combined, features = gene_mask, cells = cell_mask)
+
+```
+
+
+```{r}
+
+ImageDimPlot(obj.combined, fov = "COL", cols = "red", size = 1) + NoLegend()
+
+```
+
+
+```{r}
+
+saveRDS(obj.combined, "E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLS.rds")
+
+```
+

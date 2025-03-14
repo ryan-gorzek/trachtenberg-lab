@@ -150,7 +150,8 @@ mouse.counts$Nonneuronal <- rowSums(mouse.counts[, c("Astro", "Micro", "OD", "OP
 all.counts <- rbind(opossum.counts, mouse.counts)
 
 all.props <- all.counts %>%
-                mutate(MGE = (Pvalb + Sst) / GABAergic,
+                mutate(PV_Pyr = Pvalb / (Glutamatergic), 
+                       MGE = (Pvalb + Sst) / GABAergic,
                        CGE = (Vip + Frem1 + Stac + Lamp5) / GABAergic,
                        IT = IT / Glutamatergic,
                        L5NP = L5NP / Glutamatergic,
@@ -178,13 +179,39 @@ scatter.props <- all.props
 
 all.props.long <- all.props %>%
                   pivot_longer(
-                    cols = c("MGE", "CGE", "IT", "L5NP", "L5PT", "L6CT", "L6b", 
+                    cols = c("PV_Pyr", "MGE", "CGE", "IT", "L5NP", "L5PT", "L6CT", "L6b", 
                              "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac", 
                              "Astro", "Micro", "OD", "OPC", "Endo", "VLMC", 
                              "Glutamatergic", "GABAergic", "Nonneuronal"),
                     names_to = "cell.identity", 
                     values_to = "fraction"
                                )
+
+```
+
+
+```{r, fig.height=3.6, fig.width=2.75}
+
+all.props.long$species <- factor(all.props.long$species, levels = c("Opossum", "Mouse"))
+
+curr.props <- all.props.long[all.props.long$cell.identity %in% c("PV_Pyr"), ]
+
+ggplot(curr.props, aes(x = factor(cell.identity, level = c("PV_Pyr")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("PV_Pyr")) +
+    scale_y_continuous(breaks = c(0, 0.1, 0.2), expand = c(0, 0), limits = c(0, 0.2)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "Fraction of Neuronal Cells", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa")) + 
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+
+res.aov <- aov(fraction ~ species, data = curr.props)
+tukey <- TukeyHSD(res.aov, which = "species")
+
+# ggsave(file = "E:/Opossum_Paper/Figure 1/EI_Ratio.png", plot = p, width = 2.75, height = 3.6, dpi = 500)
+# ggsave(file = "E:/Opossum_Paper/Figure 1/EI_Ratio.svg", plot = p, width = 2.75, height = 3.6, dpi = 500)
 
 ```
 

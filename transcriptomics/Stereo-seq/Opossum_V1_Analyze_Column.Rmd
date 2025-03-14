@@ -1,0 +1,372 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+colors_list <- GetColors()
+
+obj.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
+obj.glutamatergic$class <- "glutamatergic"
+
+obj.ctx.glutamatergic.COL <- readRDS("E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_1_COL_clustered_mapped.rds")
+
+```
+
+
+```{r}
+
+obj.ctx.glutamatergic.COL <- ClusterSCT(obj.ctx.glutamatergic.COL, c(0.5, 1))
+
+```
+
+
+```{r}
+
+DimPlot(obj.ctx.glutamatergic.COL, group.by = "SCT_snn_res.0.5", label = TRUE) + NoLegend() + xlim(-8, 8) + ylim(-8, 8) + coord_equal()
+DimPlot(obj.ctx.glutamatergic.COL, group.by = "SCT_snn_res.1", label = TRUE) + NoLegend() + xlim(-8, 8) + ylim(-8, 8) + coord_equal()
+DimPlot(obj.ctx.glutamatergic.COL, group.by = "predicted.subclass", cols = c("#A0A0A0", "#128e27", "#1E90FF", "#C934EB", "#FFFFFF")) + xlim(-8, 8) + ylim(-8, 8) + coord_equal()
+FeaturePlot(obj.ctx.glutamatergic.COL, "Foxp2") + xlim(-8, 8) + ylim(-8, 8) + coord_equal()
+
+```
+
+
+```{r}
+
+FeaturePlot(obj.ctx.glutamatergic.COL, "Kcnh5") + xlim(-8, 8) + ylim(-8, 8) + coord_equal()
+
+```
+
+
+```{r}
+
+VlnPlot(obj.ctx.glutamatergic.COL, "nCount_RNA")
+VlnPlot(obj.glutamatergic, "nCount_RNA")
+
+```
+
+
+```{r}
+
+Idents(obj.ctx.glutamatergic.COL) <- "SCT_snn_res.0.75"
+ImageDimPlot(obj.ctx.glutamatergic.COL, fov = "COL", size = 3)
+PlotClusterImageDim(obj.ctx.glutamatergic.COL)
+
+```
+
+
+```{r}
+
+LabelCellsByGeneFraction <- function(seurat_obj, genes, fraction, label, column_name) {
+  # Ensure genes are present in the object
+  genes_present <- intersect(genes, rownames(seurat_obj@assays$RNA@counts))
+  if (length(genes_present) == 0) stop("No genes from the provided list are present in the Seurat object.")
+  
+  # Count how many of the specified genes are expressed in each cell
+  gene_counts <- Matrix::colSums(seurat_obj@assays$RNA@counts[genes_present, ] > 0)
+  
+  # Determine the threshold based on the fraction
+  threshold <- length(genes_present) * fraction
+  
+  # Label cells that express at least the threshold fraction of genes
+  seurat_obj@meta.data[[column_name]] <- ifelse(gene_counts >= threshold, label, NA)
+  
+  return(seurat_obj)
+}
+
+L4.genes <- c("Rorb", "Thsd7a", "Sema3e", "Tafa2", "Brinp3", "Pld5", "Sntg1", "Mlip", "Trpm3", "Kcnh1", "Dach1", "Pdzrn3")
+
+obj.ctx.glutamatergic.COL <- LabelCellsByGeneFraction(obj.ctx.glutamatergic.COL, L4.genes, 0.15, "L4", "L4-like")
+
+```
+
+
+```{r}
+
+Idents(obj.ctx.glutamatergic.COL) <- "L4-like"
+ImageDimPlot(obj.ctx.glutamatergic.COL, fov = "COL", size = 3)
+
+```
+
+
+```{r}
+
+obj.i <- IntegrateObjects(obj.glutamatergic, obj.ctx.glutamatergic.COL, resolutions = c(0.25, 0.5, 0.75), subsample = FALSE)
+
+```
+
+
+```{r}
+
+PlotIntegration(obj.i, "subclass", "SCT_snn_res.1")
+
+```
+
+
+```{r}
+
+DimPlot(obj.i, group.by = "integrated_snn_res.0.5", label = TRUE) + NoLegend() + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
+
+```
+
+
+```{r}
+
+library(Seurat)
+library(FNN)  # For fast nearest neighbor search
+library(dplyr)
+
+integrated_obj$subclass[is.na(integrated_obj$subclass)] <- "None"
+
+# 1. Get UMAP embeddings
+umap_embeddings <- Embeddings(integrated_obj, "umap")
+
+# Extract metadata
+meta <- integrated_obj@meta.data
+
+# Get cell names directly
+labeled_cells <- rownames(meta)[meta$subclass != "None"]
+unlabeled_cells <- rownames(meta)[meta$subclass == "None"]
+all_cells <- c(labeled_cells, unlabeled_cells)
+
+# Optionally, pull cluster identities
+clusters <- Idents(integrated_obj)
+
+# 3. Find k nearest neighbors for each unlabeled cell
+k <- 20  # Number of neighbors to consider
+# Nearest neighbors: query unlabeled cells against labeled cells
+nn <- get.knnx(
+  data = umap_embeddings[all_cells, ],    # Reference (labeled cells)
+  query = umap_embeddings[unlabeled_cells, ], # Query (unlabeled cells)
+  k = k
+)
+
+# 4. For each unlabeled cell, check the subclass of neighbors
+neighbor_subclasses <- vector("list", length = nrow(nn$nn.index))
+
+for (i in 1:nrow(nn$nn.index)) {
+  neighbor_indices <- nn$nn.index[i, ]
+  neighbor_cells <- all_cells[neighbor_indices]
+  
+  # Save subclass labels
+  neighbor_subclasses[[i]] <- integrated_obj$subclass[neighbor_cells]
+}
+
+# 5. Summarize neighbor subclass proportions per cell
+all_subclasses <- unique(integrated_obj$subclass[all_cells])
+neighbor_subclass_fractions <- lapply(neighbor_subclasses, function(subclasses) {
+  tbl <- table(factor(subclasses, levels = all_subclasses))
+  prop.table(tbl)
+})
+
+# Combine into a dataframe
+neighbor_fraction_df <- do.call(rbind, neighbor_subclass_fractions)
+rownames(neighbor_fraction_df) <- unlabeled_cells
+
+# Threshold for assignment
+threshold <- 0.6
+
+assigned_subclasses <- sapply(1:nrow(neighbor_fraction_df), function(i) {
+  
+  fractions <- neighbor_fraction_df[i, ]
+  top_subclass <- names(fractions)[which.max(fractions)]
+  
+  if (max(fractions) >= threshold) {
+    return(top_subclass)
+  } else {
+    return(NA)
+  }
+})
+
+# Add back to Seurat object's metadata
+integrated_obj$subclass_nn <- NA
+integrated_obj$subclass_nn[rownames(neighbor_fraction_df)] <- assigned_subclasses
+
+```
+
+
+```{r}
+
+DimPlot(integrated_obj, group.by = "subclass_nn", label = TRUE) + NoLegend() + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.ctx.glutamatergic.COL$subclass_nn <- assigned_subclasses
+
+```
+
+
+```{r}
+
+Idents(obj.ctx.glutamatergic.COL) <- "subclass_nn"
+ImageDimPlot(obj.ctx.glutamatergic.COL, fov = "COL", size = 3)
+colors_list[["None"]] <- "#34E1EB"
+PlotClusterImageDim(obj.ctx.glutamatergic.COL, ident = "subclass_nn", colors_list = colors_list)
+
+```
+
+
+```{r}
+
+library(Seurat)
+library(ggplot2)
+
+# 2. Extract coordinates and subclass labels
+coords <- GetTissueCoordinates(obj.ctx.glutamatergic.COL)
+df <- data.frame(
+  y = coords$x,
+  subclass = obj.ctx.glutamatergic.COL$subclass_nn
+)
+
+# 3. Get unique subclasses (excluding NAs)
+subclasses <- unique(df$subclass)
+subclasses <- subclasses[!is.na(subclasses)]
+
+# 4. Loop over subclasses and plot individually
+for (subclass_name in subclasses) {
+  
+  # Subset to cells of the current subclass
+  df_sub <- df[df$subclass == subclass_name, ]
+  
+  # Get the color for this subclass
+  subclass_color <- colors_list[subclass_name]
+  
+  # Create the plot
+  p <- ggplot(df_sub, aes(y = y)) +
+    geom_histogram(
+      bins = 8,
+      fill = subclass_color,
+      color = "black",
+      alpha = 0.9
+    ) +
+    labs(
+      title = paste("Density of", subclass_name, "along the Y-axis"),
+      y = "Y-axis position",
+      x = "Cell count"
+    ) +
+    theme_minimal() +
+    theme(
+      legend.position = "none",
+      axis.title.y = element_text(vjust = 1)
+    )  # Makes the plot square
+  
+  # Print the plot
+  print(p)
+}
+
+```
+
+
+```{r}
+
+subclass_order <- c("IT_A", "IT_B", "IT_C", "IT_D", "L5NP", "L5PT", "L6CT", "L6b")  # Define your desired order
+
+# 2. Extract coordinates and subclass labels
+coords <- GetTissueCoordinates(obj.ctx.glutamatergic.COL)
+df <- data.frame(
+  y = coords$x,
+  subclass = obj.ctx.glutamatergic.COL$subclass_nn
+)
+
+# 3. Filter out NA subclass cells and ensure correct subclass factor levels
+df <- df %>%
+  filter(!is.na(subclass)) %>%
+  mutate(subclass = factor(subclass, levels = subclass_order))
+
+# 4. Get consistent y-axis limits
+y_limits <- range(df$y, na.rm = TRUE)
+
+# 5. Plot all subclasses side-by-side sharing the same y-axis
+ggplot(df, aes(x = ..count.., y = y, fill = subclass)) +
+  geom_histogram(
+    bins = 20,
+    color = "black",
+    alpha = 0.9
+  ) +
+  facet_wrap(~ subclass, nrow = 1, strip.position = "bottom") +
+  scale_y_continuous(limits = y_limits) +
+  scale_fill_manual(values = colors_list) +
+  labs(
+    title = "Stacked subclass distributions along the Y-axis",
+    x = "Cell count",
+    y = "Y-axis position"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.background = element_blank(),
+    strip.text = element_text(size = 10),
+    legend.position = "none",
+    panel.spacing = unit(0.1, "lines"),
+    aspect.ratio = 1
+  )
+
+```
+
+
+```{r}
+
+colors_list_density <- list(IT_A = "#FF6C88", 
+                            IT_B = "#1E90FF", 
+                            IT_C = "#FF4500", 
+                            IT_D = "#f7f023", 
+                            L5NP = "#de23f7", 
+                            L5PT = "#128e27", 
+                            L6CT = "#23cdf7", 
+                            L6b = "#f77b23")
+
+# 2. Extract coordinates and subclass labels
+coords <- GetTissueCoordinates(obj.ctx.glutamatergic.COL)
+df <- data.frame(
+  y = coords$x,
+  subclass = obj.ctx.glutamatergic.COL$subclass_nn
+)
+
+# 3. Filter and set subclass as a factor to enforce order
+df <- df %>%
+  filter(!is.na(subclass) & subclass != "None") %>%
+  mutate(subclass = factor(subclass, levels = subclass_order))
+
+# 4. Plot smooth density profiles
+ggplot(df, aes(x = y, color = subclass)) +
+  geom_density(
+    size = 2,
+    # adjust = 0.2         # Smoothing factor (increase if you want smoother lines)
+  ) +
+  scale_color_manual(values = as.character(colors_list_density[subclass_order])) +
+  scale_fill_manual(values = as.character(colors_list_density[subclass_order])) +
+  labs(
+    title = "Smooth density profiles of subclasses along the Y-axis",
+    x = "Y-axis position",
+    y = "Density"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.title = element_blank(),
+    aspect.ratio = 1
+  ) + coord_flip()
+
+```
+
+

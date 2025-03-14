@@ -1,20 +1,104 @@
 
-PlotClusterImageDim <- function(seurat_obj) {
-  Idents(seurat_obj) <- "seurat_clusters"  # Ensure correct identities
+LabelByNearestNeighbors <- function(obj, ident, fraction = 0.6, n.neighbors = 20) {
+  
+  library(Seurat)
+  library(FNN)  # For fast nearest neighbor search
+  library(dplyr)
+  
+  obj[[ident]][is.na(obj[[ident]])] <- "None"
+  
+  # 1. Get UMAP embeddings
+  umap_embeddings <- Embeddings(obj, "umap")
+  
+  # Extract metadata
+  meta <- obj@meta.data
+  
+  # Get cell names directly
+  labeled_cells <- rownames(meta)[meta[[ident]] != "None"]
+  unlabeled_cells <- rownames(meta)[meta[[ident]] == "None"]
+  all_cells <- c(labeled_cells, unlabeled_cells)
+  
+  # 3. Find k nearest neighbors for each unlabeled cell
+  k <- n.neighbors  # Number of neighbors to consider
+  # Nearest neighbors: query unlabeled cells against labeled cells
+  nn <- get.knnx(
+    data = umap_embeddings[all_cells, ],    # Reference (labeled cells)
+    query = umap_embeddings[unlabeled_cells, ], # Query (unlabeled cells)
+    k = k
+  )
+  
+  # 4. For each unlabeled cell, check the subclass of neighbors
+  neighbor_idents <- vector("list", length = nrow(nn$nn.index))
+  
+  for (i in 1:nrow(nn$nn.index)) {
+    neighbor_indices <- nn$nn.index[i, ]
+    neighbor_cells <- all_cells[neighbor_indices]
+    
+    # Save subclass labels
+    neighbor_idents[[i]] <- obj[[ident]][neighbor_cells, 1]
+  }
+  
+  # 5. Summarize neighbor subclass proportions per cell
+  all_idents <- unique(obj[[ident]][all_cells, 1])
+  neighbor_subclass_fractions <- lapply(neighbor_idents, function(idents) {
+    tbl <- table(factor(idents, levels = all_idents))
+    prop.table(tbl)
+  })
+  
+  # Combine into a dataframe
+  neighbor_fraction_df <- do.call(rbind, neighbor_subclass_fractions)
+  rownames(neighbor_fraction_df) <- unlabeled_cells
+  
+  # Threshold for assignment
+  threshold <- fraction
+  
+  assigned_idents <- sapply(1:nrow(neighbor_fraction_df), function(i) {
+    fractions <- neighbor_fraction_df[i, ]
+    fractions_no_none <- fractions[names(fractions) != "None"]
+    
+    if (length(fractions_no_none) == 0 || all(fractions_no_none == 0)) {
+      return("None")
+    }
+    
+    top_subclass <- names(fractions_no_none)[which.max(fractions_no_none)]
+    
+    if (max(fractions_no_none) >= threshold) {
+      return(top_subclass)
+    } else {
+      return("None")
+    }
+  })
+  
+  # Add back to Seurat object's metadata
+  obj[[paste0(ident, "_nn")]] <- "None"
+  obj[[paste0(ident, "_nn")]][rownames(neighbor_fraction_df), 1] <- assigned_idents
+  obj[[paste0(ident, "_nn")]][labeled_cells, 1] <- NA
+  
+  return(obj)
+}
+
+PlotClusterImageDim <- function(seurat_obj, ident = "seurat_clusters", colors_list = NA) {
+  
+  Idents(seurat_obj) <- ident  # Ensure correct identities
   all_clusters <- levels(seurat_obj)
   
   for (cluster in all_clusters) {
     # Assign grey to all clusters except the one being plotted
     cluster_colors <- rep("grey80", length(all_clusters))
     names(cluster_colors) <- all_clusters
-    cluster_colors[cluster] <- scales::hue_pal()(length(all_clusters))[which(all_clusters == cluster)]
+    if (class(colors_list) == "list") {
+      cluster_colors[cluster] <- colors_list[[cluster]]
+    } else {
+      cluster_colors[cluster] <- scales::hue_pal()(length(all_clusters))[which(all_clusters == cluster)]
+    }
     
     # Generate and print the plot
-    plot <- ImageDimPlot(seurat_obj, group.by = "seurat_clusters", 
+    plot <- ImageDimPlot(seurat_obj, group.by = ident, 
                          cols = cluster_colors, 
-                         size = 3) + ggtitle(paste("Cluster", cluster))
+                         size = 3) + ggtitle(paste(cluster))
     print(plot)
   }
+  
 }
 
 GetColors <- function() {
@@ -254,7 +338,7 @@ NormalizePCA <- function(obj, nfeatures = 3000, npcs = 30, features = NA) {
   
 }
 
-PlotClusters <- function(obj, group.id) {
+PlotClusters <- function(obj, group.id, save.plots = FALSE) {
   
   if (!missing(group.id)) {
     Idents(obj) <- group.id
@@ -303,6 +387,14 @@ PlotClusters <- function(obj, group.id) {
   print(vlnplot1)
   print(featplot2)
   print(vlnplot2)
+  
+  if (save.plots == TRUE){
+    ggsave("E:/Opossum_Paper/Figure S1/Opossum_All_Clusters.svg", plot = dimplot1)
+    ggsave("E:/Opossum_Paper/Figure S1/Opossum_All_Samples.svg", plot = dimplot2)
+    ggsave("E:/Opossum_Paper/Figure S1/Opossum_All_Samples_Bar.svg", plot = barplot1)
+    ggsave("E:/Opossum_Paper/Figure S1/Opossum_All_Doublets.svg", plot = dimplot3)
+    ggsave("E:/Opossum_Paper/Figure S1/Opossum_All_Doublets_Bar.svg", plot = barplot2)
+  }
   
 }
 

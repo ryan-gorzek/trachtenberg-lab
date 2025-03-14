@@ -108,7 +108,7 @@ MapObjects <- function(seurat_obj1, seurat_obj2, idents, assay = "SCT") {
     # Transfer data from reference to query
     reference <- objs[[objs.idx$ref[idx]]]
     query <- objs[[objs.idx$qry[idx]]]
-    anchors.query <- FindTransferAnchors(reference = reference, query = query, reference.reduction = "pca", dims = 1:30)
+    anchors.query <- FindTransferAnchors(reference = reference, query = query, reference.reduction = "pca", dims = 1:30, k.filter = NA)
     # if (nrow(anchors.query@anchors) < 50) { k.weight = 10 } # floor(nrow(anchors.query@anchors) * 0.25)
     # else { k.weight = 50 }
     objs.mapped[[idx]] <- MapQuery(anchorset = anchors.query, 

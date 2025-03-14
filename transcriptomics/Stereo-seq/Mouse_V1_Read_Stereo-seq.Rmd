@@ -1,0 +1,83 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratObject)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+
+data.path <- "E:/STOmics/seurat/Mouse/raw/"
+obj.data <- Read10X(data.path, gene.column = 2)
+obj <- CreateSeuratObject(counts = obj.data, project = "Mouse_V1_Stereo-seq")
+
+obj$species <- "Mouse"
+X <- read.csv(paste(data.path, "x_coords.csv", sep = ""), header = FALSE)
+X <- (X - max(X)) * -1
+obj <- AddMetaData(obj, X$V1, "X")
+Y <- read.csv(paste(data.path, "y_coords.csv", sep = ""), header = FALSE)
+Y <- (Y - max(Y)) * -1
+obj <- AddMetaData(obj, Y$V1, "Y")
+
+# Define the rotation angle in degrees
+rotation_angle <- 45  # Rotate by 30 degrees
+theta <- rotation_angle * pi / 180  # Convert to radians
+
+# Get current coordinates
+coords <- as.matrix(obj@meta.data[, c("X", "Y")])
+
+# Define rotation matrix
+rotation_matrix <- matrix(
+  c(cos(theta), -sin(theta),
+    sin(theta),  cos(theta)),
+  nrow = 2
+)
+
+# Apply rotation
+rotated_coords <- coords %*% rotation_matrix
+
+# Update metadata
+obj$X_rotated <- rotated_coords[, 1]
+obj$Y_rotated <- rotated_coords[, 2]
+
+cents.df <- data.frame(X, Y)
+colnames(cents.df) <- c("X", "Y")
+rownames(cents.df) <- colnames(obj)
+
+cents.df$X <- obj$X_rotated
+cents.df$Y <- obj$Y_rotated
+
+cents <- CreateCentroids(cents.df)
+fov <- CreateFOV(
+  cents, 
+  type = "centroids",
+  assay = "RNA",
+  key = Key("FOV", quiet = TRUE)
+)
+
+fov <- fov[Cells(obj)]
+
+obj[["FOV"]] <- fov
+
+```
+
+
+```{r, fig.width=10}
+
+ImageDimPlot(obj, cols = "red")
+ImageFeaturePlot(obj, "nCount_RNA", max.cutoff = 1000)
+# ImageFeaturePlot(obj, "", max.cutoff = 10, axes = TRUE)
+
+```
+
+
+```{r}
+
+saveRDS(obj, "E:/STOmics/seurat/Mouse/mouse_stereoseq_all.rds")
+
+```
+
