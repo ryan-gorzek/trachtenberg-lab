@@ -1,0 +1,172 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+colors_list <- GetColors()
+
+obj.i.mouse <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLs_integrated.rds")
+obj.i.opossum <- readRDS("E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_COLs_integrated.rds")
+
+```
+
+
+```{r}
+
+IT.sn.names <- colnames(obj.i.mouse)[obj.i.mouse$subclass %in% c("L2/3", "L4", "L5IT")]
+IT.sp.names <- colnames(obj.i.mouse)[obj.i.mouse$subclass_nn %in% c("L2/3", "L4", "L5IT")]
+obj.i.mouse.IT <- obj.i.mouse[, c(IT.sn.names, IT.sp.names)]
+
+IT.sn.names <- colnames(obj.i.opossum)[obj.i.opossum$subclass %in% c("IT_A", "IT_B", "IT_C")]
+IT.sp.names <- colnames(obj.i.opossum)[obj.i.opossum$subclass_nn %in% c("IT_A", "IT_B", "IT_C")]
+obj.i.opossum.IT <- obj.i.opossum[, c(IT.sn.names, IT.sp.names)]
+
+```
+
+
+```{r}
+
+obj.i.mouse.IT <- RunPCA(obj.i.mouse.IT)
+obj.i.opossum.IT <- RunPCA(obj.i.opossum.IT)
+
+```
+
+
+```{r}
+
+subclasses.mouse <- c("L2/3", "L4", "L5IT", "None")
+Idents(obj.i.mouse.IT) <- "subclass"
+DimPlot(obj.i.mouse.IT, reduction = "pca", dims = c(2, 3), cols = colors_list[subclasses.mouse], label = TRUE) + NoLegend() + xlim(-30, 25) + ylim(-20, 35) + coord_equal()
+df <- data.frame(cell = colnames(obj.i.mouse.IT), method = obj.i.mouse.IT$method, X = obj.i.mouse.IT@reductions$pca@cell.embeddings[, 2], Y = obj.i.mouse.IT@reductions$pca@cell.embeddings[, 3])
+write.csv(df, "E:/Opossum_Paper/Figure 3/mouse_triangle_integrated.csv", row.names = FALSE)
+
+Idents(obj.i.mouse.IT) <- "subclass_nn"
+DimPlot(obj.i.mouse.IT, reduction = "pca", dims = c(2, 3), cols = colors_list[subclasses.mouse], label = TRUE) + NoLegend() + xlim(-30, 25) + ylim(-20, 35) + coord_equal()
+
+```
+
+
+```{r}
+
+subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "None")
+Idents(obj.i.opossum.IT) <- "subclass"
+DimPlot(obj.i.opossum.IT, reduction = "pca", dims = c(2, 3), cols = colors_list[subclasses.opossum], label = TRUE) + NoLegend() + xlim(-30, 35) + ylim(-30, 35) + coord_equal()
+df <- data.frame(cell = colnames(obj.i.opossum.IT), method = obj.i.opossum.IT$method, X = obj.i.opossum.IT@reductions$pca@cell.embeddings[, 2], Y = obj.i.opossum.IT@reductions$pca@cell.embeddings[, 3])
+# write.csv(df, "E:/Opossum_Paper/Figure 3/opossum_triangle_integrated.csv", row.names = FALSE)
+
+Idents(obj.i.opossum.IT) <- "subclass_nn"
+DimPlot(obj.i.opossum.IT, reduction = "pca", dims = c(2, 3), cols = colors_list[subclasses.opossum], label = TRUE) + NoLegend() + xlim(-30, 35) + ylim(-30, 35) + coord_equal()
+
+```
+
+
+```{r}
+
+tri.colors <- read.csv("E:/Opossum_Paper/Figure 3/mouse_integrated_PC_colors.csv")
+
+```
+
+
+```{r}
+
+library(ggplot2)
+library(Seurat)
+
+ImageDimPlotGradient <- function(obj, rgb_csv, ratio = 1, size = 2, yticks = NA) {
+  
+  # Load RGB colors from CSV
+  rgb_data <- read.csv(rgb_csv, row.names = 1)
+  
+  # Extract spatial coordinates
+  coords <- GetTissueCoordinates(obj)
+  
+  # Create dataframe
+  df <- data.frame(x = coords[,1], y = coords[,2], cells = coords$cell)
+  
+  # Match colors to correct cells
+  df <- merge(df, rgb_data, by.x = "cells", by.y = "row.names", all.x = TRUE)
+  
+  # Ensure proper RGB format
+  df$color <- rgb(df$R, df$G, df$B, maxColorValue = 1)
+  
+  # Reorder points to plot lower intensity ones first
+  df <- df[order(df$R + df$G + df$B, decreasing = FALSE), ]
+  
+  # Generate the plot
+  p <- ggplot(df, aes(x = y, y = x, color = color)) + # , color = color
+    geom_point(size = size, alpha = 1) +
+    guides(color = "none") + 
+    scale_color_identity() +  # Directly use RGB colors
+    theme_minimal() +
+    coord_fixed(ratio = ratio) +
+    # scale_y_continuous(breaks = yticks) +
+    theme(axis.text = element_blank(), axis.ticks = element_blank())
+  
+  return(p)
+}
+
+# Example usage
+ImageDimPlotGradient(obj = obj.i.mouse.IT, rgb_csv = "E:/Opossum_Paper/Figure 3/mouse_integrated_PC_colors.csv")
+
+```
+
+
+```{r}
+
+obj.i.mouse.IT.L23 <- subset(obj.i.mouse.IT, subclass_nn == "L2/3")
+ImageDimPlotGradient(obj = obj.i.mouse.IT.L23, rgb_csv = "E:/Opossum_Paper/Figure 3/mouse_integrated_PC_colors.csv")
+
+obj.i.mouse.IT.L4 <- subset(obj.i.mouse.IT, subclass_nn == "L4")
+ImageDimPlotGradient(obj = obj.i.mouse.IT.L4, rgb_csv = "E:/Opossum_Paper/Figure 3/mouse_integrated_PC_colors.csv")
+
+obj.i.mouse.IT.L5IT <- subset(obj.i.mouse.IT, subclass_nn == "L5IT")
+ImageDimPlotGradient(obj = obj.i.mouse.IT.L5IT, rgb_csv = "E:/Opossum_Paper/Figure 3/mouse_integrated_PC_colors.csv")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

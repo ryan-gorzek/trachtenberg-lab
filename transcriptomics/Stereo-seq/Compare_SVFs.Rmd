@@ -1,0 +1,135 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+colors_list <- GetColors()
+
+obj.mouse <- list("glutamatergic" = NA, "gabaergic" = NA, "nonneuronal" = NA)
+
+obj.mouse$glutamatergic <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_glutamatergic_COLs_EXT_integrated.rds")
+obj.mouse$gabaergic <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_gabaergic_COLs_EXT_integrated.rds")
+obj.mouse$nonneuronal <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_nonneuronal_COLs_EXT_integrated.rds")
+
+obj.opossum <- list("glutamatergic" = NA, "gabaergic" = NA, "nonneuronal" = NA)
+
+obj.opossum$glutamatergic <- readRDS("E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_glutamatergic_COLs_EXT_integrated.rds")
+obj.opossum$gabaergic <- readRDS("E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_gabaergic_COLs_EXT_integrated.rds")
+obj.opossum$nonneuronal <- readRDS("E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_nonneuronal_COLs_EXT_integrated.rds")
+
+```
+
+
+```{r}
+
+obj.mouse$glutamatergic <- ClusterSCT(obj.mouse$glutamatergic, 0.5)
+obj.opossum$glutamatergic <- ClusterSCT(obj.opossum$glutamatergic, 0.5)
+
+```
+
+
+```{r}
+
+Idents(obj.mouse$glutamatergic) <- "subclass_nn"
+markers.mouse <- FindAllMarkers(obj.mouse$glutamatergic)
+
+Idents(obj.opossum$glutamatergic) <- "subclass_nn"
+markers.opossum <- FindAllMarkers(obj.opossum$glutamatergic)
+
+```
+
+
+```{r}
+
+ImageFeaturePlotOrdered <- function(obj, feature, max.cutoff = 1, ratio = 1, size = 2, yticks = NA) {
+
+  # Extract spatial coordinates
+  coords <- GetTissueCoordinates(obj)
+  
+  # Extract expression values
+  expr <- FetchData(obj, vars = feature)
+  
+  # Combine data into a dataframe
+  df <- cbind(coords, expr)
+  
+  # Rename columns for consistency
+  colnames(df) <- c("x", "y", "cells", "expression")
+  
+  df$expression[df$expression > max.cutoff] <- max.cutoff
+  
+  # Reorder points by expression (lower first, so higher are plotted last)
+  df <- df[order(df$expression, decreasing = FALSE), ]
+  
+  # Generate the plot
+  p <- ggplot(df, aes(x = y, y = x, color = expression)) +
+    geom_point(size = size, alpha = 1) +  # Adjust point size as needed
+    scale_color_gradient(low = "#fcf0c2", high = "#a1020a", limits = c(min(df$expression), max.cutoff)) +  # Use a good color scheme
+    theme_minimal() +
+    coord_fixed(ratio = ratio) +  # Maintain aspect ratio
+    scale_y_continuous(breaks = yticks) +
+    theme(axis.text = element_blank(), axis.ticks = element_blank())
+  
+  return(p)
+
+}
+
+```
+
+
+```{r}
+
+# Cux2, Rorb, Foxp2
+
+feature <- "Fezf2"
+ImageFeaturePlotOrdered(obj.mouse$glutamatergic, feature, ratio = 1.5, yticks = c(0, 500, 1000, 1500))
+ImageFeaturePlotOrdered(obj.opossum$glutamatergic, feature, ratio = 0.77 * 1.5, yticks = c(0, 400, 800, 1200, 1600))
+
+# ggsave(paste0("E:/Opossum_Paper/Figure 3/Mouse_Glutamatergic_", feature, ".svg"), plot = pm, width = 7, height = 5)
+# ggsave(paste0("E:/Opossum_Paper/Figure 3/Opossum_Glutamatergic_", feature, ".svg"), plot = po, width = 7, height = 5)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

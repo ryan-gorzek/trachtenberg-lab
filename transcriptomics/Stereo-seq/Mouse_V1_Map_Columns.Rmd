@@ -358,12 +358,7 @@ saveRDS(obj.ctx.nonneuronal, "E:/STOmics/seurat/Opossum/mouse_stereoseq_ctx_nonn
 ```
 
 
-```{r}
 
-obj.ctx <- ClusterSCT(obj.ctx.glutamatergic, 0.5)
-obj.ctx <- FindSpatiallyVariableFeatures(obj.ctx, image = "COL", selection.method = "moransi")
-
-```
 
 
 

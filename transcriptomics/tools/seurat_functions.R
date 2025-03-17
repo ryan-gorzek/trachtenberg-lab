@@ -119,6 +119,7 @@ GetColors <- function() {
     L6CT = "#FFA07A",
     L6b = "#FF6347",
     Projection = "#128e27",
+    None = "#A0A0A0",
     
     # GABAergic
     Pvalb = "#1E90FF",
