@@ -115,27 +115,44 @@ obj.section <- subset(obj.section, features = gene_mask, cells = cell_mask)
 obj$method <- "snRNA-seq"
 obj.section$method <- "Stereo-seq"
 
+```
 
+
+```{r}
+
+df <- setNames(data.frame(matrix(ncol = 2, nrow = 0)), c("cell", "subclass_nn"))
+cell.names.sp <- colnames(obj.section)
+
+for (i in 1:ceiling(ncol(obj.section) / ncol(obj))) {
+  
+  # Sample names unless there's too few remaining
+  if (length(cell.names.sp) >= ncol(obj)) {
+    curr.names <- sample(cell.names.sp, ncol(obj))
+    cell.names.sp <- setdiff(cell.names.sp, curr.names)
+  } else { curr.names <- cell.names.sp }
+  
+  # Subset object and integrate
+  obj.section.i <- obj.section[, curr.names]
+  obj.i <- IntegrateObjects(obj, obj.section.i, resolutions = c(0.5), subsample = FALSE)
+  
+  # Make NN subclass assignments
+  obj.i <- LabelByNearestNeighbors(obj.i, "subclass", fraction = 0.25, n.neighbors = 100)
+  
+  # Grab the metadata
+  curr.df <- data.frame(cell = colnames(obj.i)[obj.i$method == "Stereo-seq"], 
+                        subclass_nn = as.character(obj.i$subclass_nn[obj.i$method == "Stereo-seq"]))
+  df <- rbind(df, curr.df)
+  
+}
+
+saveRDS(df, "E:/STOmics/seurat/Mouse/mouse_section_subclass_labels.rds")
 
 ```
 
 
 ```{r}
 
-df <- data.frame(cell = c(), subclass_nn = c())
-all.names <- colnames(obj.section)
-
-obj.i <- IntegrateObjects(obj, obj.section, resolutions = c(0.5), subsample = FALSE)
-
-
-```
-
-
-```{r}
-
-DimPlot(obj.i, group.by = "subclass")
-DefaultAssay(obj.i.section) <- "RNA"
-ImageFeaturePlot(obj.i.section, "nCount_RNA")
+DimPlot(obj.i, group.by = "subclass_nn")
 
 ```
 

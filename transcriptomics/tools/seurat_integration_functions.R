@@ -21,13 +21,12 @@ IntegrateObjects <- function(seurat_obj1, seurat_obj2, resolutions = 1, nfeature
   seurat_list <- list(seurat_obj1, seurat_obj2)
   
   # Perform SCTransform v2 on each object
-  seurat_list <- lapply(seurat_list, function(x) {
-    x <- SCTransform(x, vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE) %>%
-         RunPCA(npcs = 30, verbose = FALSE) %>%
-         RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
-    return(x)
-  })
-  
+    seurat_list <- lapply(seurat_list, function(x) {
+      x <- SCTransform(x, vst.flavor = "v2", return.only.var.genes = FALSE, verbose = FALSE) %>%
+           RunPCA(npcs = 30, verbose = FALSE) %>%
+           RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
+      return(x)
+    })
   # Select integration features
   integration_features <- SelectIntegrationFeatures(object.list = seurat_list, nfeatures = nfeatures)
   
