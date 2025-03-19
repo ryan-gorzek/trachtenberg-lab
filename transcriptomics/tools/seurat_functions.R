@@ -1,4 +1,38 @@
 
+ImageDimPlotGradient <- function(obj, rgb_csv, ratio = 1, size = 2, yticks = NA) {
+  
+  # Load RGB colors from CSV
+  rgb_data <- read.csv(rgb_csv, row.names = 1)
+  
+  # Extract spatial coordinates
+  coords <- GetTissueCoordinates(obj)
+  
+  # Create dataframe
+  df <- data.frame(x = coords[,1], y = coords[,2], cells = coords$cell)
+  
+  # Match colors to correct cells
+  df <- merge(df, rgb_data, by.x = "cells", by.y = "row.names", all.x = TRUE)
+  
+  # Ensure proper RGB format
+  df$color <- rgb(df$R, df$G, df$B, maxColorValue = 1)
+  
+  # Reorder points to plot lower intensity ones first
+  df <- df[order(df$R + df$G + df$B, decreasing = FALSE), ]
+  
+  # Generate the plot
+  p <- ggplot(df, aes(x = y, y = x, color = color)) + # , color = color
+    geom_point(size = size, alpha = 1) +
+    guides(color = "none") + 
+    scale_color_identity() +  # Directly use RGB colors
+    theme_minimal() +
+    coord_fixed(ratio = ratio) +
+    scale_y_continuous(breaks = yticks) +
+    theme(axis.text = element_blank(), axis.ticks = element_blank())
+  
+  return(p)
+  
+}
+
 LabelByNearestNeighbors <- function(obj, ident, fraction = 0.6, n.neighbors = 20) {
   
   library(Seurat)

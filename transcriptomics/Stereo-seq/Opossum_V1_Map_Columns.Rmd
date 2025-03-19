@@ -130,6 +130,13 @@ saveRDS(obj.i, "E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_COLs_EXT_integra
 
 ```{r}
 
+obj.i <- readRDS("E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_COLs_EXT_integrated.rds")
+
+```
+
+
+```{r}
+
 assigned_subclasses <- obj.i$subclass_nn[!is.na(obj.i$subclass_nn)]
 cell_ids <- names(assigned_subclasses)
 obj.ctx$subclass_nn <- NA
@@ -160,9 +167,9 @@ colors <- hcl.colors(8, palette = "Dynamic")
 obj.ctx.glutamatergic <- subset(obj.ctx, subclass_nn %in% c("IT_A", "IT_B", "IT_C", "IT_D", "L5NP", "L5PT", "L6CT", "L6b"))
 Idents(obj.ctx.glutamatergic) <- "subclass_nn"
 levels(obj.ctx.glutamatergic) <- c("IT_A", "IT_B", "IT_C", "L5NP", "L5PT", "IT_D", "L6CT", "L6b")
-p <- ImageDimPlot(obj.ctx.glutamatergic, fov = "COL", size = 3, cols = colors, axes = TRUE) + coord_fixed(ratio = 0.77) + scale_y_continuous(breaks = c(0, 400, 800, 1200, 1600))
+ImageDimPlot(obj.ctx.glutamatergic, fov = "COL", size = 3, cols = colors, axes = TRUE) + coord_fixed(ratio = 0.77) + scale_y_continuous(breaks = c(0, 400, 800, 1200, 1600))
 
-ggsave("E:/Opossum_Paper/Figure 3/Opossum_Glutamatergic_Column.svg", plot = p, width = 7, height = 5)
+# ggsave("E:/Opossum_Paper/Figure 3/Opossum_Glutamatergic_Column.svg", plot = p, width = 7, height = 5)
 
 ```
 
@@ -191,7 +198,7 @@ df <- data.frame(
 # 3. Filter and set subclass as a factor to enforce order
 df <- df %>%
   filter(!is.na(subclass) & subclass != "None") %>%
-  mutate(subclass = factor(subclass, levels = c("IT_A", "IT_B", "IT_C", "IT_D", "L5NP", "L5PT", "L6CT", "L6b")))
+  mutate(subclass = factor(subclass, levels = c("IT_A", "IT_B", "IT_C", "L5NP", "L5PT", "IT_D", "L6CT", "L6b")))
 
 # 4. Plot smooth density profiles
 p <- ggplot(df, aes(x = y, color = subclass)) +
@@ -205,25 +212,25 @@ p <- ggplot(df, aes(x = y, color = subclass)) +
   theme(
     legend.title = element_blank(),
     aspect.ratio = 1
-  ) + coord_flip() + scale_x_continuous(breaks = c(0, 400, 800, 1200, 1600))
+  ) + coord_flip() + scale_x_continuous(breaks = c(0, 400, 800, 1200, 1600)) + ylim(0, 0.003)
 
 ggsave("E:/Opossum_Paper/Figure 3/Opossum_Glutamatergic_Density.svg", plot = p)
 
-# Outlined histograms without bin borders
-p <- ggplot(df, aes(x = y, color = subclass)) +
-  stat_bin(
-    geom = "step",
-    bins = 30,
-    size = 1  # Adjust line thickness
-  ) +
-  scale_color_manual(values = colors) +
-  theme_minimal() +
-  theme(
-    legend.title = element_blank(),
-    aspect.ratio = 1
-  ) + coord_flip() + scale_x_continuous(breaks = c(0, 400, 800, 1200, 1600))
-
-ggsave("E:/Opossum_Paper/Figure 3/Opossum_Glutamatergic_Histogram.svg", plot = p)
+# # Outlined histograms without bin borders
+# p <- ggplot(df, aes(x = y, color = subclass)) +
+#   stat_bin(
+#     geom = "step",
+#     bins = 30,
+#     size = 1  # Adjust line thickness
+#   ) +
+#   scale_color_manual(values = colors) +
+#   theme_minimal() +
+#   theme(
+#     legend.title = element_blank(),
+#     aspect.ratio = 1
+#   ) + coord_flip() + scale_x_continuous(breaks = c(0, 400, 800, 1200, 1600))
+# 
+# ggsave("E:/Opossum_Paper/Figure 3/Opossum_Glutamatergic_Histogram.svg", plot = p)
 
 ```
 
@@ -233,9 +240,9 @@ ggsave("E:/Opossum_Paper/Figure 3/Opossum_Glutamatergic_Histogram.svg", plot = p
 obj.ctx.gabaergic <- subset(obj.ctx, subclass_nn %in% c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1"))
 Idents(obj.ctx.gabaergic) <- "subclass_nn"
 levels(obj.ctx.gabaergic) <- c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1")
-p <- ImageDimPlot(obj.ctx.gabaergic, fov = "COL", size = 3, cols = colors[1:6], axes = TRUE) + coord_fixed(ratio = 0.77) + scale_y_continuous(breaks = c(0, 400, 800, 1200, 1600))
+ImageDimPlot(obj.ctx.gabaergic, fov = "COL", size = 3, cols = colors[1:6], axes = TRUE) + coord_fixed(ratio = 0.77) + scale_y_continuous(breaks = c(0, 400, 800, 1200, 1600))
 
-ggsave("E:/Opossum_Paper/Figure 3/Opossum_GABAergic_Column.svg", plot = p, width = 7, height = 5)
+# ggsave("E:/Opossum_Paper/Figure 3/Opossum_GABAergic_Column.svg", plot = p, width = 7, height = 5)
 
 ```
 
@@ -266,25 +273,25 @@ p <- ggplot(df, aes(x = y, color = subclass)) +
   theme(
     legend.title = element_blank(),
     aspect.ratio = 1
-  ) + coord_flip() + scale_x_continuous(breaks = c(0, 400, 800, 1200, 1600))
+  ) + coord_flip() + scale_x_continuous(breaks = c(0, 400, 800, 1200, 1600)) + ylim(0, 1.35e-03)
 
 ggsave("E:/Opossum_Paper/Figure 3/Opossum_GABAergic_Density.svg", plot = p)
 
-# Outlined histograms without bin borders
-p <- ggplot(df, aes(x = y, color = subclass)) +
-  stat_bin(
-    geom = "step",
-    bins = 30,
-    size = 1  # Adjust line thickness
-  ) +
-  scale_color_manual(values = colors) +
-  theme_minimal() +
-  theme(
-    legend.title = element_blank(),
-    aspect.ratio = 1
-  ) + coord_flip() + scale_x_continuous(breaks = c(0, 400, 800, 1200, 1600))
-
-ggsave("E:/Opossum_Paper/Figure 3/Opossum_GABAergic_Histogram.svg", plot = p)
+# # Outlined histograms without bin borders
+# p <- ggplot(df, aes(x = y, color = subclass)) +
+#   stat_bin(
+#     geom = "step",
+#     bins = 30,
+#     size = 1  # Adjust line thickness
+#   ) +
+#   scale_color_manual(values = colors) +
+#   theme_minimal() +
+#   theme(
+#     legend.title = element_blank(),
+#     aspect.ratio = 1
+#   ) + coord_flip() + scale_x_continuous(breaks = c(0, 400, 800, 1200, 1600))
+# 
+# ggsave("E:/Opossum_Paper/Figure 3/Opossum_GABAergic_Histogram.svg", plot = p)
 
 ```
 

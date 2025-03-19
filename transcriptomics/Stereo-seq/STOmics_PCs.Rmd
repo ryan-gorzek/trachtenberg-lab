@@ -61,7 +61,8 @@ df <- data.frame(cell = colnames(obj.i.mouse.IT), method = obj.i.mouse.IT$method
 write.csv(df, "E:/Opossum_Paper/Figure 3/mouse_triangle_integrated.csv", row.names = FALSE)
 
 Idents(obj.i.mouse.IT) <- "subclass_nn"
-DimPlot(obj.i.mouse.IT, reduction = "pca", dims = c(2, 3), cols = colors_list[subclasses.mouse], label = TRUE) + NoLegend() + xlim(-30, 25) + ylim(-20, 35) + coord_equal()
+p <- DimPlot(obj.i.mouse.IT, reduction = "pca", dims = c(2, 3), cols = colors_list[subclasses.mouse], label = TRUE) + NoLegend() + xlim(-30, 25) + ylim(-20, 35) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 3/mouse_pc_gradient_methods.svg", plot = p)
 
 ```
 
@@ -72,80 +73,104 @@ subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "None")
 Idents(obj.i.opossum.IT) <- "subclass"
 DimPlot(obj.i.opossum.IT, reduction = "pca", dims = c(2, 3), cols = colors_list[subclasses.opossum], label = TRUE) + NoLegend() + xlim(-30, 35) + ylim(-30, 35) + coord_equal()
 df <- data.frame(cell = colnames(obj.i.opossum.IT), method = obj.i.opossum.IT$method, X = obj.i.opossum.IT@reductions$pca@cell.embeddings[, 2], Y = obj.i.opossum.IT@reductions$pca@cell.embeddings[, 3])
-# write.csv(df, "E:/Opossum_Paper/Figure 3/opossum_triangle_integrated.csv", row.names = FALSE)
+write.csv(df, "E:/Opossum_Paper/Figure 3/opossum_triangle_integrated.csv", row.names = FALSE)
 
 Idents(obj.i.opossum.IT) <- "subclass_nn"
-DimPlot(obj.i.opossum.IT, reduction = "pca", dims = c(2, 3), cols = colors_list[subclasses.opossum], label = TRUE) + NoLegend() + xlim(-30, 35) + ylim(-30, 35) + coord_equal()
+p <- DimPlot(obj.i.opossum.IT, reduction = "pca", dims = c(2, 3), cols = colors_list[subclasses.opossum], label = TRUE) + NoLegend() + xlim(-30, 35) + ylim(-30, 35) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure 3/opossum_pc_gradient_methods.svg", plot = p)
 
 ```
 
 
 ```{r}
 
-tri.colors <- read.csv("E:/Opossum_Paper/Figure 3/mouse_integrated_PC_colors.csv")
-
-```
-
-
-```{r}
-
-library(ggplot2)
-library(Seurat)
-
-ImageDimPlotGradient <- function(obj, rgb_csv, ratio = 1, size = 2, yticks = NA) {
+DimPlotGradient <- function(obj, rgb_csv, pc1 = "PC_2", pc2 = "PC_3", size = 2) {
   
   # Load RGB colors from CSV
   rgb_data <- read.csv(rgb_csv, row.names = 1)
   
-  # Extract spatial coordinates
-  coords <- GetTissueCoordinates(obj)
+  # Extract PC coordinates from the Seurat object
+  pc_coords <- Embeddings(obj, reduction = "pca")[, c(pc1, pc2)]
   
   # Create dataframe
-  df <- data.frame(x = coords[,1], y = coords[,2], cells = coords$cell)
+  df <- data.frame(PC1 = pc_coords[, 1], PC2 = pc_coords[, 2], cells = rownames(pc_coords))
   
-  # Match colors to correct cells
+  # Merge colors with PC coordinates
   df <- merge(df, rgb_data, by.x = "cells", by.y = "row.names", all.x = TRUE)
+  df <- df[!is.na(df$R), ]
   
-  # Ensure proper RGB format
-  df$color <- rgb(df$R, df$G, df$B, maxColorValue = 1)
+  # Ensure RGB values are within range [0,1]
+  df$R <- pmax(0, pmin(1, df$R))
+  df$G <- pmax(0, pmin(1, df$G))
+  df$B <- pmax(0, pmin(1, df$B))
   
-  # Reorder points to plot lower intensity ones first
-  df <- df[order(df$R + df$G + df$B, decreasing = FALSE), ]
+  # Convert RGB to hex color codes
+  df$hex_color <- with(df, rgb(R, G, B, maxColorValue = 1))
   
-  # Generate the plot
-  p <- ggplot(df, aes(x = y, y = x, color = color)) + # , color = color
-    geom_point(size = size, alpha = 1) +
-    guides(color = "none") + 
-    scale_color_identity() +  # Directly use RGB colors
+  # Reorder points for proper layering
+  df <<- df[order(df$R + df$G + df$B, decreasing = FALSE), ]
+  
+  # Generate scatter plot
+  p <- ggplot(df, aes(x = PC1, y = PC2, color = hex_color)) +
+    geom_point(shape = 19, size = size, alpha = 1) +
+    scale_color_identity() +  # Directly use hex colors, no legend
     theme_minimal() +
-    coord_fixed(ratio = ratio) +
-    # scale_y_continuous(breaks = yticks) +
-    theme(axis.text = element_blank(), axis.ticks = element_blank())
+    theme(axis.text = element_blank(), axis.ticks = element_blank()) +
+    guides(color = "none") +  # Remove color legend
+    coord_equal()
   
   return(p)
 }
 
-# Example usage
-ImageDimPlotGradient(obj = obj.i.mouse.IT, rgb_csv = "E:/Opossum_Paper/Figure 3/mouse_integrated_PC_colors.csv")
+p <- DimPlotGradient(obj = obj.i.mouse.IT, rgb_csv = "E:/Opossum_Paper/Figure 3/mouse_integrated_PC_colors.csv")
+ggsave("E:/Opossum_Paper/Figure 3/mouse_stereoseq_pc_gradient.svg", plot = p)
+
+p <- DimPlotGradient(obj = obj.i.opossum.IT, rgb_csv = "E:/Opossum_Paper/Figure 3/opossum_integrated_PC_colors.csv")
+ggsave("E:/Opossum_Paper/Figure 3/opossum_stereoseq_pc_gradient.svg", plot = p)
 
 ```
 
 
 ```{r}
 
+mouse.path = "E:/Opossum_Paper/Figure 3/mouse_integrated_PC_colors.csv"
+
+ImageDimPlotGradient(obj = obj.i.mouse.IT, rgb_csv = mouse.path, yticks = c(0, 500, 1000, 1500)) + coord_fixed(ratio = 1.5)
+
 obj.i.mouse.IT.L23 <- subset(obj.i.mouse.IT, subclass_nn == "L2/3")
-ImageDimPlotGradient(obj = obj.i.mouse.IT.L23, rgb_csv = "E:/Opossum_Paper/Figure 3/mouse_integrated_PC_colors.csv")
+p <- ImageDimPlotGradient(obj = obj.i.mouse.IT.L23, rgb_csv = mouse.path, yticks = c(0, 500, 1000, 1500)) + coord_fixed(ratio = 1.5)
+ggsave("E:/Opossum_Paper/Figure 3/mouse_stereoseq_pc_gradient_spatial_L23.svg", plot = p)
 
 obj.i.mouse.IT.L4 <- subset(obj.i.mouse.IT, subclass_nn == "L4")
-ImageDimPlotGradient(obj = obj.i.mouse.IT.L4, rgb_csv = "E:/Opossum_Paper/Figure 3/mouse_integrated_PC_colors.csv")
+p <- ImageDimPlotGradient(obj = obj.i.mouse.IT.L4, rgb_csv = mouse.path, yticks = c(0, 500, 1000, 1500)) + coord_fixed(ratio = 1.5)
+ggsave("E:/Opossum_Paper/Figure 3/mouse_stereoseq_pc_gradient_spatial_L4.svg", plot = p)
 
 obj.i.mouse.IT.L5IT <- subset(obj.i.mouse.IT, subclass_nn == "L5IT")
-ImageDimPlotGradient(obj = obj.i.mouse.IT.L5IT, rgb_csv = "E:/Opossum_Paper/Figure 3/mouse_integrated_PC_colors.csv")
+p <- ImageDimPlotGradient(obj = obj.i.mouse.IT.L5IT, rgb_csv = mouse.path, yticks = c(0, 500, 1000, 1500)) + coord_fixed(ratio = 1.5)
+ggsave("E:/Opossum_Paper/Figure 3/mouse_stereoseq_pc_gradient_spatial_L5IT.svg", plot = p)
 
 ```
 
 
+```{r}
 
+opossum.path <- "E:/Opossum_Paper/Figure 3/opossum_integrated_PC_colors.csv"
+
+ImageDimPlotGradient(obj = obj.i.opossum.IT, rgb_csv = opossum.path, yticks = c(0, 400, 800, 1200, 1600)) + coord_fixed(ratio = 0.77*1.5)
+
+obj.i.opossum.IT.A <- subset(obj.i.opossum.IT, subclass_nn == "IT_A")
+p <- ImageDimPlotGradient(obj = obj.i.opossum.IT.A, rgb_csv = opossum.path, yticks = c(0, 400, 800, 1200, 1600)) + coord_fixed(ratio = 0.77*1.5) + ylim(4.278372, 1545.594104)
+ggsave("E:/Opossum_Paper/Figure 3/opossum_stereoseq_pc_gradient_spatial_A.svg", plot = p)
+
+obj.i.opossum.IT.B <- subset(obj.i.opossum.IT, subclass_nn == "IT_B")
+p <- ImageDimPlotGradient(obj = obj.i.opossum.IT.B, rgb_csv = opossum.path, yticks = c(0, 400, 800, 1200, 1600)) + coord_fixed(ratio = 0.77*1.5) + ylim(4.278372, 1545.594104)
+ggsave("E:/Opossum_Paper/Figure 3/opossum_stereoseq_pc_gradient_spatial_B.svg", plot = p)
+
+obj.i.opossum.IT.C <- subset(obj.i.opossum.IT, subclass_nn == "IT_C")
+p <- ImageDimPlotGradient(obj = obj.i.opossum.IT.C, rgb_csv = opossum.path, yticks = c(0, 400, 800, 1200, 1600)) + coord_fixed(ratio = 0.77*1.5) + ylim(4.278372, 1545.594104)
+ggsave("E:/Opossum_Paper/Figure 3/opossum_stereoseq_pc_gradient_spatial_C.svg", plot = p)
+
+```
 
 
 

@@ -26,14 +26,11 @@ source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R"
 source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
 colors_list <- GetColors()
 
-data.path <- "E:/STOmics/seurat/Opossum/raw/"
-obj.data <- Read10X(data.path, gene.column = 1)
-obj.section <- CreateSeuratObject(counts = obj.data, project = "Opossum_V1_Stereo-seq")
+data.path <- "E:/STOmics/seurat/Mouse/raw/"
+obj.data <- Read10X(data.path, gene.column = 2)
+obj.section <- CreateSeuratObject(counts = obj.data, project = "Mouse_V1_Stereo-seq")
 
-mapping_path <- "E:/_genomes/Opossum_Mouse_Genes.txt"
-obj.section <- MapGenes(obj.section, mapping_path, use_ids = TRUE)
-
-obj.section$species <- "Opossum"
+obj.section$species <- "Mouse"
 X <- read.csv(paste(data.path, "x_coords.csv", sep = ""), header = FALSE)
 X <- (X - max(X)) * -1
 obj.section <- AddMetaData(obj.section, X$V1, "X")
@@ -52,7 +49,7 @@ fov <- CreateFOV(
   key = Key("FOV", quiet = TRUE)
 )
 
-section.cells <- read.csv("E:/STOmics/seurat/Opossum/selected_barcodes.csv", header = FALSE)
+section.cells <- read.csv("E:/STOmics/seurat/Mouse/selected_barcodes.csv", header = FALSE)
 
 fov <- fov[as.character(section.cells$V1)]
 
@@ -86,11 +83,11 @@ ImageDimPlot(obj.section,  group.by = "SCT_snn_res.0.1", size = 2)
 
 ```{r}
 
-obj.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
+obj.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
 obj.glutamatergic$class <- "glutamatergic"
-obj.gabaergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_gabaergic_processed.rds")
+obj.gabaergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_gabaergic_processed.rds")
 obj.gabaergic$class <- "gabaergic"
-obj.nonneuronal <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_nonneuronal_processed.rds")
+obj.nonneuronal <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_nonneuronal_processed.rds")
 
 obj <- merge(obj.glutamatergic, y = c(obj.gabaergic, obj.nonneuronal))
 
@@ -117,18 +114,30 @@ obj.section <- subset(obj.section, features = gene_mask, cells = cell_mask)
 
 obj$method <- "snRNA-seq"
 obj.section$method <- "Stereo-seq"
-obj.i <- IntegrateObjects(obj, obj.section, resolutions = c(0.5), subsample = TRUE)
+
+
 
 ```
 
 
 ```{r}
 
-saveRDS(obj.i, "E:/STOmics/seurat/Opossum/section_subsample_1.rds")
+df <- data.frame(cell = c(), subclass_nn = c())
+all.names <- colnames(obj.section)
+
+obj.i <- IntegrateObjects(obj, obj.section, resolutions = c(0.5), subsample = FALSE)
+
 
 ```
 
 
+```{r}
+
+DimPlot(obj.i, group.by = "subclass")
+DefaultAssay(obj.i.section) <- "RNA"
+ImageFeaturePlot(obj.i.section, "nCount_RNA")
+
+```
 
 
 

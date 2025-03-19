@@ -129,6 +129,13 @@ saveRDS(obj.i, "E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLs_integrated.rds"
 
 ```{r}
 
+obj.i <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLs_integrated.rds")
+
+```
+
+
+```{r}
+
 assigned_subclasses <- obj.i$subclass_nn[!is.na(obj.i$subclass_nn)]
 cell_ids <- names(assigned_subclasses)
 obj.ctx$subclass_nn <- NA
@@ -159,9 +166,9 @@ colors <- hcl.colors(8, palette = "Dynamic")
 obj.ctx.glutamatergic <- subset(obj.ctx, subclass_nn %in% c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"))
 Idents(obj.ctx.glutamatergic) <- "subclass_nn"
 levels(obj.ctx.glutamatergic) <- c("L2/3", "L4", "L5IT", "L5NP", "L5PT", "L6IT", "L6CT", "L6b")
-p <- ImageDimPlot(obj.ctx.glutamatergic, fov = "COL", size = 3, cols = colors, axes = TRUE)
+ImageDimPlot(obj.ctx.glutamatergic, fov = "COL", size = 3, cols = colors, axes = TRUE)
 
-ggsave("E:/Opossum_Paper/Figure 3/Mouse_Glutamatergic_Column.svg", plot = p, width = 7, height = 5)
+# ggsave("E:/Opossum_Paper/Figure 3/Mouse_Glutamatergic_Column.svg", plot = p, width = 7, height = 5)
 
 ```
 
@@ -190,7 +197,7 @@ df <- data.frame(
 # 3. Filter and set subclass as a factor to enforce order
 df <- df %>%
   filter(!is.na(subclass) & subclass != "None") %>%
-  mutate(subclass = factor(subclass, levels = c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b")))
+  mutate(subclass = factor(subclass, levels = c("L2/3", "L4", "L5IT", "L5NP", "L5PT", "L6IT", "L6CT", "L6b")))
 
 # 4. Plot smooth density profiles
 p <- ggplot(df, aes(x = y, color = subclass)) +
@@ -204,25 +211,25 @@ p <- ggplot(df, aes(x = y, color = subclass)) +
   theme(
     legend.title = element_blank(),
     aspect.ratio = 1
-  ) + coord_flip()
+  ) + coord_flip() + ylim(0, 0.003)
 
 ggsave("E:/Opossum_Paper/Figure 3/Mouse_Glutamatergic_Density.svg", plot = p)
 
-# Outlined histograms without bin borders
-p <- ggplot(df, aes(x = y, color = subclass)) +
-  stat_bin(
-    geom = "step",
-    bins = 30,
-    size = 1  # Adjust line thickness
-  ) +
-  scale_color_manual(values = colors) +
-  theme_minimal() +
-  theme(
-    legend.title = element_blank(),
-    aspect.ratio = 1
-  ) + coord_flip()
+# # Outlined histograms without bin borders
+# p <- ggplot(df, aes(x = y, color = subclass)) +
+#   stat_bin(
+#     geom = "step",
+#     bins = 30,
+#     size = 1  # Adjust line thickness
+#   ) +
+#   scale_color_manual(values = colors) +
+#   theme_minimal() +
+#   theme(
+#     legend.title = element_blank(),
+#     aspect.ratio = 1
+#   ) + coord_flip()
 
-ggsave("E:/Opossum_Paper/Figure 3/Mouse_Glutamatergic_Histogram.svg", plot = p)
+# ggsave("E:/Opossum_Paper/Figure 3/Mouse_Glutamatergic_Histogram.svg", plot = p)
 
 ```
 
@@ -265,25 +272,25 @@ p <- ggplot(df, aes(x = y, color = subclass)) +
   theme(
     legend.title = element_blank(),
     aspect.ratio = 1
-  ) + coord_flip()
+  ) + coord_flip() + ylim(0, 1.35e-03)
 
 ggsave("E:/Opossum_Paper/Figure 3/Mouse_GABAergic_Density.svg", plot = p)
 
-# Outlined histograms without bin borders
-p <- ggplot(df, aes(x = y, color = subclass)) +
-  stat_bin(
-    geom = "step",
-    bins = 30,
-    size = 1  # Adjust line thickness
-  ) +
-  scale_color_manual(values = colors) +
-  theme_minimal() +
-  theme(
-    legend.title = element_blank(),
-    aspect.ratio = 1
-  ) + coord_flip()
+# # Outlined histograms without bin borders
+# p <- ggplot(df, aes(x = y, color = subclass)) +
+#   stat_bin(
+#     geom = "step",
+#     bins = 30,
+#     size = 1  # Adjust line thickness
+#   ) +
+#   scale_color_manual(values = colors) +
+#   theme_minimal() +
+#   theme(
+#     legend.title = element_blank(),
+#     aspect.ratio = 1
+#   ) + coord_flip()
 
-ggsave("E:/Opossum_Paper/Figure 3/Mouse_GABAergic_Histogram.svg", plot = p)
+# ggsave("E:/Opossum_Paper/Figure 3/Mouse_GABAergic_Histogram.svg", plot = p)
 
 ```
 
