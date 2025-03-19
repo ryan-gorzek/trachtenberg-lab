@@ -98,6 +98,8 @@ rm(obj.glutamatergic)
 rm(obj.gabaergic)
 rm(obj.nonneuronal)
 
+obj <- obj[, sample(colnames(obj), ncol(obj)/2, replace = FALSE)]
+
 ```
 
 
@@ -117,19 +119,68 @@ obj.section <- subset(obj.section, features = gene_mask, cells = cell_mask)
 
 obj$method <- "snRNA-seq"
 obj.section$method <- "Stereo-seq"
-obj.i <- IntegrateObjects(obj, obj.section, resolutions = c(0.5), subsample = TRUE)
 
 ```
 
 
 ```{r}
 
-saveRDS(obj.i, "E:/STOmics/seurat/Opossum/section_subsample_1.rds")
+df <- setNames(data.frame(matrix(ncol = 2, nrow = 0)), c("cell", "subclass_nn"))
+cell.names.sp <- colnames(obj.section)
+
+for (i in 1:ceiling(ncol(obj.section) / ncol(obj))) {
+  
+  # Sample names unless there's too few remaining
+  if (length(cell.names.sp) >= ncol(obj)) {
+    curr.names <- sample(cell.names.sp, 2000)
+    cell.names.sp <- setdiff(cell.names.sp, curr.names)
+  } else { curr.names <- cell.names.sp }
+  
+  # Subset object and integrate
+  obj.section.i <- obj.section[, curr.names]
+  obj.i <- IntegrateObjects(obj, obj.section.i, resolutions = c(0.5), subsample = FALSE)
+  
+  # Make NN subclass assignments
+  obj.i <- LabelByNearestNeighbors(obj.i, "subclass", fraction = 0.25, n.neighbors = 100)
+  
+  # Grab the metadata
+  curr.df <- data.frame(cell = colnames(obj.i)[obj.i$method == "Stereo-seq"], 
+                        subclass_nn = as.character(obj.i$subclass_nn[obj.i$method == "Stereo-seq"]))
+  print(table(curr.df$subclass_nn)["None"] / sum(table(curr.df$subclass_nn)))
+  df <- rbind(df, curr.df)
+  
+}
+
+saveRDS(df, "E:/STOmics/seurat/Opossum/opossum_section_subclass_labels.rds")
+
+```
+
+
+```{r}
+
+DimPlot(obj.i, group.by = "subclass_nn")
 
 ```
 
 
 
+```{r}
+
+# Read the data
+df <- readRDS("E:/STOmics/seurat/Opossum/opossum_section_subclass_labels.rds")
+
+# Assign to spatial Seurat object
+obj.section$subclass_nn <- NA
+obj.section$subclass_nn[df$cell] <- df$subclass_nn
+
+```
+
+
+```{r, fig.width=10}
+
+ImageDimPlot(obj.section,  group.by = "subclass_nn", size = 1.5)
+
+```
 
 
 

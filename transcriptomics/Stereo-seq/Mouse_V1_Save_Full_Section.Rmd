@@ -123,11 +123,11 @@ obj.section$method <- "Stereo-seq"
 df <- setNames(data.frame(matrix(ncol = 2, nrow = 0)), c("cell", "subclass_nn"))
 cell.names.sp <- colnames(obj.section)
 
-for (i in 1:ceiling(ncol(obj.section) / ncol(obj))) {
+for (i in 1:2) { # (i in 1:ceiling(ncol(obj.section) / ncol(obj))) {
   
   # Sample names unless there's too few remaining
   if (length(cell.names.sp) >= ncol(obj)) {
-    curr.names <- sample(cell.names.sp, ncol(obj))
+    curr.names <- sample(cell.names.sp, 1000) # ncol(obj)
     cell.names.sp <- setdiff(cell.names.sp, curr.names)
   } else { curr.names <- cell.names.sp }
   
@@ -141,11 +141,12 @@ for (i in 1:ceiling(ncol(obj.section) / ncol(obj))) {
   # Grab the metadata
   curr.df <- data.frame(cell = colnames(obj.i)[obj.i$method == "Stereo-seq"], 
                         subclass_nn = as.character(obj.i$subclass_nn[obj.i$method == "Stereo-seq"]))
+  print(table(curr.df$subclass_nn)["None"] / sum(table(curr.df$subclass_nn)))
   df <- rbind(df, curr.df)
   
 }
 
-saveRDS(df, "E:/STOmics/seurat/Mouse/mouse_section_subclass_labels.rds")
+# saveRDS(df, "E:/STOmics/seurat/Mouse/mouse_section_subclass_labels.rds")
 
 ```
 
@@ -157,10 +158,24 @@ DimPlot(obj.i, group.by = "subclass_nn")
 ```
 
 
+```{r}
+
+# Read the data
+df <- readRDS("E:/STOmics/seurat/Mouse/mouse_section_subclass_labels.rds")
+
+# Assign to spatial Seurat object
+obj.section$subclass_nn <- NA
+obj.section$subclass_nn[df$cell] <- df$subclass_nn
+
+```
 
 
+```{r, fig.width=10}
 
+ImageDimPlot(obj.section,  group.by = "subclass_nn", size = 1)
+print(table(obj.section$subclass_nn)["None"] / sum(table(obj.section$subclass_nn)))
 
+```
 
 
 
