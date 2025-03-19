@@ -173,8 +173,124 @@ ggsave("E:/Opossum_Paper/Figure 3/opossum_stereoseq_pc_gradient_spatial_C.svg", 
 ```
 
 
+```{r}
+
+mouse.path = "E:/Opossum_Paper/Figure 3/mouse_integrated_PC_colors.csv"
+data.mouse <- read.csv(mouse.path, row.names = 1)
+
+opossum.path = "E:/Opossum_Paper/Figure 3/opossum_integrated_PC_colors.csv"
+data.opossum <- read.csv(opossum.path, row.names = 1)
 
 
+```
+
+
+```{r}
+
+# Define subclass pairs
+subclass_pairs <- list(
+  "L2/3" = c("IT_A", "A"),
+  "L4"   = c("IT_B", "B"),
+  "L5IT" = c("IT_C", "C")
+)
+
+# Loop over subclass pairs
+for (mouse_subclass in names(subclass_pairs)) {
+  
+  opossum_subclass <- subclass_pairs[[mouse_subclass]][1]
+  vertex <- paste0("Distance_to_Vertex_", subclass_pairs[[mouse_subclass]][2])
+  
+  # Subset mouse cells
+  mouse_cells <- colnames(obj.i.mouse.IT)[!is.na(obj.i.mouse.IT$subclass_nn) & obj.i.mouse.IT$subclass_nn == mouse_subclass]
+  
+  mouse_coords <- obj.i.mouse.IT@images[[1]]$centroids@coords[obj.i.mouse.IT$subclass_nn[!is.na(obj.i.mouse.IT$subclass_nn)] == mouse_subclass,]
+  rownames(mouse_coords) <- mouse_cells
+  mouse_y_positions <- mouse_coords[mouse_cells, "x"]
+  mouse_distance <- data.mouse[mouse_cells, vertex]
+
+  # Subset opossum cells
+  opossum_cells <- colnames(obj.i.opossum.IT)[!is.na(obj.i.opossum.IT$subclass_nn) & obj.i.opossum.IT$subclass_nn == opossum_subclass]
+  opossum_coords <- obj.i.opossum.IT@images[[1]]$centroids@coords[obj.i.opossum.IT$subclass_nn[!is.na(obj.i.opossum.IT$subclass_nn)] == opossum_subclass,]
+  rownames(opossum_coords) <- opossum_cells
+  opossum_y_positions <- opossum_coords[opossum_cells, "x"]
+  opossum_distance <- data.opossum[opossum_cells, vertex]
+
+  # Combine data into one dataframe
+  df_combined <- data.frame(
+    Y_Position = c(mouse_y_positions, opossum_y_positions),
+    Distance_to_Vertex_A = c(mouse_distance, opossum_distance),
+    Species = c(rep("Mouse", length(mouse_y_positions)),
+                rep("Opossum", length(opossum_y_positions)))
+  )
+
+  # Compute correlation per species
+  mouse_cor <- cor.test(mouse_y_positions, mouse_distance)
+  opossum_cor <- cor.test(opossum_y_positions, opossum_distance)
+
+  # Scatterplot comparing mouse vs opossum
+  plot_title <- sprintf("Y Position vs. Distance (Mouse: %s, Opossum: %s)", mouse_subclass, opossum_subclass)
+
+  p <- ggplot(df_combined, aes(x = Y_Position, y = Distance_to_Vertex_A, color = Species)) +
+    geom_point(alpha = 1, size = 1.5) +
+    geom_smooth(method = "lm", se = TRUE) +
+    labs(
+      title = plot_title,
+      subtitle = sprintf("Correlation - Mouse (r=%.2f, p=%.3g), Opossum (r=%.2f, p=%.3g)",
+                         mouse_cor$estimate, mouse_cor$p.value,
+                         opossum_cor$estimate, opossum_cor$p.value),
+      x = "Y Spatial Position",
+      y = vertex
+    ) +
+    theme_bw(base_size = 14) +
+    ylim(0, 1) + xlim(0, 1500) + #  + coord_fixed(ratio = 35) +
+    scale_color_manual(values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa"))
+
+  print(p)
+  # ggsave(paste0("E:/Opossum_Paper/Figure 3/Corr_Y_Vertex_", opossum_subclass, ".svg"), plot = p)
+}
+
+```
+
+
+
+
+
+```{r}
+
+# Ensure your cell identifiers match between the Seurat object and the dataframe
+common.cells <- intersect(colnames(obj.i.opossum.IT.A), rownames(data.opossum))
+
+# Extract Y spatial position from Seurat object
+coords <- obj.i.opossum.IT.A@images[[1]]$centroids@coords
+rownames(coords) <- colnames(obj.i.opossum.IT.A)
+y_positions <- coords[common.cells, "x"]
+
+# Extract Distance_to_Vertex_A from dataframe
+distance_to_vertex <- data.opossum[common.cells, "Distance_to_Vertex_A"]
+
+# Compute correlation
+correlation_result <- cor.test(y_positions, distance_to_vertex, method = "pearson")
+
+# Display results
+print(correlation_result)
+
+df_plot <- data.frame(
+  Y_Position = y_positions,
+  Distance_to_Vertex_A = distance_to_vertex
+)
+
+ggplot(df_plot, aes(x = Y_Position, y = Distance_to_Vertex_A)) +
+  geom_point(alpha = 0.7, size = 1.5, color = "steelblue") +
+  geom_smooth(method = "lm", se = TRUE, color = "red") +
+  labs(
+    title = sprintf("Correlation: r = %.3f, p = %.3g",
+                    correlation_result$estimate, correlation_result$p.value),
+    x = "Y Spatial Position",
+    y = "Distance to Vertex A"
+  ) +
+  theme_bw(base_size = 14)
+
+```
 
 
 

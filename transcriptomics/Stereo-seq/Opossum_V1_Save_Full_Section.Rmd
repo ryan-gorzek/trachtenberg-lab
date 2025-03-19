@@ -128,11 +128,11 @@ obj.section$method <- "Stereo-seq"
 df <- setNames(data.frame(matrix(ncol = 2, nrow = 0)), c("cell", "subclass_nn"))
 cell.names.sp <- colnames(obj.section)
 
-for (i in 1:ceiling(ncol(obj.section) / ncol(obj))) {
+for (i in 5:ceiling(ncol(obj.section) / 1000)) {
   
   # Sample names unless there's too few remaining
   if (length(cell.names.sp) >= ncol(obj)) {
-    curr.names <- sample(cell.names.sp, 2000)
+    curr.names <- sample(cell.names.sp, 1000)
     cell.names.sp <- setdiff(cell.names.sp, curr.names)
   } else { curr.names <- cell.names.sp }
   
