@@ -60,71 +60,314 @@ ImageDimPlot(obj.ctx.glutamatergic.opossum, fov = "COL", size = 3, cols = colors
 ```{r}
 
 library(Seurat)
-library(spatstat)
 library(ineq)
-library(geometry)
 library(ggplot2)
 
-# Function to calculate density-based Gini index
-calc_density_gini <- function(coords, sigma = NULL, grid_res = 512, expand_dist = 0.1){
+# Function to calculate Gini index using only x-dimension
+calc_1d_gini <- function(coords_x, grid_res = 512){
+  density_x <- density(coords_x, n = grid_res)
+  dens_values <- density_x$y[density_x$y > 0]
+  ineq::Gini(dens_values)
+}
+
+comps <- list(c("L2/3", "IT_A"), c("L4", "IT_B"), c("L5IT", "IT_C"), c("L6IT", "IT_D"), 
+              c("L5NP", "L5NP"), c("L5PT", "L5PT"), c("L6CT", "L6CT"), c("L6b", "L6b"))
+results_df <- data.frame()
+
+for (s in comps) {
+  # Mouse subclass
+  coords_mouse_all <- GetTissueCoordinates(obj.ctx.glutamatergic.mouse, image = "COL")
+  coords_mouse <- coords_mouse_all[obj.ctx.glutamatergic.mouse$subclass_nn == s[1],]
+  gini_mouse <- calc_1d_gini(coords_mouse$x)
+  
+  # Opossum subclass
+  coords_opossum_all <- GetTissueCoordinates(obj.ctx.glutamatergic.opossum, image = "COL")
+  coords_opossum <- coords_opossum_all[obj.ctx.glutamatergic.opossum$subclass_nn == s[2],]
+  gini_opossum <- calc_1d_gini(coords_opossum$x)
+  
+  results_df <- rbind(results_df, 
+                      data.frame(Subclass_Pair = paste(s[1], "vs", s[2]),
+                                 Gini_Mouse = gini_mouse,
+                                 Gini_Opossum = gini_opossum))
+}
+
+# Scatterplot comparing 1D Gini indices
+p <- ggplot(results_df, aes(x = Gini_Mouse, y = Gini_Opossum)) +
+  geom_point(size = 4, color = "steelblue") +
+  geom_text(aes(label = Subclass_Pair), vjust = -1, size = 3) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray") +
+  labs(x = "Mouse X-axis Gini Index", y = "Opossum X-axis Gini Index", 
+       title = "Spatial Gini Index Comparison (Mouse vs Opossum, X-axis only)") +
+  theme_minimal() + xlim(0.4, 0.65) + ylim(0.4, 0.65) + coord_equal()
+
+print(p)
+ggsave("E:/Opossum_Paper/Figure 3/Gini_Index.svg", plot = p)
+
+```
+
+
+```{r}
+
+library(Seurat)
+library(spatstat)
+library(ggplot2)
+
+# Ripley's K-function helper (calculates L-function)
+calc_L_function <- function(coords, max_dist = NULL, expand_dist = 0.1){
   xrange <- range(coords$x)
   yrange <- range(coords$y)
   window <- expand.owin(owin(xrange, yrange), distance = expand_dist)
   points_ppp <- ppp(coords$x, coords$y, window = window)
-  dens <- density(points_ppp, sigma = sigma, dimyx = c(grid_res, grid_res))
-  dens_values <- dens$v[dens$v > 0]
-  ineq::Gini(as.vector(dens_values))
+  
+  if(is.null(max_dist)){
+    max_dist <- min(diff(xrange), diff(yrange)) / 4
+  }
+  
+  K_res <- Kest(points_ppp, rmax = max_dist, correction = "Ripley")
+  L_res <- Lest(points_ppp, rmax = max_dist, correction = "Ripley")
+  
+  # Calculate clustering as maximum deviation of L(r)-r from 0
+  L_diff <- L_res$iso - L_res$r
+  max_L_diff <- max(L_diff, na.rm = TRUE)
+  
+  return(max_L_diff)
 }
 
-calc_convex_hull_area <- function(coords){
-  hull_indices <- chull(coords$x, coords$y)
-  hull_coords <- coords[hull_indices, ]
-  area <- geometry::polyarea(hull_coords$x, hull_coords$y)
-  return(area)
-}
+comps <- list(c("L2/3", "IT_A"), c("L4", "IT_B"), c("L5IT", "IT_C"), c("L6IT", "IT_D"), 
+              c("L5NP", "L5NP"), c("L5PT", "L5PT"), c("L6CT", "L6CT"), c("L6b", "L6b"))
 
-comps <- list(c("L2/3", "IT_A"), c("L4", "IT_B"), c("L5IT", "IT_C"), c("L6IT", "IT_D"))
-results <- data.frame()
+results_df <- data.frame()
 
 for (s in comps) {
+  # Mouse subclass
   coords_mouse_all <- GetTissueCoordinates(obj.ctx.glutamatergic.mouse, image = "COL")
   coords_mouse <- coords_mouse_all[obj.ctx.glutamatergic.mouse$subclass_nn == s[1],]
-  gini_mouse <- calc_density_gini(coords_mouse)
-  hull_mouse <- calc_convex_hull_area(coords_mouse)
+  ripley_mouse <- calc_L_function(coords_mouse)
   
+  # Opossum subclass
   coords_opossum_all <- GetTissueCoordinates(obj.ctx.glutamatergic.opossum, image = "COL")
   coords_opossum <- coords_opossum_all[obj.ctx.glutamatergic.opossum$subclass_nn == s[2],]
-  gini_opossum <- calc_density_gini(coords_opossum)
-  hull_opossum <- calc_convex_hull_area(coords_opossum)
+  ripley_opossum <- calc_L_function(coords_opossum)
   
   results_df <- rbind(results_df, 
-                      data.frame(Subclass_Pair = paste(s[1], s[2], sep = " vs "),
-                                 Species = c("Mouse", "Opossum"),
-                                 ConvexHull = c(hull_mouse, hull_opossum),
-                                 GiniIndex = c(gini_mouse, gini_opossum)))
+                      data.frame(Subclass_Pair = paste(s[1], "vs", s[2]),
+                                 Ripley_Mouse = ripley_mouse,
+                                 Ripley_Opossum = ripley_opossum))
 }
 
-# Scatterplot
-p <- ggplot(results_df, aes(x = ConvexHull, y = GiniIndex, color = Species)) +
-  geom_point(size = 4) +
+# Plot Ripley's L-function results (Mouse vs. Opossum)
+p <- ggplot(results_df, aes(x = Ripley_Mouse, y = Ripley_Opossum)) +
+  geom_point(size = 4, color = "darkorange") +
   geom_text(aes(label = Subclass_Pair), vjust = -1, size = 3) +
-  labs(x = "Convex Hull Area", y = "Density-based Gini Index", 
-       title = "Spatial Restriction Comparison (Mouse vs Opossum)") +
-  theme_minimal()
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray") +
+  labs(x = "Mouse L(r)-r max", y = "Opossum L(r)-r max",
+       title = "Ripley's L-function Comparison (Mouse vs Opossum)") +
+  theme_minimal() + coord_equal()
 
 print(p)
 
 ```
 
 
+```{r}
+
+library(Seurat)
+library(ggplot2)
+
+calc_variance_around_median_x <- function(coords_x) {
+  median_x <- median(coords_x)
+  variance <- mean((coords_x - median_x)^2)
+  return(variance)
+}
+
+comps <- list(c("L2/3", "IT_A"), c("L4", "IT_B"), c("L5IT", "IT_C"), c("L6IT", "IT_D"), 
+              c("L5NP", "L5NP"), c("L5PT", "L5PT"), c("L6CT", "L6CT"), c("L6b", "L6b"))
+
+results_df <- data.frame()
+
+for (s in comps) {
+  # Mouse subclass
+  coords_mouse_all <- GetTissueCoordinates(obj.ctx.glutamatergic.mouse, image = "COL")
+  coords_mouse <- coords_mouse_all[obj.ctx.glutamatergic.mouse$subclass_nn == s[1],]
+  var_mouse <- calc_variance_around_median_x(coords_mouse$x)
+  
+  # Opossum subclass
+  coords_opossum_all <- GetTissueCoordinates(obj.ctx.glutamatergic.opossum, image = "COL")
+  coords_opossum <- coords_opossum_all[obj.ctx.glutamatergic.opossum$subclass_nn == s[2],]
+  var_opossum <- calc_variance_around_median_x(coords_opossum$x)
+  
+  results_df <- rbind(results_df, 
+                      data.frame(Subclass_Pair = paste(s[1], "vs", s[2]),
+                                 Var_Mouse_X = var_mouse,
+                                 Var_Opossum_X = var_opossum))
+}
+
+# Scatterplot comparing variance around median X
+p <- ggplot(results_df, aes(x = Var_Mouse_X, y = Var_Opossum_X)) +
+  geom_point(size = 4, color = "purple") +
+  geom_text(aes(label = Subclass_Pair), vjust = -1, size = 3) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray") +
+  labs(x = "Mouse X Variance around Median", 
+       y = "Opossum X Variance around Median", 
+       title = "X-axis Spatial Variance Comparison (Mouse vs Opossum)") +
+  theme_minimal() + coord_equal()
+
+print(p)
+
+```
 
 
+```{r}
+
+library(Seurat)
+library(ggplot2)
+
+# Function to calculate variance around spatial peak (X-axis only)
+calc_variance_around_peak_x <- function(coords_x, grid_res = 512){
+  dens <- density(coords_x, n = grid_res)
+  peak_x <- dens$x[which.max(dens$y)]
+  variance <- mean((coords_x - peak_x)^2)
+  return(variance)
+}
+
+comps <- list(c("L2/3", "IT_A"), c("L4", "IT_B"), c("L5IT", "IT_C"), c("L6IT", "IT_D"), 
+              c("L5NP", "L5NP"), c("L6b", "L6b"), c("L6CT", "L6CT"), c("L5PT", "L5PT"))
+
+results_df <- data.frame()
+
+for (s in comps) {
+  # Mouse subclass
+  coords_mouse_all <- GetTissueCoordinates(obj.ctx.glutamatergic.mouse, image = "COL")
+  coords_mouse <- coords_mouse_all[obj.ctx.glutamatergic.mouse$subclass_nn == s[1],]
+  var_mouse_peak <- calc_variance_around_peak_x(coords_mouse$x)
+  
+  # Opossum subclass
+  coords_opossum_all <- GetTissueCoordinates(obj.ctx.glutamatergic.opossum, image = "COL")
+  coords_opossum <- coords_opossum_all[obj.ctx.glutamatergic.opossum$subclass_nn == s[2],]
+  var_opossum_peak <- calc_variance_around_peak_x(coords_opossum$x)
+  
+  results_df <- rbind(results_df, 
+                      data.frame(Subclass_Pair = paste(s[1], "vs", s[2]),
+                                 Var_Mouse_Peak_X = var_mouse_peak,
+                                 Var_Opossum_Peak_X = var_opossum_peak))
+}
+
+# Scatterplot comparing variance around spatial peak X
+p <- ggplot(results_df, aes(x = Var_Mouse_Peak_X, y = Var_Opossum_Peak_X)) +
+  geom_point(size = 4, color = "deeppink3") +
+  geom_text(aes(label = Subclass_Pair), vjust = -1, size = 3) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray") +
+  labs(x = "Mouse X Variance around Spatial Peak", 
+       y = "Opossum X Variance around Spatial Peak", 
+       title = "X-axis Variance around Spatial Peak (Mouse vs Opossum)") +
+  theme_minimal() + coord_equal() + xlim(3e4, 3e5) + ylim(3e4, 3e5)
+
+print(p)
+# ggsave()
+
+```
 
 
+```{r}
+
+library(Seurat)
+library(ggplot2)
+
+calc_spatial_snr_x <- function(coords_x, grid_res = 16){
+  dens <- density(coords_x, n = grid_res)
+  peak_density <- max(dens$y)
+  baseline_density <- median(dens$y)
+  
+  spatial_snr <- peak_density / baseline_density
+  return(spatial_snr)
+}
+
+comps <- list(c("L2/3", "IT_A"), c("L4", "IT_B"), c("L5IT", "IT_C"), c("L6IT", "IT_D"), 
+              c("L5NP", "L5NP"), c("L5PT", "L5PT"), c("L6CT", "L6CT"), c("L6b", "L6b"))
+
+results_df <- data.frame()
+
+for (s in comps) {
+  # Mouse subclass
+  coords_mouse_all <- GetTissueCoordinates(obj.ctx.glutamatergic.mouse, image = "COL")
+  coords_mouse <- coords_mouse_all[obj.ctx.glutamatergic.mouse$subclass_nn == s[1],]
+  snr_mouse_x <- calc_spatial_snr_x(coords_mouse$x)
+  
+  # Opossum subclass
+  coords_opossum_all <- GetTissueCoordinates(obj.ctx.glutamatergic.opossum, image = "COL")
+  coords_opossum <- coords_opossum_all[obj.ctx.glutamatergic.opossum$subclass_nn == s[2],]
+  snr_opossum_x <- calc_spatial_snr_x(coords_opossum$x)
+  
+  results_df <- rbind(results_df, 
+                      data.frame(Subclass_Pair = paste(s[1], "vs", s[2]),
+                                 SNR_Mouse_X = snr_mouse_x,
+                                 SNR_Opossum_X = snr_opossum_x))
+}
+
+# Scatterplot comparing spatial SNR (peak-to-baseline)
+p <- ggplot(results_df, aes(x = SNR_Mouse_X, y = SNR_Opossum_X)) +
+  geom_point(size = 4, color = "darkcyan") +
+  geom_text(aes(label = Subclass_Pair), vjust = -1, size = 3) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray") +
+  labs(x = "Mouse Spatial SNR (X-axis)", 
+       y = "Opossum Spatial SNR (X-axis)", 
+       title = "Spatial Peak-to-Baseline Ratio (Mouse vs Opossum)") +
+  theme_minimal() + coord_equal()
+
+print(p)
+
+```
 
 
+```{r}
 
+library(Seurat)
+library(ggplot2)
 
+calc_spatial_snr_x_p25 <- function(coords_x, grid_res = 512){
+  dens <- density(coords_x, n = grid_res)
+  peak_density <- max(dens$y)
+  baseline_density <- quantile(dens$y, 0.25)
+  
+  spatial_snr <- peak_density / baseline_density
+  return(spatial_snr)
+}
+
+comps <- list(c("L2/3", "IT_A"), c("L4", "IT_B"), c("L5IT", "IT_C"), c("L6IT", "IT_D"), 
+              c("L5NP", "L5NP"), c("L5PT", "L5PT"), c("L6CT", "L6CT"), c("L6b", "L6b"))
+
+results_df <- data.frame()
+
+for (s in comps) {
+  # Mouse subclass
+  coords_mouse_all <- GetTissueCoordinates(obj.ctx.glutamatergic.mouse, image = "COL")
+  coords_mouse <- coords_mouse_all[obj.ctx.glutamatergic.mouse$subclass_nn == s[1],]
+  snr_mouse_x <- calc_spatial_snr_x_p25(coords_mouse$x)
+  
+  # Opossum subclass
+  coords_opossum_all <- GetTissueCoordinates(obj.ctx.glutamatergic.opossum, image = "COL")
+  coords_opossum <- coords_opossum_all[obj.ctx.glutamatergic.opossum$subclass_nn == s[2],]
+  snr_opossum_x <- calc_spatial_snr_x_p25(coords_opossum$x)
+  
+  results_df <- rbind(results_df, 
+                      data.frame(Subclass_Pair = paste(s[1], "vs", s[2]),
+                                 SNR_Mouse_X = snr_mouse_x,
+                                 SNR_Opossum_X = snr_opossum_x))
+}
+
+# Scatterplot comparing spatial SNR (peak-to-25th percentile baseline)
+p <- ggplot(results_df, aes(x = SNR_Mouse_X, y = SNR_Opossum_X)) +
+  geom_point(size = 4, color = "dodgerblue4") +
+  geom_text(aes(label = Subclass_Pair), vjust = -1, size = 3) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray") +
+  labs(x = "Mouse Spatial SNR (X-axis, peak/25th percentile)", 
+       y = "Opossum Spatial SNR (X-axis, peak/25th percentile)", 
+       title = "Spatial Peak-to-Baseline (25th pct) Ratio (Mouse vs Opossum)") +
+  theme_minimal() + coord_equal()
+
+print(p)
+
+```
 
 
 

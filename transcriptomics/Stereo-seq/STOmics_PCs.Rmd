@@ -242,11 +242,11 @@ for (mouse_subclass in names(subclass_pairs)) {
       y = vertex
     ) +
     theme_bw(base_size = 14) +
-    ylim(0, 1) + xlim(0, 1500) + #  + coord_fixed(ratio = 35) +
+    ylim(0, 40) + xlim(0, 1500) + coord_fixed(ratio = 35) +
     scale_color_manual(values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa"))
 
   print(p)
-  # ggsave(paste0("E:/Opossum_Paper/Figure 3/Corr_Y_Vertex_", opossum_subclass, ".svg"), plot = p)
+  ggsave(paste0("E:/Opossum_Paper/Figure 3/Corr_Y_Vertex_", opossum_subclass, ".svg"), plot = p)
 }
 
 ```
