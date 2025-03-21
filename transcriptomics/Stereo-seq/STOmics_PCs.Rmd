@@ -175,12 +175,11 @@ ggsave("E:/Opossum_Paper/Figure 3/opossum_stereoseq_pc_gradient_spatial_C.svg", 
 
 ```{r}
 
-mouse.path = "E:/Opossum_Paper/Figure 3/mouse_integrated_PC_colors.csv"
+mouse.path = "E:/Opossum_Paper/Figure 3/mouse_integrated_PC_colors_geodesic.csv"
 data.mouse <- read.csv(mouse.path, row.names = 1)
 
-opossum.path = "E:/Opossum_Paper/Figure 3/opossum_integrated_PC_colors.csv"
+opossum.path = "E:/Opossum_Paper/Figure 3/opossum_integrated_PC_colors_geodesic.csv"
 data.opossum <- read.csv(opossum.path, row.names = 1)
-
 
 ```
 
@@ -189,7 +188,7 @@ data.opossum <- read.csv(opossum.path, row.names = 1)
 
 # Define subclass pairs
 subclass_pairs <- list(
-  "L2/3" = c("IT_A", "A"),
+  "L2/3" = c("IT_A", "B"),
   "L4"   = c("IT_B", "B"),
   "L5IT" = c("IT_C", "C")
 )
@@ -198,7 +197,7 @@ subclass_pairs <- list(
 for (mouse_subclass in names(subclass_pairs)) {
   
   opossum_subclass <- subclass_pairs[[mouse_subclass]][1]
-  vertex <- paste0("Distance_to_Vertex_", subclass_pairs[[mouse_subclass]][2])
+  vertex <- paste0("Euclidean_to_Vertex_", subclass_pairs[[mouse_subclass]][2])
   
   # Subset mouse cells
   mouse_cells <- colnames(obj.i.mouse.IT)[!is.na(obj.i.mouse.IT$subclass_nn) & obj.i.mouse.IT$subclass_nn == mouse_subclass]
@@ -224,8 +223,8 @@ for (mouse_subclass in names(subclass_pairs)) {
   )
 
   # Compute correlation per species
-  mouse_cor <- cor.test(mouse_y_positions, mouse_distance)
-  opossum_cor <- cor.test(opossum_y_positions, opossum_distance)
+  mouse_cor <- cor.test(mouse_y_positions, mouse_distance, method = "spearman")
+  opossum_cor <- cor.test(opossum_y_positions, opossum_distance, method = "spearman")
 
   # Scatterplot comparing mouse vs opossum
   plot_title <- sprintf("Y Position vs. Distance (Mouse: %s, Opossum: %s)", mouse_subclass, opossum_subclass)
@@ -246,51 +245,252 @@ for (mouse_subclass in names(subclass_pairs)) {
     scale_color_manual(values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa"))
 
   print(p)
-  ggsave(paste0("E:/Opossum_Paper/Figure 3/Corr_Y_Vertex_", opossum_subclass, ".svg"), plot = p)
+  #ggsave(paste0("E:/Opossum_Paper/Figure 3/Corr_Y_Vertex_", opossum_subclass, ".svg"), plot = p)
 }
 
 ```
 
 
+```{r}
 
+# Define subclass pairs
+subclass_pairs <- list(
+  "L2/3" = c("IT_A", "C"),
+  "L4"   = c("IT_B", "B"),
+  "L5IT" = c("IT_C", "C")
+)
+
+# Permutation settings
+set.seed(123)
+n_permutations <- 100
+
+# Loop over subclass pairs
+for (mouse_subclass in names(subclass_pairs)) {
+  
+  opossum_subclass <- subclass_pairs[[mouse_subclass]][1]
+  vertex <- paste0("Geodesic_to_Vertex_", subclass_pairs[[mouse_subclass]][2])
+  
+  # Subset mouse cells
+  mouse_cells <- colnames(obj.i.mouse.IT)[!is.na(obj.i.mouse.IT$subclass_nn) & obj.i.mouse.IT$subclass_nn == mouse_subclass]
+  mouse_coords <- obj.i.mouse.IT@images[[1]]$centroids@coords[obj.i.mouse.IT$subclass_nn[!is.na(obj.i.mouse.IT$subclass_nn)] == mouse_subclass,]
+  rownames(mouse_coords) <- mouse_cells
+  mouse_y_positions <- mouse_coords[mouse_cells, "x"]
+  mouse_distance <- data.mouse[mouse_cells, vertex]
+
+  # Subset opossum cells
+  opossum_cells <- colnames(obj.i.opossum.IT)[!is.na(obj.i.opossum.IT$subclass_nn) & obj.i.opossum.IT$subclass_nn == opossum_subclass]
+  opossum_coords <- obj.i.opossum.IT@images[[1]]$centroids@coords[obj.i.opossum.IT$subclass_nn[!is.na(obj.i.opossum.IT$subclass_nn)] == opossum_subclass,]
+  rownames(opossum_coords) <- opossum_cells
+  opossum_y_positions <- opossum_coords[opossum_cells, "x"]
+  opossum_distance <- data.opossum[opossum_cells, vertex]
+
+  # Permutation test function
+  permutation_pvalue <- function(y_pos, dist, observed_corr, n_perm=1000){
+    permuted_corrs <- numeric(n_perm)
+    for(i in 1:n_perm){
+      permuted_y <- sample(y_pos)
+      permuted_corrs[i] <- cor(permuted_y, dist, method = "spearman")
+    }
+    p_val <- mean(abs(permuted_corrs) >= abs(observed_corr))
+    return(p_val)
+  }
+
+  # Compute observed correlation per species
+  mouse_cor <- cor.test(mouse_y_positions, mouse_distance, method = "spearman")
+  opossum_cor <- cor.test(opossum_y_positions, opossum_distance, method = "spearman")
+
+  # Compute permutation p-values
+  mouse_perm_pval <- permutation_pvalue(mouse_y_positions, mouse_distance, mouse_cor$estimate, n_permutations)
+  opossum_perm_pval <- permutation_pvalue(opossum_y_positions, opossum_distance, opossum_cor$estimate, n_permutations)
+
+  # Combine data into dataframe for plotting
+  df_combined <- data.frame(
+    Y_Position = c(mouse_y_positions, opossum_y_positions),
+    Distance_to_Vertex_A = c(mouse_distance, opossum_distance),
+    Species = c(rep("Mouse", length(mouse_y_positions)),
+                rep("Opossum", length(opossum_y_positions)))
+  )
+
+  # Scatterplot comparing mouse vs opossum with permutation p-values
+  plot_title <- sprintf("Y Position vs. Distance (Mouse: %s, Opossum: %s)", mouse_subclass, opossum_subclass)
+
+  p <- ggplot(df_combined, aes(x = Y_Position, y = Distance_to_Vertex_A, color = Species)) +
+    geom_point(alpha = 1, size = 1.5) +
+    geom_smooth(method = "lm", se = TRUE) +
+    labs(
+      title = plot_title,
+      subtitle = sprintf("Permutation p-values - Mouse: %.3g, Opossum: %.3g", mouse_perm_pval, opossum_perm_pval),
+      x = "Y Spatial Position",
+      y = vertex
+    ) +
+    theme_bw(base_size = 14) +
+    ylim(0, 40) + xlim(0, 1500) + coord_fixed(ratio = 35) +
+    scale_color_manual(values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa"))
+
+  print(p)
+  #ggsave(paste0("E:/Opossum_Paper/Figure 3/Corr_Y_Vertex_", opossum_subclass, ".svg"), plot = p)
+}
+
+```
 
 
 ```{r}
 
-# Ensure your cell identifiers match between the Seurat object and the dataframe
-common.cells <- intersect(colnames(obj.i.opossum.IT.A), rownames(data.opossum))
-
-# Extract Y spatial position from Seurat object
-coords <- obj.i.opossum.IT.A@images[[1]]$centroids@coords
-rownames(coords) <- colnames(obj.i.opossum.IT.A)
-y_positions <- coords[common.cells, "x"]
-
-# Extract Distance_to_Vertex_A from dataframe
-distance_to_vertex <- data.opossum[common.cells, "Distance_to_Vertex_A"]
-
-# Compute correlation
-correlation_result <- cor.test(y_positions, distance_to_vertex, method = "pearson")
-
-# Display results
-print(correlation_result)
-
-df_plot <- data.frame(
-  Y_Position = y_positions,
-  Distance_to_Vertex_A = distance_to_vertex
+# Define subclass pairs and corresponding x-axis regimes
+subclass_pairs <- list(
+  "L2/3" = list(subclass = c("IT_A", "C"), regimes = list(c(0, 750), c(1000, 1500))),
+  "L4"   = list(subclass = c("IT_B", "B"), regimes = list(c(0, 1500))),
+  "L5IT" = list(subclass = c("IT_C", "C"), regimes = list(c(0, 1500)))
 )
 
-ggplot(df_plot, aes(x = Y_Position, y = Distance_to_Vertex_A)) +
-  geom_point(alpha = 0.7, size = 1.5, color = "steelblue") +
-  geom_smooth(method = "lm", se = TRUE, color = "red") +
-  labs(
-    title = sprintf("Correlation: r = %.3f, p = %.3g",
-                    correlation_result$estimate, correlation_result$p.value),
-    x = "Y Spatial Position",
-    y = "Distance to Vertex A"
-  ) +
-  theme_bw(base_size = 14)
+# Loop over subclass pairs
+for (mouse_subclass in names(subclass_pairs)) {
+  opossum_subclass <- subclass_pairs[[mouse_subclass]]$subclass[1]
+  vertex <- paste0("Euclidean_to_Vertex_", subclass_pairs[[mouse_subclass]]$subclass[2])
+  regimes <- subclass_pairs[[mouse_subclass]]$regimes
+
+  # Subset mouse cells
+  mouse_cells <- colnames(obj.i.mouse.IT)[!is.na(obj.i.mouse.IT$subclass_nn) & obj.i.mouse.IT$subclass_nn == mouse_subclass]
+  mouse_coords <- obj.i.mouse.IT@images[[1]]$centroids@coords[obj.i.mouse.IT$subclass_nn[!is.na(obj.i.mouse.IT$subclass_nn)] == mouse_subclass,]
+  rownames(mouse_coords) <- mouse_cells
+  mouse_y_positions <- mouse_coords[mouse_cells, "x"]
+  mouse_distance <- data.mouse[mouse_cells, vertex]
+
+  # Subset opossum cells
+  opossum_cells <- colnames(obj.i.opossum.IT)[!is.na(obj.i.opossum.IT$subclass_nn) & obj.i.opossum.IT$subclass_nn == opossum_subclass]
+  opossum_coords <- obj.i.opossum.IT@images[[1]]$centroids@coords[obj.i.opossum.IT$subclass_nn[!is.na(obj.i.opossum.IT$subclass_nn)] == opossum_subclass,]
+  rownames(opossum_coords) <- opossum_cells
+  opossum_y_positions <- opossum_coords[opossum_cells, "x"]
+  opossum_distance <- data.opossum[opossum_cells, vertex]
+
+  # Combine data
+  df_combined <- data.frame(
+    Y_Position = c(mouse_y_positions, opossum_y_positions),
+    Distance = c(mouse_distance, opossum_distance),
+    Species = c(rep("Mouse", length(mouse_y_positions)), rep("Opossum", length(opossum_y_positions)))
+  )
+
+  for (regime in regimes) {
+    xmin <- regime[1]
+    xmax <- regime[2]
+
+    # Filter data by regime
+    df_regime <- df_combined[df_combined$Y_Position >= xmin & df_combined$Y_Position < xmax, ]
+
+    # Compute correlations
+    mouse_regime <- df_regime[df_regime$Species == "Mouse", ]
+    opossum_regime <- df_regime[df_regime$Species == "Opossum", ]
+
+    mouse_cor <- cor.test(mouse_regime$Y_Position, mouse_regime$Distance, method = "spearman")
+    opossum_cor <- cor.test(opossum_regime$Y_Position, opossum_regime$Distance, method = "spearman")
+
+    # Plot
+    plot_title <- sprintf("Y Position vs. Distance (%s/%s, X: %d-%d)", mouse_subclass, opossum_subclass, xmin, xmax)
+
+    p <- ggplot(df_regime, aes(x = Y_Position, y = Distance, color = Species)) +
+      geom_point(alpha = 1, size = 1.5) +
+      geom_smooth(method = "lm", se = TRUE) +
+      labs(
+        title = plot_title,
+        subtitle = sprintf("Correlation - Mouse (r=%.2f, p=%.3g), Opossum (r=%.2f, p=%.3g)",
+                           mouse_cor$estimate, mouse_cor$p.value,
+                           opossum_cor$estimate, opossum_cor$p.value),
+        x = "Y Spatial Position",
+        y = vertex
+      ) +
+      theme_bw(base_size = 14) +
+      ylim(0, 40) + xlim(xmin, xmax) + coord_fixed(ratio = (xmax - xmin)/40) +
+      scale_color_manual(values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa"))
+
+    print(p)
+    #ggsave(paste0("E:/Opossum_Paper/Figure 3/Corr_Y_Vertex_", opossum_subclass, "_", xmin, "_", xmax, ".svg"), plot = p)
+  }
+}
 
 ```
+
+
+```{r}
+
+library(caret)
+library(vip)
+library(ggplot2)
+library(patchwork)
+
+# Define subclass pairs and their specific predictor vertices
+subclass_pairs <- list(
+  "L2/3" = list(subclass = c("IT_A", "A"), predictors = c("Euclidean_to_Vertex_B", "Euclidean_to_Vertex_C")),
+  "L4"   = list(subclass = c("IT_B", "B"), predictors = c("Euclidean_to_Vertex_A", "Euclidean_to_Vertex_C")),
+  "L5IT" = list(subclass = c("IT_C", "C"), predictors = c("Euclidean_to_Vertex_A", "Euclidean_to_Vertex_B"))
+)
+
+for (mouse_subclass in names(subclass_pairs)) {
+  opossum_subclass <- subclass_pairs[[mouse_subclass]]$subclass[1]
+  predictor_vertices <- subclass_pairs[[mouse_subclass]]$predictors
+
+  # Mouse data
+  mouse_cells <- colnames(obj.i.mouse.IT)[!is.na(obj.i.mouse.IT$subclass_nn) & obj.i.mouse.IT$subclass_nn == mouse_subclass]
+  mouse_coords <- obj.i.mouse.IT@images[[1]]$centroids@coords[obj.i.mouse.IT$subclass_nn[!is.na(obj.i.mouse.IT$subclass_nn)] == mouse_subclass,]
+  rownames(mouse_coords) <- mouse_cells
+  mouse_y_positions <- mouse_coords[mouse_cells, "x"]
+  mouse_predictors <- data.mouse[mouse_cells, predictor_vertices]
+
+  df_mouse <- data.frame(Y_Position = mouse_y_positions, mouse_predictors)
+
+  # Opossum data
+  opossum_cells <- colnames(obj.i.opossum.IT)[!is.na(obj.i.opossum.IT$subclass_nn) & obj.i.opossum.IT$subclass_nn == opossum_subclass]
+  opossum_coords <- obj.i.opossum.IT@images[[1]]$centroids@coords[obj.i.opossum.IT$subclass_nn[!is.na(obj.i.opossum.IT$subclass_nn)] == opossum_subclass,]
+  rownames(opossum_coords) <- opossum_cells
+  opossum_y_positions <- opossum_coords[opossum_cells, "x"]
+  opossum_predictors <- data.opossum[opossum_cells, predictor_vertices]
+
+  df_opossum <- data.frame(Y_Position = opossum_y_positions, opossum_predictors)
+
+  # Train separate Ridge regression models to handle collinearity
+  model_mouse <- train(
+    Y_Position ~ ., 
+    data = df_mouse, 
+    method = "glmnet",
+    trControl = trainControl(method = "cv", number = 10),
+    tuneLength = 10
+  )
+  
+  model_opossum <- train(
+    Y_Position ~ ., 
+    data = df_opossum, 
+    method = "glmnet",
+    trControl = trainControl(method = "cv", number = 10),
+    tuneLength = 10
+  )
+  
+  # Plot variable importance (standardized coefficients)
+  importance_plot_mouse <- vip(model_mouse, num_features = length(predictor_vertices), scale = TRUE) +
+    ggtitle(sprintf("Mouse: %s", mouse_subclass)) + theme_bw(base_size = 14)
+  
+  importance_plot_opossum <- vip(model_opossum, num_features = length(predictor_vertices), scale = TRUE) +
+    ggtitle(sprintf("Opossum: %s", opossum_subclass)) + theme_bw(base_size = 14)
+  
+  combined_plot <- importance_plot_mouse + importance_plot_opossum + plot_annotation(
+    title = sprintf("Ridge Regression Variable Importance (%s / %s)", mouse_subclass, opossum_subclass)
+  )
+  
+  print(combined_plot)
+  
+  # Mouse model coefficients
+  coef_mouse <- coef(model_mouse$finalModel, model_mouse$bestTune$lambda)
+  print(coef_mouse)
+  
+  # Opossum model coefficients
+  coef_opossum <- coef(model_opossum$finalModel, model_opossum$bestTune$lambda)
+  print(coef_opossum)
+
+  # Optionally save plot
+  #ggsave(sprintf("Variable_Importance_%s_%s.svg", mouse_subclass, opossum_subclass), plot = combined_plot)
+}
+
+```
+
+
 
 
 
