@@ -123,7 +123,7 @@ obj.section$method <- "Stereo-seq"
 df <- setNames(data.frame(matrix(ncol = 2, nrow = 0)), c("cell", "subclass_nn"))
 cell.names.sp <- colnames(obj.section)
 
-for (i in 1:2) { # (i in 1:ceiling(ncol(obj.section) / ncol(obj))) {
+for (i in 1:ceiling(ncol(obj.section) / 1000)) {
   
   # Sample names unless there's too few remaining
   if (length(cell.names.sp) >= ncol(obj)) {
@@ -146,7 +146,7 @@ for (i in 1:2) { # (i in 1:ceiling(ncol(obj.section) / ncol(obj))) {
   
 }
 
-# saveRDS(df, "E:/STOmics/seurat/Mouse/mouse_section_subclass_labels.rds")
+saveRDS(df, "E:/STOmics/seurat/Mouse/mouse_section_subclass_labels.rds")
 
 ```
 
@@ -170,10 +170,18 @@ obj.section$subclass_nn[df$cell] <- df$subclass_nn
 ```
 
 
-```{r, fig.width=10}
+```{r, fig.width=15}
 
-ImageDimPlot(obj.section,  group.by = "subclass_nn", size = 1)
-print(table(obj.section$subclass_nn)["None"] / sum(table(obj.section$subclass_nn)))
+obj.section.plot <- subset(obj.section, subclass_nn %in% c("L2/3", "L4", "L5IT", "L5NP", "L5PT", "L6IT", "L6CT", "L6b", "OD"))
+
+Idents(obj.section.plot) <- "subclass_nn"
+subclasses.mouse <- c("L2/3", "L4", "L5IT", "L5NP", "L5PT", "L6IT", "L6CT", "L6b", 
+                         "OD")
+colors <- hcl.colors(length(subclasses.mouse), palette = "dynamic")
+colors[2] <- "#FF6347"
+levels(obj.section.plot) <- subclasses.mouse
+p <- ImageDimPlot(obj.section.plot, cols = colors, size = 2.5)
+ggsave("E:/Opossum_Paper/Figure 3/Mouse_Section.svg", plot = p)
 
 ```
 

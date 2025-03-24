@@ -336,17 +336,24 @@ for (mouse_subclass in names(subclass_pairs)) {
 
 ```{r}
 
+
+
+```
+
+
+```{r}
+
 # Define subclass pairs and corresponding x-axis regimes
 subclass_pairs <- list(
-  "L2/3" = list(subclass = c("IT_A", "C"), regimes = list(c(0, 750), c(1000, 1500))),
+  "L2/3" = list(subclass = c("IT_A", "C"), regimes = list(c(0, 1500))),
   "L4"   = list(subclass = c("IT_B", "B"), regimes = list(c(0, 1500))),
-  "L5IT" = list(subclass = c("IT_C", "C"), regimes = list(c(0, 1500)))
+  "L5IT" = list(subclass = c("IT_C", "B"), regimes = list(c(0, 1500)))
 )
 
 # Loop over subclass pairs
 for (mouse_subclass in names(subclass_pairs)) {
   opossum_subclass <- subclass_pairs[[mouse_subclass]]$subclass[1]
-  vertex <- paste0("Euclidean_to_Vertex_", subclass_pairs[[mouse_subclass]]$subclass[2])
+  vertex <- paste0("Geodesic_to_Vertex_", subclass_pairs[[mouse_subclass]]$subclass[2])
   regimes <- subclass_pairs[[mouse_subclass]]$regimes
 
   # Subset mouse cells
@@ -419,9 +426,9 @@ library(patchwork)
 
 # Define subclass pairs and their specific predictor vertices
 subclass_pairs <- list(
-  "L2/3" = list(subclass = c("IT_A", "A"), predictors = c("Euclidean_to_Vertex_B", "Euclidean_to_Vertex_C")),
-  "L4"   = list(subclass = c("IT_B", "B"), predictors = c("Euclidean_to_Vertex_A", "Euclidean_to_Vertex_C")),
-  "L5IT" = list(subclass = c("IT_C", "C"), predictors = c("Euclidean_to_Vertex_A", "Euclidean_to_Vertex_B"))
+  "L2/3" = list(subclass = c("IT_A", "A"), predictors = c("Euclidean_to_Vertex_B", "Euclidean_to_Vertex_C"))
+  # "L4"   = list(subclass = c("IT_B", "B"), predictors = c("Euclidean_to_Vertex_A", "Euclidean_to_Vertex_C")),
+  # "L5IT" = list(subclass = c("IT_C", "C"), predictors = c("Euclidean_to_Vertex_A", "Euclidean_to_Vertex_B"))
 )
 
 for (mouse_subclass in names(subclass_pairs)) {
@@ -491,8 +498,152 @@ for (mouse_subclass in names(subclass_pairs)) {
 ```
 
 
+```{r}
+
+library(caret)
+library(vip)
+library(ggplot2)
+library(patchwork)
+
+# Define subclass pairs, predictor vertices, and spatial regimes
+subclass_pairs <- list(
+  "L2/3" = list(subclass = c("IT_A", "A"), 
+                 predictors = c("Euclidean_to_Vertex_B", "Euclidean_to_Vertex_C"),
+                 regime = c(1000, 1500))
+  # "L4"   = list(subclass = c("IT_B", "B"), 
+  #                predictors = c("Euclidean_to_Vertex_A", "Euclidean_to_Vertex_C"),
+  #                regime = c(500, 1500)),
+  # "L5IT" = list(subclass = c("IT_C", "C"), 
+  #                predictors = c("Euclidean_to_Vertex_A", "Euclidean_to_Vertex_B"),
+  #                regime = c(0, 1500))
+)
+
+for (mouse_subclass in names(subclass_pairs)) {
+  opossum_subclass <- subclass_pairs[[mouse_subclass]]$subclass[1]
+  predictor_vertices <- subclass_pairs[[mouse_subclass]]$predictors
+  regime <- subclass_pairs[[mouse_subclass]]$regime
+
+  # Mouse data
+  mouse_cells <- colnames(obj.i.mouse.IT)[!is.na(obj.i.mouse.IT$subclass_nn) & obj.i.mouse.IT$subclass_nn == mouse_subclass]
+  mouse_coords <- obj.i.mouse.IT@images[[1]]$centroids@coords[obj.i.mouse.IT$subclass_nn[!is.na(obj.i.mouse.IT$subclass_nn)] == mouse_subclass,]
+  rownames(mouse_coords) <- mouse_cells
+  mouse_y_positions <- mouse_coords[mouse_cells, "x"]
+  mouse_predictors <- data.mouse[mouse_cells, predictor_vertices]
+
+  df_mouse <- data.frame(Y_Position = mouse_y_positions, mouse_predictors)
+  df_mouse <- df_mouse[df_mouse$Y_Position >= regime[1] & df_mouse$Y_Position <= regime[2],]
+
+  # Opossum data
+  opossum_cells <- colnames(obj.i.opossum.IT)[!is.na(obj.i.opossum.IT$subclass_nn) & obj.i.opossum.IT$subclass_nn == opossum_subclass]
+  opossum_coords <- obj.i.opossum.IT@images[[1]]$centroids@coords[obj.i.opossum.IT$subclass_nn[!is.na(obj.i.opossum.IT$subclass_nn)] == opossum_subclass,]
+  rownames(opossum_coords) <- opossum_cells
+  opossum_y_positions <- opossum_coords[opossum_cells, "x"]
+  opossum_predictors <- data.opossum[opossum_cells, predictor_vertices]
+
+  df_opossum <- data.frame(Y_Position = opossum_y_positions, opossum_predictors)
+  df_opossum <- df_opossum[df_opossum$Y_Position >= regime[1] & df_opossum$Y_Position <= regime[2],]
+
+  # Train separate Ridge regression models to handle collinearity
+  model_mouse <- train(
+    Y_Position ~ ., 
+    data = df_mouse, 
+    method = "glmnet",
+    trControl = trainControl(method = "cv", number = 10),
+    tuneLength = 10
+  )
+  
+  model_opossum <- train(
+    Y_Position ~ ., 
+    data = df_opossum, 
+    method = "glmnet",
+    trControl = trainControl(method = "cv", number = 10),
+    tuneLength = 10
+  )
+
+  # Plot variable importance for mouse and opossum side-by-side
+  importance_plot_mouse <- vip(model_mouse, num_features = length(predictor_vertices)) +
+    ggtitle(sprintf("Mouse: %s", mouse_subclass)) + theme_bw(base_size = 14)
+
+  importance_plot_opossum <- vip(model_opossum, num_features = length(predictor_vertices)) +
+    ggtitle(sprintf("Opossum: %s", opossum_subclass)) + theme_bw(base_size = 14)
+
+  combined_plot <- importance_plot_mouse + importance_plot_opossum + plot_annotation(
+    title = sprintf("Variable Importance Predicting Y Position (%s / %s), Regime: [%d-%d]", mouse_subclass, opossum_subclass, regime[1], regime[2])
+  )
+
+  print(combined_plot)
+  
+    # Mouse model coefficients
+  coef_mouse <- coef(model_mouse$finalModel, model_mouse$bestTune$lambda)
+  print(coef_mouse)
+  
+  # Opossum model coefficients
+  coef_opossum <- coef(model_opossum$finalModel, model_opossum$bestTune$lambda)
+  print(coef_opossum)
+
+  # Optionally save plot
+  #ggsave(sprintf("Variable_Importance_%s_%s_Regime_%d_%d.svg", mouse_subclass, opossum_subclass, regime[1], regime[2]), plot = combined_plot)
+}
+
+```
 
 
+```{r}
+
+library(ggplot2)
+library(dplyr)
+
+# Define vertices coordinates (fill these in)
+vertices <- data.frame(
+  Vertex = c("A", "B", "C"),
+  x = c(-23.4, 18.1, 11.9),  # <-- Fill in X coordinates here
+  y = c(1.2, -10.6, 31.1)   # <-- Fill in Y coordinates here
+)
+
+# Function to compute projection distance onto line segment
+project_onto_line <- function(px, py, x1, y1, x2, y2) {
+  line_vec <- c(x2 - x1, y2 - y1)
+  point_vec <- c(px - x1, py - y1)
+  proj_length <- sum(point_vec * line_vec) / sqrt(sum(line_vec^2))
+  return(proj_length)
+}
+
+# Choose subclass and species to analyze (fill these)
+subclass <- "IT_A"
+species <- "Opossum"
+
+# Extract appropriate coordinates (example for mouse, replace if necessary)
+cells <- colnames(obj.i.mouse.IT)[!is.na(obj.i.mouse.IT$subclass_nn) & obj.i.mouse.IT$subclass_nn == subclass]
+coords <- obj.i.mouse.IT@images[[1]]$centroids@coords[obj.i.mouse.IT$subclass_nn[!is.na(obj.i.mouse.IT$subclass_nn)] == subclass,]
+coords <- data.frame(Cell = cells, X = coords[,"x"], Y = coords[,"y"])
+
+# Calculate distances along lines for each vertex
+for (vertex in vertices$Vertex) {
+  other_vertices <- vertices %>% filter(Vertex != vertex)
+  line_name <- paste0("Distance_along_", vertex, "_line")
+  coords[[line_name]] <- mapply(project_onto_line, coords$X, coords$Y,
+                                other_vertices$x[1], other_vertices$y[1],
+                                other_vertices$x[2], other_vertices$y[2])
+}
+
+# Plot Y spatial position vs. distances
+coords_long <- coords %>%
+  tidyr::pivot_longer(cols = starts_with("Distance_along_"),
+                      names_to = "Line", values_to = "Distance")
+
+p <- ggplot(coords_long, aes(x = Distance, y = Y, color = Line)) +
+  geom_point(alpha = 0.8) +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_bw(base_size = 14) +
+  labs(title = paste("Y Position vs. Distance Along Lines -", species, subclass),
+       x = "Distance Along Line", y = "Y Spatial Position")
+
+print(p)
+
+# Optionally save plot
+# ggsave(sprintf("Y_vs_LineDistance_%s_%s.svg", species, subclass), plot = p)
+
+```
 
 
 
