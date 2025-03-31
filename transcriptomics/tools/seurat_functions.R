@@ -26,6 +26,7 @@ ImageDimPlotGradient <- function(obj, rgb_csv, ratio = 1, size = 2, yticks = NA)
     scale_color_identity() +  # Directly use RGB colors
     theme_minimal() +
     coord_fixed(ratio = ratio) +
+    ylim(yticks[1], yticks[length(yticks)]) +
     scale_y_continuous(breaks = yticks) +
     theme(axis.text = element_blank(), axis.ticks = element_blank())
   

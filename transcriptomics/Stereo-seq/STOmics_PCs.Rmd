@@ -159,16 +159,88 @@ opossum.path <- "E:/Opossum_Paper/Figure 3/opossum_integrated_PC_colors.csv"
 ImageDimPlotGradient(obj = obj.i.opossum.IT, rgb_csv = opossum.path, yticks = c(0, 400, 800, 1200, 1600)) + coord_fixed(ratio = 0.77*1.5)
 
 obj.i.opossum.IT.A <- subset(obj.i.opossum.IT, subclass_nn == "IT_A")
-p <- ImageDimPlotGradient(obj = obj.i.opossum.IT.A, rgb_csv = opossum.path, yticks = c(0, 400, 800, 1200, 1600)) + coord_fixed(ratio = 0.77*1.5) + ylim(4.278372, 1545.594104)
-ggsave("E:/Opossum_Paper/Figure 3/opossum_stereoseq_pc_gradient_spatial_A.svg", plot = p)
+ImageDimPlotGradient(obj = obj.i.opossum.IT.A, rgb_csv = opossum.path, yticks = c(0, 400, 800, 1200, 1600)) + coord_fixed(ratio = 0.77*1.5) + ylim(0, 1600) + theme(axis.text.y = element_text())
+# ggsave("E:/Opossum_Paper/Figure 3/opossum_stereoseq_pc_gradient_spatial_A.svg", plot = p)
 
 obj.i.opossum.IT.B <- subset(obj.i.opossum.IT, subclass_nn == "IT_B")
-p <- ImageDimPlotGradient(obj = obj.i.opossum.IT.B, rgb_csv = opossum.path, yticks = c(0, 400, 800, 1200, 1600)) + coord_fixed(ratio = 0.77*1.5) + ylim(4.278372, 1545.594104)
-ggsave("E:/Opossum_Paper/Figure 3/opossum_stereoseq_pc_gradient_spatial_B.svg", plot = p)
+ImageDimPlotGradient(obj = obj.i.opossum.IT.B, rgb_csv = opossum.path, yticks = c(0, 400, 800, 1200, 1600)) + coord_fixed(ratio = 0.77*1.5) + ylim(0, 1600)
+# ggsave("E:/Opossum_Paper/Figure 3/opossum_stereoseq_pc_gradient_spatial_B.svg", plot = p)
 
 obj.i.opossum.IT.C <- subset(obj.i.opossum.IT, subclass_nn == "IT_C")
-p <- ImageDimPlotGradient(obj = obj.i.opossum.IT.C, rgb_csv = opossum.path, yticks = c(0, 400, 800, 1200, 1600)) + coord_fixed(ratio = 0.77*1.5) + ylim(4.278372, 1545.594104)
-ggsave("E:/Opossum_Paper/Figure 3/opossum_stereoseq_pc_gradient_spatial_C.svg", plot = p)
+ImageDimPlotGradient(obj = obj.i.opossum.IT.C, rgb_csv = opossum.path, yticks = c(0, 400, 800, 1200, 1600)) + coord_fixed(ratio = 0.77*1.5) + ylim(0, 1600)
+# ggsave("E:/Opossum_Paper/Figure 3/opossum_stereoseq_pc_gradient_spatial_C.svg", plot = p)
+
+```
+
+
+```{r, fig.height=3.6, fig.width=2.75}
+
+calculate_density <- function(obj, subclass_l23, subclass_l4, scale_factor = 0.0005) {
+  
+  # Extract spatial coordinates and subclass info
+  coords <- as.data.frame(obj@images[[1]]$centroids@coords)
+  colnames(coords) <- c("Y", "X")
+  coords$subclass_nn <- obj$subclass_nn[!is.na(obj$subclass_nn)]
+  
+  # Get mean Y position of L4 cells
+  mean_y_l4 <- mean(coords$Y[coords$subclass_nn == subclass_l4], na.rm = TRUE)
+  
+  # Classify L2/3 cells as above or below L4 mean Y
+  coords_l23 <- coords %>% filter(subclass_nn == subclass_l23) %>%
+    mutate(position = ifelse(Y > mean_y_l4, "above", "below"))
+  
+  # Calculate area in square microns
+  width <- diff(range(coords$X)) * scale_factor
+  height_above <- abs(max(coords_l23$Y[coords_l23$position == "above"]) - mean_y_l4) * scale_factor
+  height_below <- abs(min(coords_l23$Y[coords_l23$position == "below"]) - mean_y_l4) * scale_factor
+  print(mean_y_l4)
+  print(c(height_above, height_below))
+  
+  area_above <- width * height_above
+  area_below <- width * height_below
+  
+  # Count cells in each region
+  count_above <- sum(coords_l23$position == "above")
+  count_below <- sum(coords_l23$position == "below")
+  
+  # Calculate density (cells/µm²)
+  density_above <- count_above / area_above
+  density_below <- count_below / area_below
+  
+  # Return results
+  return(data.frame(
+    position = c("above", "below"),
+    cell_count = c(count_above, count_below),
+    area_um2 = c(area_above, area_below),
+    density_cells_per_um2 = c(density_above, density_below)
+  ))
+}
+
+# Apply to mouse
+density_mouse <- calculate_density(obj.i.mouse.IT, subclass_l23 = "L2/3", subclass_l4 = "L4")
+
+# Apply to opossum (L2/3 = IT_A, L4 = IT_B)
+density_opossum <- calculate_density(obj.i.opossum.IT, subclass_l23 = "IT_A", subclass_l4 = "IT_B")
+
+# Add species labels
+density_mouse$species <- "Mouse"
+density_opossum$species <- "Opossum"
+
+# Combine into one dataframe
+density_combined <- rbind(density_mouse, density_opossum)
+
+# Plot grouped barplot
+p <- ggplot(density_combined, aes(x = factor(position, level = c("above", "below")), y = density_cells_per_um2, fill = species)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8), width = 0.75) +
+  scale_x_discrete(labels = c("Above", "Below")) +
+  scale_y_continuous(breaks = c(0, 500, 1000, 1500, 2000), expand = c(0, 0), limits = c(0, 2000)) +
+  guides(fill = guide_legend(override.aes = list(shape = NA))) +
+  theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+  labs(x = NULL, y = "Cells per mm2", fill = NULL) + 
+  scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa")) + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+
+ggsave(file = "E:/Opossum_Paper/Figure 3/Density_Above_Below.svg", plot = p, width = 3.5, height = 3.6, dpi = 500)
 
 ```
 
@@ -336,24 +408,15 @@ for (mouse_subclass in names(subclass_pairs)) {
 
 ```{r}
 
-
-
-```
-
-
-```{r}
-
 # Define subclass pairs and corresponding x-axis regimes
 subclass_pairs <- list(
-  "L2/3" = list(subclass = c("IT_A", "C"), regimes = list(c(0, 1500))),
-  "L4"   = list(subclass = c("IT_B", "B"), regimes = list(c(0, 1500))),
-  "L5IT" = list(subclass = c("IT_C", "B"), regimes = list(c(0, 1500)))
+  "L2/3" = list(subclass = c("IT_A", "B"), regimes = list(c(1000, 1500)))
 )
 
 # Loop over subclass pairs
 for (mouse_subclass in names(subclass_pairs)) {
   opossum_subclass <- subclass_pairs[[mouse_subclass]]$subclass[1]
-  vertex <- paste0("Geodesic_to_Vertex_", subclass_pairs[[mouse_subclass]]$subclass[2])
+  vertex <- paste0("Euclidean_to_Vertex_", subclass_pairs[[mouse_subclass]]$subclass[2])
   regimes <- subclass_pairs[[mouse_subclass]]$regimes
 
   # Subset mouse cells
@@ -406,11 +469,11 @@ for (mouse_subclass in names(subclass_pairs)) {
         y = vertex
       ) +
       theme_bw(base_size = 14) +
-      ylim(0, 40) + xlim(xmin, xmax) + coord_fixed(ratio = (xmax - xmin)/40) +
+      ylim(15, 45) + xlim(xmin, xmax) + coord_fixed(ratio = (xmax - xmin)/15) +
       scale_color_manual(values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa"))
 
     print(p)
-    #ggsave(paste0("E:/Opossum_Paper/Figure 3/Corr_Y_Vertex_", opossum_subclass, "_", xmin, "_", xmax, ".svg"), plot = p)
+    ggsave(paste0("E:/Opossum_Paper/Figure 3/Corr_Y_Vertex_", subclass_pairs[[mouse_subclass]]$subclass[2], "_", xmin, "_", xmax, ".svg"), plot = p, width = )
   }
 }
 

@@ -1,0 +1,90 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(tidyverse)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+
+versions <- c("Original", "Extended_lt10kb_ex5kb", "Extended_lt10kb_ex10kb")
+objs.opossum <- list()
+
+for (v in versions) {
+
+  data_path <- paste0("E:/Transcriptomics_V1/Opossum/output/", v, "/")
+  sample_IDs <- c('OpossumV1-3A', 'OpossumV1-3B', 'OpossumV1-4A', 'OpossumV1-4B')
+  mapping_path <- "E:/_genomes/Opossum_Mouse_Genes.txt"
+  
+  data <- PreprocessData(sample_IDs, data_path, v, mapping_path)
+  
+  obj.opossum <- data$obj
+  obj.opossum$species <- "Opossum"
+  
+  objs.opossum[[v]] <- obj.opossum
+
+}
+
+rm(obj.opossum)
+
+```
+
+
+```{r}
+
+obj.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+obj.mouse.gabaergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_gabaergic_processed.rds")
+obj.mouse.nonneuronal <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_nonneuronal_processed.rds")
+
+obj.mouse <- merge(obj.mouse.glutamatergic, y = c(obj.mouse.gabaergic, obj.mouse.nonneuronal))
+
+rm(obj.mouse.glutamatergic)
+rm(obj.mouse.gabaergic)
+rm(obj.mouse.nonneuronal)
+
+obj.mouse$orig.ident <- "Mouse"
+
+```
+
+
+```{r}
+
+obj.combined <- merge(obj.mouse, objs.opossum)
+
+```
+
+
+```{r, fig.width=4.5, fig.height=5}
+
+Idents(obj.combined) <- "orig.ident"
+levels(obj.combined) <- c("Original", "Extended_lt10kb_ex5kb", "Extended_lt10kb_ex10kb", "Mouse")
+p <- VlnPlot(obj.combined, "nFeature_RNA", pt.size = 0) + ylim(0, 6500)
+ggsave("E:/Opossum_Paper/Figure S1/Features.svg", plot = p, width = 4.5, height = 5)
+p <- VlnPlot(obj.combined, "nCount_RNA", pt.size = 0)
+ggsave("E:/Opossum_Paper/Figure S1/Counts.svg", plot = p, width = 4.5, height = 5)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

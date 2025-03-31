@@ -1,0 +1,42 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(dplyr)
+library(tidyverse)
+
+Mapping <- c(31.8, 32.5, 33.9, 36, 34.1, 34.8, 36.5, 38.8, 34.1, 35.6, 37.3, 39.6, 60.8, 61.0) # Reads mapped confidently to transcriptome
+Label <- c("Original", "Original", "Original", "Original", "Extended (5 kbp)", "Extended (5 kbp)", "Extended (5 kbp)", "Extended (5 kbp)", 
+           "Extended (10 kbp)", "Extended (10 kbp)", "Extended (10 kbp)", "Extended (10 kbp)", "Mouse", "Mouse")
+
+df <- data.frame(Mapping, Label)
+# df <- df %>%
+#   pivot_longer(cols = c("Opossum", "Mouse"), names_to = "species", values_to = "density")
+# df
+
+```
+
+
+```{r, fig.height=3, fig.width=3.5}
+
+df$Label <- factor(df$Label, levels = c("Original", "Extended (5 kbp)", "Extended (10 kbp)", "Mouse"))
+
+p <- ggplot(df, aes(x = factor(Label, level = c("Original", "Extended (5 kbp)", "Extended (10 kbp)", "Mouse")), y = Mapping, fill = Label)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("Original", "Extended (5 kbp)", "Extended (10 kbp)", "Mouse")) +
+    scale_y_continuous(breaks = c(0, 25, 50, 75), expand = c(0, 0), limits = c(0, 75)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = NULL, fill = NULL) + 
+    scale_fill_manual("legend", values = c("Original" = "#c692b8", "Extended (5 kbp)" = "#c692b8", "Extended (10 kbp)" = "#c692b8", "Mouse" = "#aaaaaa"))
+
+ggsave(file="E:/Opossum_Paper/Figure S1/Mapping_Percentage.svg", plot=p, width=3.5, height=3)
+
+```
+
+

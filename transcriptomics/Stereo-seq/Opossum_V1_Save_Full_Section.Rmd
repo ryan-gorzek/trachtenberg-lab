@@ -178,13 +178,11 @@ obj.section$subclass_nn[df$cell] <- df$subclass_nn
 
 ```{r, fig.width=15}
 
-obj.section.plot <- subset(obj.section, subclass_nn != "None")
+obj.section.plot <- subset(obj.section, subclass_nn %in% c("IT_A", "IT_B", "IT_C", "L5NP", "L5PT", "IT_D", "L6CT", "L6b", "OD"))
 
 Idents(obj.section.plot) <- "subclass_nn"
-subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D", "L5NP", "L5PT", "L6CT", "L6b", 
-                         "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", 
-                         "OD", "OPC", "Astro", "Micro", "Endo", 
-                         "None")
+subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "L5NP", "L5PT", "IT_D", "L6CT", "L6b", 
+                         "OD")
 colors <- hcl.colors(length(subclasses.opossum), palette = "dynamic")
 colors[2] <- "#FF6347"
 levels(obj.section.plot) <- subclasses.opossum
