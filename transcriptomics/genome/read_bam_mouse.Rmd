@@ -1,0 +1,136 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Rsamtools)
+
+bam.path <- "E:/bams/mouse/gex_possorted_bam.bam"
+
+bam.header <- scanBamHeader(file = bam.path)
+idx.stats <- idxstatsBam(bam.path)
+total.mapped <- sum(idx.stats$mapped)
+total.unmapped <- sum(idx.stats$unmapped)
+total.reads <- total.mapped + total.unmapped
+
+scaffold.lens <- bam.header[1][[bam.path]][1][[1]]
+scaffold.names <- names(scaffold.lens)
+
+stat.names <- c("num.reads")
+read.stats <- data.frame(matrix(ncol = length(stat.names), nrow = length(scaffold.names)))
+colnames(read.stats) <- stat.names
+rownames(read.stats) <- scaffold.names
+
+for (scf in seq(length(scaffold.names), 1, by = -1)) {
+
+  print(paste0("Scaffold ", scf, " out of ", length(scaffold.names), "..."))
+  
+  which <- GRanges(paste0(names(scaffold.lens[scf]), ":1-", scaffold.lens[scf][[1]]))
+  param <- ScanBamParam(which=which, what=scanBamWhat(), tag=c("CB", "UB", "TX", "AN", "GX", "GN", "RE", "xf"))
+  bam.file <- scanBam(bam.path, param = param)
+
+  for (tag in names(bam.file[[1]]$tag)) {
+    bam.file[[1]][[tag]] <- bam.file[[1]]$tag[[tag]]
+  }
+  
+  .unlist <- function (x)
+  {
+      ## do.call(c, ...) coerces factor to integer, which is undesired
+      x1 <- x[[1L]]
+      if (is.factor(x1)) {
+          structure(unlist(x), class = "factor", levels = levels(x1))
+      } else {
+          do.call(c, x)
+      }
+  }
+  bam <- unname(bam.file) # names not useful in unlisted result
+  names <- c(setdiff(bamWhat(param), c("groupid", "mate_status")), names(bam.file[[1]]$tag))
+  elts <- setNames(names, names)
+  lst <- lapply(elts, function(elt) .unlist(lapply(bam, "[[", elt)))
+  
+  if (!identical(lst[["qname"]], character(0))) {
+    
+    for (tg in c("CB", "UB", "TX", "AN", "GX", "GN", "RE", "xf")) {
+      
+      if (is.null(lst[[tg]])) { 
+        
+        lst[[tg]] <- lst$flag
+        lst[[tg]] <- NA
+        
+        }
+      
+    }
+    
+    bam.df <- do.call("data.frame", lst)
+    rm(bam.file)
+    rm(bam)
+    
+    read.unique <- unlist(lapply(bam.df$flag, function(x) as.integer(intToBits(x))[11] == 0))
+    read.highqual <- bam.df$mapq == 255
+    read.cellbc <- !is.na(bam.df$CB)
+    read.umi <- !is.na(bam.df$UB)
+    read.intergenic <- bam.df$RE == "I"
+    read.counted.xf.2 <- unlist(lapply(bam.df$xf, function(x) as.integer(intToBits(x))[2] == 0))
+    read.counted.xf.4 <- unlist(lapply(bam.df$xf, function(x) as.integer(intToBits(x))[3] == 0))
+    read.counted.xf.32 <- unlist(lapply(bam.df$xf, function(x) as.integer(intToBits(x))[6] == 0))
+    
+    idx.bam <- read.unique & read.highqual & read.cellbc & read.umi & read.intergenic & 
+               read.counted.xf.2 & read.counted.xf.4 & read.counted.xf.32
+    
+    if (any(idx.bam)) {
+    
+    bam.df.bed <- bam.df[idx.bam,]
+    rm(lst)
+    rm(bam.df)
+    
+    cigar_to_reference_span <- function(cigar) {
+      # Regular expression to match the operations and lengths
+      matches <- gregexpr("([0-9]+)([MIDNSHP=XB])", cigar, perl = TRUE)
+      parsed_cigar <- regmatches(cigar, matches)[[1]]
+      
+      # Initialize the reference span length
+      reference_span <- 0
+      
+      # Loop through each operation in the CIGAR string
+      for (operation in parsed_cigar) {
+        # Extract the length and the code
+        length <- as.numeric(sub("([MIDNSHP=XB])", "", operation))
+        code <- sub("([0-9]+)", "", operation)
+        
+        # Add to the reference span based on the code
+        if (code %in% c("M", "D", "N", "=", "X")) {
+          reference_span <- reference_span + length
+        }
+      }
+      
+      return(reference_span)
+    }
+    
+    bed.cols <- c("chrom", "chromStart", "chromEnd", "name", "score", "strand")
+    bed.df <- data.frame(matrix(ncol = length(bed.cols), nrow = nrow(bam.df.bed)))
+    colnames(bed.df) <- bed.cols
+    bed.df$chrom <- scaffold.names[scf]
+    bed.df$chromStart <- bam.df.bed$pos
+    read.spans <- unlist(lapply(bam.df.bed$cigar, cigar_to_reference_span))
+    bed.df$chromEnd <- bed.df$chromStart + read.spans - 1
+    bed.df$name <- bam.df.bed$qname
+    bed.df$score <- ""
+    bed.df$strand <- bam.df.bed$strand
+    
+    scaffold.fname <- gsub("\\.", "_", scaffold.names[scf])
+    fname <- paste0("E:/bams/mouse/beds/", "intergenic-reads-", scaffold.fname, ".bed")
+    write.table(bed.df, file = fname, quote = F, sep = "\t", row.names = F, col.names = F)
+    
+    }
+
+  }
+  
+  rm(bed.df)
+  
+}
+
+```
+

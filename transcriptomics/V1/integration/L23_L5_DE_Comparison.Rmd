@@ -80,8 +80,10 @@ EnhancedVolcano(de_genes_A_C, lab = rownames(de_genes_A_C), x = 'avg_log2FC', y 
 
 ```{r}
 
-L2_L5 <- rownames(de_genes_L2_L5[abs(de_genes_L2_L5$avg_log2FC) > 0.75 & de_genes_L2_L5$pct.1 > 0.25 & de_genes_L2_L5$p_val_adj < 0.05, ])
-A_C <- rownames(de_genes_A_C[abs(de_genes_A_C$avg_log2FC) > 0.75 & de_genes_A_C$pct.1 > 0.25 & de_genes_A_C$p_val_adj < 0.05, ])
+L2_L5 <- rownames(de_genes_L2_L5[abs(de_genes_L2_L5$avg_log2FC > 0.75) & de_genes_L2_L5$pct.1 > 0.25 & de_genes_L2_L5$p_val_adj < 0.05, ])
+# L2_L5 <- rownames(de_genes_L2_L5[((de_genes_L2_L5$avg_log2FC > 1 & de_genes_L2_L5$pct.1 > 0.25) | (de_genes_L2_L5$avg_log2FC < -1 & de_genes_L2_L5$pct.2 > 0.25)) & de_genes_L2_L5$p_val_adj < 0.05, ])
+A_C <- rownames(de_genes_A_C[abs(de_genes_A_C$avg_log2FC > 0.75) & de_genes_A_C$pct.1 > 0.25 & de_genes_A_C$p_val_adj < 0.05, ])
+# A_C <- rownames(de_genes_A_C[((de_genes_A_C$avg_log2FC > 1 & de_genes_A_C$pct.1 > 0.25) | (de_genes_A_C$avg_log2FC < -1 & de_genes_A_C$pct.2 > 0.25)) & de_genes_A_C$p_val_adj < 0.05, ])
 
 ```
 
@@ -98,6 +100,8 @@ shared.genes <- intersect(L2_L5, A_C)
 
 
 ```{r}
+
+library(GOfuncR)
 
 all_genes <- rownames(obj.mouse.IT)[rownames(obj.mouse.IT) %in% rownames(obj.opossum.IT)]
 

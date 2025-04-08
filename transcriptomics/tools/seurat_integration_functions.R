@@ -1256,8 +1256,8 @@ PlotPairwiseSubclassGeneCountCDFDiff <- function(de_results_list_1, de_results_l
     de_results_2 <- de_results_2[de_results_2$pct.1 > min.pct & de_results_2$p_val_adj < max.pval, ]
     
     # Separate DE genes for each subclass
-    df_filtered_1 <- de_results_1[de_results_1$avg_log2FC > 0, ]
-    df_filtered_2 <- de_results_2[de_results_2$avg_log2FC > 0, ]
+    df_filtered_1 <<- de_results_1 # [de_results_1$avg_log2FC > 0, ]
+    df_filtered_2 <<- de_results_2 # [de_results_2$avg_log2FC > 0, ]
     
     # Calculate the max avg_log2FC for each group
     max_log2FC_1 <- max(df_filtered_1$avg_log2FC, na.rm = TRUE)

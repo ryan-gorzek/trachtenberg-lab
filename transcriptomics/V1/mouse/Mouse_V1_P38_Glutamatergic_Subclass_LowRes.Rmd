@@ -29,6 +29,7 @@ source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R"
 source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
 
 obj.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+obj.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
 
 ```
 
@@ -36,6 +37,7 @@ obj.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_
 ```{r}
 
 obj.mouse.glutamatergic <- ClusterSCT(obj.mouse.glutamatergic, c(0.1, 0.2, 0.3, 0.4))
+obj.opossum.glutamatergic <- ClusterSCT(obj.opossum.glutamatergic, c(0.2, 0.3))
 
 ```
 
@@ -82,7 +84,6 @@ colors_list <- list(
 
 DimPlot(obj.mouse.glutamatergic, reduction = "umap", group.by = "subclass", label = TRUE, raster = FALSE) + NoLegend() + xlim(-13, 15) + ylim(-14, 14) + coord_equal()
 
-DimPlot(obj.mouse.glutamatergic, reduction = "umap", group.by = "SCT_snn_res.0.1", label = TRUE, raster = FALSE) + NoLegend() + xlim(-13, 15) + ylim(-14, 14) + coord_equal()
 # ggsave("E:/Opossum_Paper/Figure S2/Opossum_Glutamatergic_UMAP_res.0.2.svg", plot = p, width = 5, height = 5, dpi = 300)
 # ggsave("E:/Opossum_Paper/Figure S2/Opossum_Glutamatergic_UMAP_res.0.2.png", plot = p, width = 5, height = 5, dpi = 300)
 p <- DimPlot(obj.mouse.glutamatergic, reduction = "umap", group.by = "SCT_snn_res.0.2", label = TRUE, raster = FALSE) + NoLegend() + xlim(-12, 16) + ylim(-12, 16) + coord_equal()
@@ -98,6 +99,15 @@ p <- DimPlot(obj.mouse.glutamatergic, reduction = "umap", cols = colors_list[mou
 ggsave("E:/Opossum_Paper/Figure S2/Mouse_Glutamatergic_UMAP_subclass.svg", plot = p, width = 5, height = 5, dpi = 300)
 ggsave("E:/Opossum_Paper/Figure S2/Mouse_Glutamatergic_UMAP_subclass.png", plot = p, width = 5, height = 5, dpi = 300)
 
+DimPlot(obj.mouse.glutamatergic, reduction = "umap", group.by = "SCT_snn_res.0.2", label = TRUE, raster = FALSE) + NoLegend() + xlim(-13, 15) + ylim(-14, 14) + coord_equal()
+DimPlot(obj.opossum.glutamatergic, reduction = "umap", group.by = "SCT_snn_res.0.3", label = TRUE, raster = FALSE) + NoLegend() + xlim(-13, 15) + ylim(-14, 14) + coord_equal()
+
+Idents(obj.opossum.glutamatergic) <- "subclass"
+opossum.subclass.levels <- c("IT_A", "IT_B", "IT_C", "IT_D", "L5NP", "L5PT", "L6CT", "L6b")
+levels(obj.opossum.glutamatergic) <- opossum.subclass.levels
+p <- DimPlot(obj.opossum.glutamatergic, reduction = "umap", cols = colors_list[opossum.subclass.levels], label = TRUE, raster = FALSE) + NoLegend() + xlim(-13, 15) + ylim(-14, 14) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure S2/Opossum_Glutamatergic_UMAP_subclass.svg", plot = p, width = 5, height = 5, dpi = 300)
+
 ```
 
 
@@ -108,6 +118,67 @@ p <- PlotSubsampledMappedLabelsHeatmap(obj.mouse.glutamatergic$SCT_snn_res.0.2, 
                                   ident.order = c("2", "1", "5", "4", "8", "7", "6", "3", "9", "L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"))
 ggsave("E:/Opossum_Paper/Figure S2/Mouse_Glutamatergic_Mapping.svg", plot = p, width = 6, height = 8, dpi = 300)
 ggsave("E:/Opossum_Paper/Figure S2/Mouse_Glutamatergic_Mapping.png", plot = p, width = 6, height = 8, dpi = 300)
+
+```
+
+
+```{r, fig.width=5.5, fig.height=5}
+
+it.markers <- rev(c("Ccbe1", "Mdga1", "Stard8", "Cux2", "Whrn", "Rorb", "Deptor", "Foxo1", "Ptprm", "Zfp804b", "Cdh9"))
+
+Idents(obj.mouse.glutamatergic) <- "SCT_snn_res.0.2"
+levels(obj.mouse.glutamatergic) <- c("2", "1", "5", "4", "8", "7", "6", "3", "9")
+p <- DotPlot(obj.mouse.glutamatergic, features = it.markers, scale = FALSE, col.max = 2.5) + coord_flip()
+
+ggsave("E:/Opossum_Paper/Figure S2/Mouse_Glutamatergic_DotPlot.svg", plot = p, width = 5.5, height = 5, dpi = 300)
+
+```
+
+
+```{r, fig.width=5.5, fig.height=5}
+
+it.markers <- rev(c("Ccbe1", "Mdga1", "Stard8", "Cux2", "Whrn", "Rorb", "Deptor", "Foxo1", "Ptprm", "Zfp804b", "Cdh9"))
+
+Idents(obj.opossum.glutamatergic) <- "SCT_snn_res.0.2"
+levels(obj.opossum.glutamatergic) <- c("1", "2", "5", "4", "7", "6", "3")
+p <- DotPlot(obj.opossum.glutamatergic, features = it.markers, scale = FALSE, col.max = 2.5) + coord_flip()
+
+ggsave("E:/Opossum_Paper/Figure S2/Opossum_Glutamatergic_DotPlot_0_2.svg", plot = p, width = 5.5, height = 5, dpi = 300)
+
+```
+
+
+```{r}
+
+obj.opossum.glutamatergic$SCT_snn_res.0.3[obj.opossum.glutamatergic$SCT_snn_res.0.3 == 8] <- 1
+
+obj.opossum.glutamatergic$SCT_snn_res.0.3[obj.opossum.glutamatergic$SCT_snn_res.0.3 == 3] <- 8
+obj.opossum.glutamatergic$SCT_snn_res.0.3[obj.opossum.glutamatergic$SCT_snn_res.0.3 == 2] <- 3
+obj.opossum.glutamatergic$SCT_snn_res.0.3[obj.opossum.glutamatergic$SCT_snn_res.0.3 == 8] <- 2
+
+obj.opossum.glutamatergic$SCT_snn_res.0.3[obj.opossum.glutamatergic$SCT_snn_res.0.3 == 6] <- 8
+obj.opossum.glutamatergic$SCT_snn_res.0.3[obj.opossum.glutamatergic$SCT_snn_res.0.3 == 5] <- 6
+obj.opossum.glutamatergic$SCT_snn_res.0.3[obj.opossum.glutamatergic$SCT_snn_res.0.3 == 8] <- 5
+
+obj.opossum.glutamatergic$SCT_snn_res.0.3[obj.opossum.glutamatergic$SCT_snn_res.0.3 == 10] <- 8
+obj.opossum.glutamatergic$SCT_snn_res.0.3[obj.opossum.glutamatergic$SCT_snn_res.0.3 == 9] <- 10
+obj.opossum.glutamatergic$SCT_snn_res.0.3[obj.opossum.glutamatergic$SCT_snn_res.0.3 == 8] <- 9
+
+obj.opossum.glutamatergic$SCT_snn_res.0.3[obj.opossum.glutamatergic$SCT_snn_res.0.3 == 10] <- 8
+obj.opossum.glutamatergic$SCT_snn_res.0.3[obj.opossum.glutamatergic$SCT_snn_res.0.3 == 11] <- 10
+
+```
+
+
+```{r, fig.width=5.5, fig.height=5}
+
+it.markers <- rev(c("Ccbe1", "Mdga1", "Stard8", "Cux2", "Whrn", "Rorb", "Deptor", "Foxo1", "Ptprm", "Zfp804b", "Cdh9"))
+
+Idents(obj.opossum.glutamatergic) <- "SCT_snn_res.0.3"
+levels(obj.opossum.glutamatergic) <- c("1", "2", "5", "6", "4", "9", "8", "7", "3", "10")
+p <- DotPlot(obj.opossum.glutamatergic, features = it.markers, scale = FALSE, col.max = 2.5) + coord_flip()
+
+ggsave("E:/Opossum_Paper/Figure S2/Opossum_Glutamatergic_DotPlot_0_3.svg", plot = p, width = 5.5, height = 5, dpi = 300)
 
 ```
 

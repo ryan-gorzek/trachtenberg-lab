@@ -137,6 +137,7 @@ opossum.counts$species <- "Opossum"
 opossum.counts$Glutamatergic <- rowSums(opossum.counts[, c("IT", "L5NP", "L5PT", "L6CT", "L6b")])
 opossum.counts$GABAergic <- rowSums(opossum.counts[, c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")])
 opossum.counts$Nonneuronal <- rowSums(opossum.counts[, c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC")])
+opossum.counts$Nonneuronal_Common <- rowSums(opossum.counts[, c("Astro", "Micro", "OD", "OPC")])
 
 obj.mouse$subclass.plot <- obj.mouse$subclass
 obj.mouse$subclass.plot[obj.mouse$subclass %in% c("IT_A", "IT_B", "IT_C", "IT_D", "IT_E", 
@@ -146,6 +147,7 @@ mouse.counts$species <- "Mouse"
 mouse.counts$Glutamatergic <- rowSums(mouse.counts[, c("IT", "L5NP", "L5PT", "L6CT", "L6b")])
 mouse.counts$GABAergic <- rowSums(mouse.counts[, c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")])
 mouse.counts$Nonneuronal <- rowSums(mouse.counts[, c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC")])
+mouse.counts$Nonneuronal_Common <- rowSums(mouse.counts[, c("Astro", "Micro", "OD", "OPC")])
 
 all.counts <- rbind(opossum.counts, mouse.counts)
 
@@ -164,6 +166,10 @@ all.props <- all.counts %>%
                        Lamp5 = Lamp5 / GABAergic,
                        Frem1 = Frem1 / GABAergic, 
                        Stac = Stac / GABAergic, 
+                       OD_Common = OD / Nonneuronal_Common,
+                       OPC_Common = OPC / Nonneuronal_Common,
+                       Astro_Common = Astro / Nonneuronal_Common, 
+                       Micro_Common = Micro / Nonneuronal_Common, 
                        Astro = Astro / Nonneuronal,
                        Micro = Micro / Nonneuronal,
                        OD = OD / Nonneuronal,
@@ -181,7 +187,8 @@ all.props.long <- all.props %>%
                   pivot_longer(
                     cols = c("PV_Pyr", "MGE", "CGE", "IT", "L5NP", "L5PT", "L6CT", "L6b", 
                              "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac", 
-                             "Astro", "Micro", "OD", "OPC", "Endo", "VLMC", 
+                             "Astro", "Micro", "OD", "OPC", "Endo", "VLMC", "OD_Common", 
+                             "OPC_Common", "Astro_Common", "Micro_Common",
                              "Glutamatergic", "GABAergic", "Nonneuronal"),
                     names_to = "cell.identity", 
                     values_to = "fraction"
@@ -339,6 +346,32 @@ tukey <- TukeyHSD(res.aov, which = "species:cell.identity")
 
 # ggsave(file = "E:/Opossum_Paper/Figure 1/Nonneuronal_Subclass_Proportions.png", plot = p, width = 4.5, height = 3.1, dpi = 500)
 # ggsave(file = "E:/Opossum_Paper/Figure 1/Nonneuronal_Subclass_Proportions.svg", plot = p, width = 4.5, height = 3.1, dpi = 500)
+
+```
+
+
+```{r, fig.height=3, fig.width=3.5}
+
+all.props.long$species <- factor(all.props.long$species, levels = c("Opossum", "Mouse"))
+
+curr.props <- all.props.long[all.props.long$cell.identity %in% c("Astro_Common", "Micro_Common", "OD_Common", "OPC_Common"), ]
+
+p <- ggplot(curr.props, aes(x = factor(cell.identity, level = c("Astro_Common", "Micro_Common", "OD_Common", "OPC_Common")), y = fraction, fill = species)) +
+    geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+    geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+    scale_x_discrete(labels = c("Astro", "Micro", "OD", "OPC")) +
+    scale_y_continuous(breaks = c(0, 0.2, 0.4, 0.6, 0.8), expand = c(0, 0), limits = c(0, 0.60)) +
+    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+    theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
+    labs(x = NULL, y = "Fraction of Nonneuronal Cells", fill = NULL) + 
+    scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa"))
+
+res.aov <- aov(fraction ~ species * cell.identity, data = curr.props)
+tukey <- TukeyHSD(res.aov, which = "species:cell.identity")
+
+print(p)
+
+ggsave(file = "E:/Opossum_Paper/Figure S1/Nonneuronal_Common_Subclass_Proportions.svg", plot = p, width = 3.5, height = 3, dpi = 500)
 
 ```
 

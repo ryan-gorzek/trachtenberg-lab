@@ -111,8 +111,7 @@ levels(obj.mouse.CGE) <- subclasses.mouse
 DimPlot(obj.mouse.CGE, reduction = "pca", dims = c(1, 3), cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal() +
   geom_point(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", size = 2) +
   geom_path(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
-# ggsave("E:/Opossum_Paper/Mouse_PC.png", plot = pl, dpi = 300)
-# ggsave("E:/Opossum_Paper/Mouse_PC.svg", plot = pl, dpi = 300)
+# ggsave("E:/Opossum_Paper/Figure S2/Mouse_CGE_PCs.svg", plot = pl, dpi = 300)
 
 # Idents(obj.mouse.CGE) <- "sample"
 # DimPlot(obj.mouse.CGE, reduction = "pca", pt.size = 1, shuffle = TRUE, raster = FALSE) + xlim(-16, 20) + ylim(-22, 14) + coord_equal() +
@@ -135,8 +134,7 @@ levels(obj.opossum.CGE) <- subclasses.opossum
 DimPlot(obj.opossum.CGE, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-30, 30) + ylim(-30, 30) + coord_equal() +
   geom_point(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", size = 2) +
   geom_path(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
-# ggsave("E:/Opossum_Paper/Opossum_PC.png", plot = pl, dpi = 300)
-# ggsave("E:/Opossum_Paper/Opossum_PC.svg", plot = pl, dpi = 300)
+# ggsave("E:/Opossum_Paper/Figure S2/Opossum_CGE_PCs.svg", plot = pl, dpi = 300)
 
 # Idents(obj.opossum.CGE) <- "sample"
 # DimPlot(obj.opossum.CGE, reduction = "pca", pt.size = 1, shuffle = TRUE, raster = FALSE) + xlim(-20, 22) + ylim(-18, 24) + coord_equal() +

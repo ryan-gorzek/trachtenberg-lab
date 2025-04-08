@@ -1,0 +1,84 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(SeuratWrappers)
+library(monocle3)
+library(pheatmap)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
+obj.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.glutamatergic) <- "subclass"
+obj.opossum.IT <- subset(obj.opossum.glutamatergic, idents = c("IT_A", "IT_B", "IT_C", "IT_D"))
+obj.opossum.IT.SH <- ShuffleExpression(obj.opossum.IT, "subclass")
+obj.opossum.IT.SH <- NormalizePCA(obj.opossum.IT.SH)
+
+Idents(obj.mouse.glutamatergic) <- "subclass"
+obj.mouse.IT <- subset(obj.mouse.glutamatergic, idents = c("L2/3", "L4", "L5IT", "L6IT"))
+obj.mouse.IT.SH <- ShuffleExpression(obj.mouse.IT, "subclass")
+obj.mouse.IT.SH <- NormalizePCA(obj.mouse.IT.SH)
+
+```
+
+
+```{r}
+
+obj.opossum.IT.SH.SS <- SubsampleObject(obj.opossum.IT.SH, "subclass", min(table(obj.opossum.IT.SH$subclass)))
+obj.opossum.IT.SH.SS <- NormalizePCA(obj.opossum.IT.SH.SS)
+obj.opossum.IT.SH.SSP <- PCAProject(obj.opossum.IT.SH, obj.opossum.IT.SH.SS)
+
+obj.mouse.IT.SH.SS <- SubsampleObject(obj.mouse.IT.SH, "subclass", min(table(obj.mouse.IT.SH$subclass)))
+obj.mouse.IT.SH.SS <- NormalizePCA(obj.mouse.IT.SH.SS)
+obj.mouse.IT.SH.SSP <- PCAProject(obj.mouse.IT.SH, obj.mouse.IT.SH.SS)
+
+```
+
+
+```{r}
+
+DimPlot(obj.mouse.IT.SH.SSP, reduction = "pca", pt.size = 1, shuffle = TRUE, raster = FALSE)
+
+```
+
+
+```{r}
+
+# Opossum (Subsampled and Shuffled Space)
+pc_data <- as.data.frame(Embeddings(obj.opossum.IT.SH.SSP, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+pc_data$subclass <- obj.opossum.IT.SH.SSP@meta.data$subclass  # Add subclass metadata
+write.csv(pc_data, "E:/Transcriptomics_V1/Integration/PCs/IT/opossum_pc_data_shuffle_subsample_with_subclass.csv", row.names = FALSE)
+
+# Mouse (Subsampled and Shuffled Space)
+pc_data <- as.data.frame(Embeddings(obj.mouse.IT.SH.SSP, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+pc_data$subclass <- obj.mouse.IT.SH.SSP@meta.data$subclass  # Add subclass metadata
+write.csv(pc_data, "E:/Transcriptomics_V1/Integration/PCs/IT/mouse_pc_data_shuffle_subsample_with_subclass.csv", row.names = FALSE)
+
+```
+

@@ -95,7 +95,7 @@ p <- PlotPairwiseSubclassGeneCountCDFDiff(de_results_opossum, de_results_mouse,
                                       max.pval = 0.05) + ylim(-100, 100)
 
 print(p)
-ggsave("E:/Opossum_Paper/Figure 2/IT_DE_Difference.svg", plot = p)
+# ggsave("E:/Opossum_Paper/Figure 2/IT_DE_Difference.svg", plot = p)
 
 ```
 

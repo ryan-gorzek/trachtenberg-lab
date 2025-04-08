@@ -88,9 +88,9 @@ ggsave("E:/Opossum_Paper/Figure S1/Intergenic_Reads_Dist_Opossum_Grid.svg", plot
 ```
 
 
-```{r, fig.width=6, fig.height=5}
+```{r, fig.width=5, fig.height=5}
 
-ggplot(closest.bed, aes(x = V13, fill = sample, color = sample)) +
+p <- ggplot(closest.bed, aes(x = V13, fill = sample, color = sample)) +
   geom_histogram(
     binwidth = 1000, 
     boundary = 0,
@@ -103,7 +103,8 @@ ggplot(closest.bed, aes(x = V13, fill = sample, color = sample)) +
     oob = scales::squish
   ) +
   scale_y_continuous(
-    limits = c(0, 6)
+    limits = c(0, 6),
+    oob = scales::squish
   ) +
   labs(
     x = "Closest Gene (bp)",
@@ -112,12 +113,14 @@ ggplot(closest.bed, aes(x = V13, fill = sample, color = sample)) +
   facet_wrap(~ sample, ncol = 2) +  # 2x2 layout
   theme_minimal()
 
+print(p)
+
 ```
 
 
 ```{r}
 
-ggsave("E:/Opossum_Paper/Figure S1/Intergenic_Reads_Dist_4A_Zoom.svg", plot = p, width = 6, height = 5)
+ggsave("E:/Opossum_Paper/Figure S1/Intergenic_Reads_Dist_4A_Zoom.svg", plot = p, width = 5, height = 5)
 
 ```
 

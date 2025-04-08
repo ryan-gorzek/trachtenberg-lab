@@ -1,0 +1,25 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+
+df <- read.table("E:/_genomes/Mouse/mouse_gene.bed")
+df <- df[df$V1 %in% as.character(1:19), ]
+df <- df[!duplicated(df$V2), ]
+df <- df[order(df$V1), ]
+df$V6 <- df$V5
+df$V5 <- ""
+
+View(df)
+
+write.table(df, "E:/_genomes/Mouse/mouse_gene_sort.bed", row.names = FALSE, col.names = FALSE, sep = "\t", quote = FALSE)
+
+```
+
+
+
+
