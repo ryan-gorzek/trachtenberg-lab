@@ -294,8 +294,8 @@ p <- ggplot(curr.props, aes(x = factor(cell.identity, level = c("MGE", "CGE")), 
 res.aov <- aov(fraction ~ species * cell.identity, data = curr.props)
 tukey <- TukeyHSD(res.aov, which = "species:cell.identity")
 
-ggsave(file = "E:/Opossum_Paper/Figure 1/MGE_CGE_Ratio.png", plot = p, width = 2.75, height = 3.6, dpi = 500)
-ggsave(file = "E:/Opossum_Paper/Figure 1/MGE_CGE_Ratio.svg", plot = p, width = 2.75, height = 3.6, dpi = 500)
+# ggsave(file = "E:/Opossum_Paper/Figure 1/MGE_CGE_Ratio.png", plot = p, width = 2.75, height = 3.6, dpi = 500)
+# ggsave(file = "E:/Opossum_Paper/Figure 1/MGE_CGE_Ratio.svg", plot = p, width = 2.75, height = 3.6, dpi = 500)
 
 ```
 
@@ -371,7 +371,7 @@ tukey <- TukeyHSD(res.aov, which = "species:cell.identity")
 
 print(p)
 
-ggsave(file = "E:/Opossum_Paper/Figure S1/Nonneuronal_Common_Subclass_Proportions.svg", plot = p, width = 3.5, height = 3, dpi = 500)
+# ggsave(file = "E:/Opossum_Paper/Figure S1/Nonneuronal_Common_Subclass_Proportions.svg", plot = p, width = 3.5, height = 3, dpi = 500)
 
 ```
 

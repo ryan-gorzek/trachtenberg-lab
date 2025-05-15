@@ -1,0 +1,77 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(ggplot2)
+library(dplyr)
+
+# Create dataframes
+opossum.data <- data.frame(
+  sample = paste0("Opossum_", 1:3),
+  species = "Opossum",
+  OD = c(121, 158, 31),
+  PV = c(72, 74, 26),
+  x = c(2000, 2000, 1170),
+  y = c(1500, 1550, 1350)
+)
+
+mouse.data <- data.frame(
+  sample = paste0("Mouse_", 1:4),
+  species = "Mouse",
+  OD = c(174, 63, 76, 98),
+  PV = c(39, 8, 10, 27),
+  x = c(2450, 1200, 1400, 1450),
+  y = c(1550, 1400, 1250, 1400)
+)
+
+# Combine
+all.data <- bind_rows(opossum.data, mouse.data)
+
+# Compute area (in µm²) and densities
+all.data <- all.data %>%
+  mutate(
+    area_um2 = 0.25 * x * y,
+    OD_density = OD / area_um2,
+    PV_density = PV / area_um2
+  )
+
+# Reshape to long format for ggplot
+density.long <- all.data %>%
+  select(sample, species, OD_density, PV_density) %>%
+  tidyr::pivot_longer(cols = c(OD_density, PV_density),
+                      names_to = "cell.identity",
+                      values_to = "density") %>%
+  mutate(cell.identity = recode(cell.identity, OD_density = "OD", PV_density = "PV"))
+
+density.long.pv <- density.long[density.long$cell.identity == "PV", ]
+density.long.od <- density.long[density.long$cell.identity == "OD", ]
+
+# Plot PV
+ggplot(density.long.pv, aes(x = factor(cell.identity, levels = c("PV")), y = density, fill = species)) +
+  geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+  geom_point(position = position_dodge(width = 0.8), size = 1, colour = "black") +
+  scale_y_continuous(expand = c(0, 0)) +
+  scale_x_discrete(labels = c("PV")) +
+  scale_fill_manual(values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa")) +
+  theme_classic() +
+  theme(axis.text = element_text(color = "black"),
+        legend.text = element_text(size = 10)) +
+  labs(x = NULL, y = "Density (cells / µm²)", fill = NULL)
+
+# Plot OD
+ggplot(density.long.od, aes(x = factor(cell.identity, levels = c("OD")), y = density, fill = species)) +
+  geom_bar(stat = "summary", fun = "median", position = position_dodge(width = 0.8), width = 0.75) +
+  geom_point(position = position_dodge(width = 0.8), size = 1, colour = "black") +
+  scale_y_continuous(expand = c(0, 0)) +
+  scale_x_discrete(labels = c("OD")) +
+  scale_fill_manual(values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa")) +
+  theme_classic() +
+  theme(axis.text = element_text(color = "black"),
+        legend.text = element_text(size = 10)) +
+  labs(x = NULL, y = "Density (cells / µm²)", fill = NULL)
+
+```
+

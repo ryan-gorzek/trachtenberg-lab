@@ -38,7 +38,7 @@ ident = {'subclass'};
 addpath(genpath(fullfile("C:/Users/TLab/Documents/Ryan/particode/")));
 
 % Load data from CSV
-input = readtable('E:/opossum_pc_data_subsample_with_subclass.csv');
+input = readtable('E:/Transcriptomics_V1/Integration/PCs/IT/opossum_pc_data_subsample_with_subclass.csv');
 
 % Extract the first three PCs
 data = [];

@@ -24,14 +24,14 @@ obj <- AddMetaData(obj, X$V1, "X")
 Y <- read.csv(paste(data.path, "y_coords.csv", sep = ""), header = FALSE) * -1
 obj <- AddMetaData(obj, Y$V1, "Y")
 
-crops <- list(theta = c(-5, -7), 
-              x1 = c(-9500, -7000), 
-              x2 = c(-7500, -5000), 
-              y1 = c(-14300, -14600), 
-              y2 = c(-12800, -13050))
+crops <- list(theta = c(-5, -7, -38), 
+              x1 = c(-9500, -7000, -125), 
+              x2 = c(-7500, -5000, 1045), 
+              y1 = c(-14300, -14600, -5650), 
+              y2 = c(-12800, -13050, -7000))
 
 # Define the rotation angle in degrees
-rotation_angle <- -5  # Rotate by 30 degrees
+rotation_angle <- -38  # Rotate by 30 degrees
 theta <- rotation_angle * pi / 180  # Convert to radians
 
 # Get current coordinates
@@ -70,15 +70,15 @@ fov <- fov[Cells(obj)]
 
 obj[["FOV"]] <- fov
 
-column.coords <- Crop(obj[["FOV"]], x = c(-9500, -7500), y = c(-14400, -12800), coords = "plot")
-obj[["COL1"]] <- column.coords
+column.coords <- Crop(obj[["FOV"]], x = c(-125, 1045), y = c(-5650, -7000), coords = "plot")
+obj[["COL3"]] <- column.coords
 
 ```
 
 
 ```{r, fig.width=10}
 
-ImageDimPlot(obj, fov = "COL1", cols = "red", size = 3)
+ImageDimPlot(obj, fov = "COL3", cols = "red", size = 3)
 # ImageFeaturePlot(obj, "nCount_RNA", max.cutoff = 1000)
 # ImageFeaturePlot(obj, "", max.cutoff = 10, axes = TRUE)
 
@@ -91,8 +91,8 @@ ImageDimPlot(obj, fov = "COL1", cols = "red", size = 3)
 
 ```{r}
 
-obj.ctx <- subset(obj, cells = Cells(obj[["COL1"]]))
-saveRDS(obj.ctx, "E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_COL1_EXT.rds")
+obj.ctx <- subset(obj, cells = Cells(obj[["COL3"]]))
+saveRDS(obj.ctx, "E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_COL3_EXT.rds")
 
 ```
 

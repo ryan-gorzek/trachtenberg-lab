@@ -41,6 +41,21 @@ obj.ctx <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLS.rds")
 
 ```{r}
 
+obj.ctx <- ClusterSCT(obj.ctx, 1)
+
+```
+
+
+```{r}
+
+p <- DimPlot(obj.ctx, group.by = "SCT_snn_res.1", label = TRUE) + NoLegend() + xlim(-6, 6) + ylim(-6, 6) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure S3/Mouse_Stereoseq_UMAP.svg", plot = p)
+
+```
+
+
+```{r}
+
 obj$method <- "snRNA-seq"
 obj.ctx$method <- "Stereo-seq"
 obj.i <- IntegrateObjects(obj, obj.ctx, resolutions = c(0.5), subsample = TRUE)
@@ -59,6 +74,14 @@ DimPlot(obj.i, group.by = "subclass", label = TRUE) + NoLegend() + xlim(-12, 12)
 ```{r}
 
 obj.i <- LabelByNearestNeighbors(obj.i, "class", fraction = 0.05, n.neighbors = 500)
+
+```
+
+
+```{r}
+
+p <- DimPlot(obj.i, group.by = "class_nn", cols = c("#F8766D", "#00BA38", "#fad102", "#619CFF", "#AAAAAA"), label = TRUE) + NoLegend() + xlim(-9, 10) + ylim(-10, 9) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure S3/Mouse_Stereoseq_Class_NN.svg", plot = p)
 
 ```
 
@@ -116,6 +139,21 @@ obj.i <- LabelByNearestNeighbors(obj.i, "subclass", fraction = 0.25, n.neighbors
 ```{r}
 
 DimPlot(obj.i, group.by = "subclass_nn", label = TRUE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+hcl_colors <- hcl.colors(20, palette = "Dynamic")
+subclasses.mouse <- c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b", "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac", "OD", "OPC", "Astro", "Endo", "Micro", "VLMC", "None")
+Idents(obj.i) <- "subclass_nn"
+levels(obj.i) <- subclasses.mouse
+colors <- as.character(colors_list[subclasses.mouse])
+colors[15:21] <- c(hcl_colors[5:9], "#fad102")
+p <- DimPlot(obj.i, cols = colors, label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+ggsave("E:/Opossum_Paper/Figure S3/Mouse_Subclass_NN.svg", plot = p)
 
 ```
 
@@ -241,7 +279,7 @@ Idents(obj.ctx.gabaergic) <- "subclass_nn"
 levels(obj.ctx.gabaergic) <- c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")
 p <- ImageDimPlot(obj.ctx.gabaergic, fov = "COL", size = 3, cols = colors[1:6], axes = TRUE)
 
-ggsave("E:/Opossum_Paper/Figure 3/Mouse_GABAergic_Column.svg", plot = p, width = 7, height = 5)
+# ggsave("E:/Opossum_Paper/Figure 3/Mouse_GABAergic_Column.svg", plot = p, width = 7, height = 5)
 
 ```
 
@@ -333,9 +371,9 @@ p <- ggplot(df, aes(x = y, color = subclass)) +
   theme(
     legend.title = element_blank(),
     aspect.ratio = 1
-  ) + coord_flip()
+  ) + coord_flip() + ylim(0, 0.0016)
 
-ggsave("E:/Opossum_Paper/Figure 3/Mouse_Nonneuronal_Density.svg", plot = p)
+ggsave("E:/Opossum_Paper/Figure S3/Mouse_Nonneuronal_Density.svg", plot = p)
 
 # Outlined histograms without bin borders
 p <- ggplot(df, aes(x = y, color = subclass)) +
@@ -351,7 +389,7 @@ p <- ggplot(df, aes(x = y, color = subclass)) +
     aspect.ratio = 1
   ) + coord_flip()
 
-ggsave("E:/Opossum_Paper/Figure 3/Mouse_Nonneuronal_Histogram.svg", plot = p)
+ggsave("E:/Opossum_Paper/Figure S3/Mouse_Nonneuronal_Histogram.svg", plot = p)
 
 ```
 
@@ -365,7 +403,43 @@ saveRDS(obj.ctx.nonneuronal, "E:/STOmics/seurat/Opossum/mouse_stereoseq_ctx_nonn
 ```
 
 
+```{r}
 
+library(Seurat)
+library(dplyr)
+library(tibble)
+
+# Parameters
+target_subclass <- "OD"
+spatial_resolution <- 0.5  # microns per pixel
+area_per_pixel <- spatial_resolution ^ 2  # µm^2
+
+# Get metadata and spatial coords
+meta <- obj.ctx.nonneuronal@meta.data
+coords <- GetTissueCoordinates(obj.ctx.nonneuronal)  # returns a data frame with rownames = cell names
+
+# Add spatial coords and subclass to metadata
+meta <- meta %>%
+  rownames_to_column("cell") %>%
+  inner_join(coords, by = "cell")
+
+# Filter for the target subclass
+meta_subclass <- meta %>% filter(subclass_nn == target_subclass)
+
+# Calculate density by sample
+density_by_sample <- meta_subclass %>%
+  group_by(sample) %>%
+  dplyr::summarise(
+    n_cells = n(),
+    x_range = diff(range(x)) * spatial_resolution,
+    y_range = diff(range(y)) * spatial_resolution,
+    area = x_range * y_range,  # µm^2
+    density = n_cells / area  # cells per µm^2
+  )
+
+print(density_by_sample)
+
+```
 
 
 

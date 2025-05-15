@@ -78,14 +78,13 @@ end
 
 % Load the tetrahedron coordinates from MAT file
 load('Opossum_IT_3PCs_Workspace.mat', 'arcOrig');
-% arcOrig = arcOrig .* [1.25, 1.25, 1, ones(1, 27)];
+arcOrig = arcOrig .* [1.25, 1.25, 1, ones(1, 27)];
 
 % Plot the tetrahedron edges
 % Assuming 'arc' contains a 4x3 matrix where each row is a vertex [x, y, z]
 tetra_edges = [1 2; 1 3; 1 4; 2 3; 2 4; 3 4]; % Indices defining the edges of a tetrahedron
 for k = 1:size(tetra_edges, 1)
-    plot3(arcOrig(tetra_edges(k, :), 1) * -1, arcOrig(tetra_edges(k, :), 3), arcOrig(tetra_edges(k, :), 2), '-k', 'LineWidth', 1.5);
-    % plot3((arcOrig(tetra_edges(k, :), 1) * -1) - 18, arcOrig(tetra_edges(k, :), 3) - 3, arcOrig(tetra_edges(k, :), 2), '-k', 'LineWidth', 1.5);
+    plot3((arcOrig(tetra_edges(k, :), 1) * -1) - 18, arcOrig(tetra_edges(k, :), 3) - 3, arcOrig(tetra_edges(k, :), 2), '-k', 'LineWidth', 1.5);
     % plot3((arcOrig(tetra_edges(k, :), 1) * -1), arcOrig(tetra_edges(k, :), 3), arcOrig(tetra_edges(k, :), 2), '-k', 'LineWidth', 1.5);
 end
 
@@ -104,7 +103,7 @@ grid on;
 %% Shared
 
 % Load data from CSV
-data = readtable('E:/Transcriptomics_V1/Integration/PCs/IT/shared_pc_data_subsample_with_subclass.csv');
+data = readtable('E:/Transcriptomics_V1/Integration/PCs/IT/shared_pc_data_downsample_subsample_with_subclass.csv');
 
 % Extract the first three PCs
 pc1 = data.pca_1;  % Assuming first column is PC1
@@ -184,7 +183,7 @@ grid on;
 %% Shared (Both Subclass)
 
 % Load data from CSV
-data = readtable('E:/Transcriptomics_V1/Integration/PCs/IT/shared_pc_data_subsample_with_subclass.csv');
+data = readtable('E:/Transcriptomics_V1/Integration/PCs/IT/shared_pc_data_downsample_subsample_with_subclass.csv');
 % data = data(ismember(data.species, 'Mouse'), :);
 data(ismember(data.species, 'Mouse'), "subclass") = repmat({'Mouse'}, [nnz(ismember(data.species, 'Mouse')), 1]);
 
@@ -235,13 +234,13 @@ grid on;
 %% Shared (Mouse Subclass)
 
 % Load data from CSV
-data = readtable('E:/Transcriptomics_V1/Integration/PCs/IT/shared_pc_data_subsample_with_subclass.csv');
+data = readtable('E:/Transcriptomics_V1/Integration/PCs/IT/shared_pc_data_downsample_subsample_with_subclass.csv');
 data = data(ismember(data.species, 'Mouse'), :);
 
 % Extract the first three PCs
-pc1 = data.pca_1;  % Assuming first column is PC1
+pc1 = data.pca_1 * -1;  % Assuming first column is PC1
 pc2 = data.pca_2;  % Assuming second column is PC2
-pc3 = data.pca_3 * -1;  % Assuming third column is PC3
+pc3 = data.pca_3;  % Assuming third column is PC3
 
 % Convert subclass to categorical and assign unique numerical values
 [subclass_groups, ~, subclass_idx] = unique(data.subclass, 'stable');
@@ -273,7 +272,7 @@ end
 
 axis equal;
 axis square;
-view(-25, 22);
+view(162, 25);
 hold off;
 
 xlabel('PC1');
@@ -285,7 +284,7 @@ grid on;
 %% Shared (Opossum Subclass)
 
 % Load data from CSV
-data = readtable('E:/Transcriptomics_V1/Integration/PCs/IT/shared_pc_data_subsample_with_subclass.csv');
+data = readtable('E:/Transcriptomics_V1/Integration/PCs/IT/shared_pc_data_downsample_subsample_with_subclass.csv');
 data = data(ismember(data.species, 'Opossum'), :);
 
 % Extract the first three PCs

@@ -26,7 +26,7 @@ source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
 colors_list <- GetColors()
 
 obj.i.mouse <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLs_integrated.rds")
-obj.i.opossum <- readRDS("E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_COLs_integrated.rds")
+obj.i.opossum <- readRDS("E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_COLs_EXT_integrated.rds")
 
 ```
 
@@ -230,19 +230,188 @@ density_opossum$species <- "Opossum"
 density_combined <- rbind(density_mouse, density_opossum)
 
 # Plot grouped barplot
-p <- ggplot(density_combined, aes(x = factor(position, level = c("above", "below")), y = density_cells_per_um2, fill = species)) +
+ggplot(density_combined, aes(x = factor(position, level = c("above", "below")), y = density_cells_per_um2, fill = species)) +
   geom_bar(stat = "identity", position = position_dodge(width = 0.8), width = 0.75) +
   scale_x_discrete(labels = c("Above", "Below")) +
-  scale_y_continuous(breaks = c(0, 500, 1000, 1500, 2000), expand = c(0, 0), limits = c(0, 2000)) +
+  scale_y_continuous(breaks = c(0, 500, 1000, 1500, 2000), expand = c(0, 0), limits = c(0, 4000)) +
   guides(fill = guide_legend(override.aes = list(shape = NA))) +
   theme_classic() + theme(axis.text = element_text(color = "black"), legend.text = element_text(size = 10)) + 
   labs(x = NULL, y = "Cells per mm2", fill = NULL) + 
   scale_fill_manual("legend", values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa")) + 
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
 
-ggsave(file = "E:/Opossum_Paper/Figure 3/Density_Above_Below.svg", plot = p, width = 3.5, height = 3.6, dpi = 500)
+# ggsave(file = "E:/Opossum_Paper/Figure 3/Density_Above_Below.svg", plot = p, width = 3.5, height = 3.6, dpi = 500)
 
 ```
+
+
+```{r}
+
+calculate_density <- function(obj, subclass_l23, subclass_l4, widths, heights, scale_factor = 0.0005) {
+  # Extract spatial coordinates and subclass info
+  coords <- as.data.frame(obj@images[[1]]$centroids@coords)
+  colnames(coords) <- c("Y", "X")
+  coords$subclass_nn <- obj$subclass_nn[obj$method == "Stereo-seq"]
+  coords$sample <- obj$sample[obj$method == "Stereo-seq"]  # sample should be in metadata
+  
+  height_all <- max(coords$Y) - min(coords$Y)
+  
+  results <- list()
+  
+  for (s in unique(coords$sample)) {
+    print(s)
+    coords_sample <- coords %>% filter(sample == s, !is.na(subclass_nn))
+    
+    # Get mean Y position of L4 cells
+    mean_y_l4 <- mean(coords_sample$Y[coords_sample$subclass_nn == subclass_l4], na.rm = TRUE)
+    
+    # Classify L2/3 cells as above or below L4 mean Y
+    coords_l23 <- coords_sample %>%
+      filter(subclass_nn == subclass_l23) %>%
+      mutate(position = ifelse(Y > mean_y_l4, "above", "below"))
+    
+    # Area estimation (fixed width across sample)
+    width <- diff(range(coords_sample$X))
+    height_above <- abs(max(coords_l23$Y[coords_l23$position == "above"], na.rm = TRUE) - mean_y_l4)
+    height_below <- abs(min(coords_l23$Y[coords_l23$position == "below"], na.rm = TRUE) - mean_y_l4)
+    
+    area_above <- widths[[s]] * ((height_above / height_all) * heights[[s]]) * scale_factor^2
+    area_below <- widths[[s]] * ((height_below / height_all) * heights[[s]]) * scale_factor^2
+    
+    count_above <- sum(coords_l23$position == "above")
+    count_below <- sum(coords_l23$position == "below")
+    
+    results[[s]] <- data.frame(
+      sample = s,
+      position = c("above", "below"),
+      cell_count = c(count_above, count_below),
+      area_mm2 = c(area_above, area_below),
+      density_cells_per_mm2 = c(count_above / area_above, count_below / area_below)
+    )
+
+  }
+  
+  do.call(rbind, results)
+}
+
+density_mouse <- calculate_density(obj.i.mouse.IT, subclass_l23 = "L2/3", subclass_l4 = "L4", 
+                                   widths = list(COL1 = 2450, COL2 = 1200, COL3 = 1400, COL4 = 1450), 
+                                   heights = list(COL1 = 1550, COL2 = 1400, COL3 = 1250, COL4 = 1400))
+density_mouse$species <- "Mouse"
+
+density_opossum <- calculate_density(obj.i.opossum.IT, subclass_l23 = "IT_A", subclass_l4 = "IT_B", 
+                                     widths = list(COL1 = 2000, COL2 = 2000, COL3 = 1170), 
+                                     heights = list(COL1 = 1500, COL2 = 1550, COL3 = 1350))
+density_opossum$species <- "Opossum"
+
+density_combined <- bind_rows(density_mouse, density_opossum)
+
+ggplot(density_combined, aes(x = position, y = density_cells_per_mm2, fill = species)) +
+  geom_bar(stat = "summary", fun = "mean", position = position_dodge(width = 0.8), width = 0.75) +
+  geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+  scale_x_discrete(labels = c("Above", "Below")) +
+  scale_y_continuous(limits = c(0, NA), expand = c(0, 0)) +
+  labs(x = NULL, y = "Cells per mm²", fill = NULL, color = NULL) +
+  scale_fill_manual(values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa")) +
+  # scale_color_manual(values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa")) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.text = element_text(color = "black"),
+        legend.text = element_text(size = 10))
+
+```
+
+
+```{r}
+
+res.aov <- aov(density_cells_per_mm2 ~ species * position, data = density_combined)
+tukey <- TukeyHSD(res.aov, which = "species:position")
+
+```
+
+
+```{r, fig.width=3, fig.height=3}
+
+calculate_density <- function(obj, subclass_l23, subclass_l4, widths, heights, scale_factor = 0.0005) {
+  # Extract spatial coordinates and subclass info
+  coords <- as.data.frame(obj@images[[1]]$centroids@coords)
+  colnames(coords) <- c("Y", "X")
+  coords$subclass_nn <- obj$subclass_nn[obj$method == "Stereo-seq"]
+  coords$sample <- obj$sample[obj$method == "Stereo-seq"]  # sample should be in metadata
+  
+  height_all <- max(coords$Y) - min(coords$Y)
+  
+  results_ratio <- list()
+  
+  for (s in unique(coords$sample)) {
+    print(s)
+    coords_sample <- coords %>% filter(sample == s, !is.na(subclass_nn))
+    
+    # Get mean Y position of L4 cells
+    mean_y_l4 <- mean(coords_sample$Y[coords_sample$subclass_nn == subclass_l4], na.rm = TRUE)
+    
+    # Classify L2/3 cells as above or below L4 mean Y
+    coords_l23 <- coords_sample %>%
+      filter(subclass_nn == subclass_l23) %>%
+      mutate(position = ifelse(Y > mean_y_l4, "above", "below"))
+    
+    # Area estimation (fixed width across sample)
+    width <- diff(range(coords_sample$X))
+    height_above <- abs(max(coords_l23$Y[coords_l23$position == "above"], na.rm = TRUE) - mean_y_l4)
+    height_below <- abs(min(coords_l23$Y[coords_l23$position == "below"], na.rm = TRUE) - mean_y_l4)
+    
+    area_above <- widths[[s]] * ((height_above / height_all) * heights[[s]]) * scale_factor^2
+    area_below <- widths[[s]] * ((height_below / height_all) * heights[[s]]) * scale_factor^2
+    
+    count_above <- sum(coords_l23$position == "above")
+    count_below <- sum(coords_l23$position == "below")
+    
+    results_ratio[[s]] <- data.frame(
+      sample = s,
+      density_cells_per_mm2 = c((count_below / area_below) / (count_above / area_above))
+    )
+
+  }
+  
+  do.call(rbind, results_ratio)
+}
+
+density_mouse <- calculate_density(obj.i.mouse.IT, subclass_l23 = "L2/3", subclass_l4 = "L4", 
+                                   widths = list(COL1 = 2450, COL2 = 1200, COL3 = 1400, COL4 = 1450), 
+                                   heights = list(COL1 = 1550, COL2 = 1400, COL3 = 1250, COL4 = 1400))
+density_mouse$species <- "Mouse"
+
+density_opossum <- calculate_density(obj.i.opossum.IT, subclass_l23 = "IT_A", subclass_l4 = "IT_B", 
+                                     widths = list(COL1 = 2000, COL2 = 2000, COL3 = 1170), 
+                                     heights = list(COL1 = 1500, COL2 = 1550, COL3 = 1350))
+density_opossum$species <- "Opossum"
+
+density_combined <- bind_rows(density_mouse, density_opossum)
+
+p <- ggplot(density_combined, aes(x = 1, y = density_cells_per_mm2, fill = species)) +
+  geom_bar(stat = "summary", fun = "mean", position = position_dodge(width = 0.8), width = 0.75) +
+  geom_point(colour = "black", position = position_dodge(width = 0.8), size = 1) +
+  # scale_x_discrete(labels = c("Above", "Below")) +
+  scale_y_continuous(limits = c(0, 0.5), expand = c(0, 0)) +
+  labs(x = NULL, y = "Cells per mm²", fill = NULL, color = NULL) +
+  scale_fill_manual(values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa")) +
+  # scale_color_manual(values = c("Opossum" = "#c692b8", "Mouse" = "#aaaaaa")) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.text = element_text(color = "black"),
+        legend.text = element_text(size = 10))
+
+ggsave("E:/Opossum_Paper/Figure 3/Density_Ratio_Above_Below.svg", plot = p, width = 3, height = 3)
+
+```
+
+
+```{r}
+
+t.test(density_cells_per_mm2 ~ species, data = density_combined)
+
+```
+
 
 
 ```{r}

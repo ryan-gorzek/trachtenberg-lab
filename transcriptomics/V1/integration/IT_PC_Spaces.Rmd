@@ -61,8 +61,11 @@ mouse.SS.VFs <- VariableFeatures(obj.mouse.IT.SS)
 shared.SS.VFs <- intersect(opossum.SS.VFs, mouse.SS.VFs)
 obj.opossum.IT.SS.SVF <- NormalizePCA(obj.opossum.IT.SS, features = shared.SS.VFs)
 obj.mouse.IT.SS.SVF <- NormalizePCA(obj.mouse.IT.SS, features = shared.SS.VFs)
-obj.mouse.IT.SSP.SVF <- PCAProject(obj.mouse.IT, obj.mouse.IT.SS.SVF)
+obj.mouse.IT.SSP.SVF <- PCAProject(obj.mouse.IT, obj.opossum.IT.SS.SVF)
 obj.opossum.IT.SSP.SVF <- PCAProject(obj.opossum.IT, obj.mouse.IT.SS.SVF)
+
+obj.mouse.IT.SSP.SVF.WI <- PCAProject(obj.mouse.IT, obj.mouse.IT.SS.SVF)
+obj.opossum.IT.SSP.SVF.WI <- PCAProject(obj.opossum.IT, obj.opossum.IT.SS.SVF)
 
 ```
 
@@ -130,6 +133,11 @@ pc_data <- as.data.frame(Embeddings(obj.mouse.IT.SSP.SVF, reduction = "pca")[, 1
 pc_data$subclass <- obj.mouse.IT.SSP.SVF@meta.data$subclass  # Add subclass metadata
 write.csv(pc_data, "E:/Transcriptomics_V1/Integration/PCs/IT/mouse_pc_data_shared_subsample_with_subclass.csv", row.names = FALSE)
 
+# Mouse (Shared & Subsampled Space, Within)
+pc_data <- as.data.frame(Embeddings(obj.mouse.IT.SSP.SVF.WI, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+pc_data$subclass <- obj.mouse.IT.SSP.SVF.WI@meta.data$subclass  # Add subclass metadata
+write.csv(pc_data, "E:/Transcriptomics_V1/Integration/PCs/IT/mouse_pc_data_shared_subsample_within_with_subclass.csv", row.names = FALSE)
+
 # Opossum (Original Space)
 pc_data <- as.data.frame(Embeddings(obj.opossum.IT, reduction = "pca")[, 1:30])  # Extract first 3 PCs
 pc_data$subclass <- obj.opossum.IT@meta.data$subclass  # Add subclass metadata
@@ -150,15 +158,30 @@ pc_data <- as.data.frame(Embeddings(obj.opossum.IT.SSP.SVF, reduction = "pca")[,
 pc_data$subclass <- obj.opossum.IT.SSP.SVF@meta.data$subclass  # Add subclass metadata
 write.csv(pc_data, "E:/Transcriptomics_V1/Integration/PCs/IT/opossum_pc_data_shared_subsample_with_subclass.csv", row.names = FALSE)
 
-# Shared Space
-mouse_pc_data <- as.data.frame(Embeddings(obj.mouse.IT.SSP.SVF, reduction = "pca")[, 1:30])  # Extract first 3 PCs
-mouse_pc_data$subclass <- obj.mouse.IT.SSP@meta.data$subclass  # Add subclass metadata
+# Opossum (Shared & Subsampled Space, Within)
+pc_data <- as.data.frame(Embeddings(obj.opossum.IT.SSP.SVF.WI, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+pc_data$subclass <- obj.opossum.IT.SSP.SVF.WI@meta.data$subclass  # Add subclass metadata
+write.csv(pc_data, "E:/Transcriptomics_V1/Integration/PCs/IT/opossum_pc_data_shared_subsample_within_with_subclass.csv", row.names = FALSE)
+
+# Shared Space (Mouse)
+mouse_pc_data <- as.data.frame(Embeddings(obj.mouse.IT.SSP.SVF.WI, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+mouse_pc_data$subclass <- obj.mouse.IT.SSP.SVF.WI@meta.data$subclass  # Add subclass metadata
 mouse_pc_data$species <- "Mouse"
 opossum_pc_data <- as.data.frame(Embeddings(obj.opossum.IT.SSP.SVF, reduction = "pca")[, 1:30])  # Extract first 3 PCs
 opossum_pc_data$subclass <- obj.opossum.IT.SSP@meta.data$subclass  # Add subclass metadata
 opossum_pc_data$species <- "Opossum"
 pc_data <- rbind(mouse_pc_data, opossum_pc_data)
-write.csv(pc_data, "E:/Transcriptomics_V1/Integration/PCs/IT/shared_pc_data_subsample_with_subclass.csv", row.names = FALSE)
+write.csv(pc_data, "E:/Transcriptomics_V1/Integration/PCs/IT/shared_mouse_pc_data_subsample_with_subclass.csv", row.names = FALSE)
+
+# Shared Space (Opossum)
+mouse_pc_data <- as.data.frame(Embeddings(obj.mouse.IT.SSP.SVF, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+mouse_pc_data$subclass <- obj.mouse.IT.SSP.SVF@meta.data$subclass  # Add subclass metadata
+mouse_pc_data$species <- "Mouse"
+opossum_pc_data <- as.data.frame(Embeddings(obj.opossum.IT.SSP.SVF.WI, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+opossum_pc_data$subclass <- obj.opossum.IT.SSP.SVF.WI@meta.data$subclass  # Add subclass metadata
+opossum_pc_data$species <- "Opossum"
+pc_data <- rbind(mouse_pc_data, opossum_pc_data)
+write.csv(pc_data, "E:/Transcriptomics_V1/Integration/PCs/IT/shared_opossum_pc_data_subsample_with_subclass.csv", row.names = FALSE)
 
 ```
 

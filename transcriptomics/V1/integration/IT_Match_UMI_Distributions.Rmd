@@ -1,0 +1,184 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(SeuratWrappers)
+library(monocle3)
+library(pheatmap)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+
+obj.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
+obj.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+
+Idents(obj.opossum.glutamatergic) <- "subclass"
+obj.opossum.IT <- subset(obj.opossum.glutamatergic, idents = c("IT_A", "IT_B", "IT_C", "IT_D"))
+
+Idents(obj.mouse.glutamatergic) <- "subclass"
+obj.mouse.IT <- subset(obj.mouse.glutamatergic, idents = c("L2/3", "L4", "L5IT", "L6IT"))
+
+```
+
+
+```{r}
+
+VlnPlot(obj.opossum.IT, "nCount_RNA")
+VlnPlot(obj.mouse.IT, "nCount_RNA")
+
+```
+
+
+```{r}
+
+library(Seurat)
+library(Matrix)
+
+DownsampleToMatchUMIDistribution <- function(query_obj, reference_obj, assay = "RNA", seed = 42) {
+  set.seed(seed)
+  
+  # Get raw counts
+  ref_counts <- GetAssayData(reference_obj, assay = assay, slot = "counts")
+  query_counts <- GetAssayData(query_obj, assay = assay, slot = "counts")
+  
+  ref_umis <- Matrix::colSums(ref_counts)
+  query_umis <- Matrix::colSums(query_counts)
+  
+  # Sample a target UMI count for each query cell from the reference distribution
+  target_umis <- sample(ref_umis, size = length(query_umis), replace = TRUE)
+  
+  # Calculate downsampling scaling factor
+  scaling_factors <- pmin(1, target_umis / query_umis)
+  
+  # Initialize downsampled count matrix
+  downsampled_counts <- query_counts
+  
+  for (i in seq_along(scaling_factors)) {
+    s <- scaling_factors[i]
+    cell_vector <- query_counts[, i]
+    total_umis <- sum(cell_vector)
+    
+    if (s < 1 && total_umis > 0) {
+      prob <- cell_vector / total_umis
+      new_total <- round(total_umis * s)
+      downsampled_counts[, i] <- rmultinom(1, size = new_total, prob = prob)[,1]
+    }
+  }
+  
+  # Replace counts in Seurat object
+  query_obj@assays[[assay]]@counts <- downsampled_counts
+  return(query_obj)
+}
+
+obj.mouse.IT.DS <- DownsampleToMatchUMIDistribution(obj.mouse.IT, obj.opossum.IT)
+
+```
+
+
+```{r}
+
+obj.mouse.IT.DS$nCount_RNA_UPD <- colSums(obj.mouse.IT.DS@assays[["RNA"]]@counts)
+
+# Match Distributions
+VlnPlot(obj.opossum.IT, "nCount_RNA")
+VlnPlot(obj.mouse.IT, "nCount_RNA")
+VlnPlot(obj.mouse.IT.DS, "nCount_RNA_UPD")
+
+```
+
+
+```{r}
+
+obj.mouse.IT.DS$species <- "Mouse_DS"
+obj.mouse.IT.DS$nCount_RNA <- colSums(obj.mouse.IT.DS@assays[["RNA"]]@counts)
+obj.combined <- merge(obj.opossum.IT, y = c(obj.mouse.IT, obj.mouse.IT.DS))
+
+```
+
+
+```{r, fig.width=4, fig.height=5}
+
+Idents(obj.combined) <- "species"
+p <- VlnPlot(obj.combined, "nCount_RNA", pt.size = 0)
+ggsave("E:/Opossum_Paper/Figure S3/Downsample_Counts.svg", plot = p)
+
+```
+
+
+```{r}
+
+obj.mouse.IT.DS.SS <- SubsampleObject(obj.mouse.IT.DS, "subclass", min(table(obj.mouse.IT.DS$subclass)))
+obj.mouse.IT.DS.SS <- NormalizePCA(obj.mouse.IT.DS.SS)
+obj.mouse.IT.DS.SSP <- PCAProject(obj.mouse.IT.DS, obj.mouse.IT.DS.SS)
+
+```
+
+
+```{r}
+
+# subclasses.mouse
+DimPlot(obj.mouse.IT.DS.SSP, reduction = "pca", pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE)
+
+```
+
+
+```{r}
+
+obj.opossum.IT.SS <- SubsampleObject(obj.opossum.IT, "subclass", min(table(obj.opossum.IT$subclass)))
+obj.opossum.IT.SS <- NormalizePCA(obj.opossum.IT.SS)
+
+opossum.SS.VFs <- VariableFeatures(obj.opossum.IT.SS)
+mouse.SS.VFs <- VariableFeatures(obj.mouse.IT.DS.SS)
+shared.SS.VFs <- intersect(opossum.SS.VFs, mouse.SS.VFs)
+obj.opossum.IT.SS.SVF <- NormalizePCA(obj.opossum.IT.SS, features = shared.SS.VFs)
+obj.mouse.IT.DS.SS.SVF <- NormalizePCA(obj.mouse.IT.DS.SS, features = shared.SS.VFs)
+obj.mouse.IT.DS.SSP.SVF.MS <- PCAProject(obj.mouse.IT.DS, obj.mouse.IT.DS.SS.SVF)
+obj.opossum.IT.SSP.SVF.MS <- PCAProject(obj.opossum.IT, obj.mouse.IT.DS.SS.SVF)
+obj.mouse.IT.DS.SSP.SVF.OP <- PCAProject(obj.mouse.IT.DS, obj.opossum.IT.SS.SVF)
+obj.opossum.IT.SSP.SVF.OP <- PCAProject(obj.opossum.IT, obj.opossum.IT.SS.SVF)
+
+```
+
+
+```{r}
+
+# Shared Space (Mouse)
+mouse_pc_data <- as.data.frame(Embeddings(obj.mouse.IT.DS.SSP.SVF.MS, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+mouse_pc_data$subclass <- obj.mouse.IT.DS.SSP.SVF.MS@meta.data$subclass  # Add subclass metadata
+mouse_pc_data$species <- "Mouse"
+opossum_pc_data <- as.data.frame(Embeddings(obj.opossum.IT.SSP.SVF.MS, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+opossum_pc_data$subclass <- obj.opossum.IT.SSP.SVF.MS@meta.data$subclass  # Add subclass metadata
+opossum_pc_data$species <- "Opossum"
+pc_data <- rbind(mouse_pc_data, opossum_pc_data)
+write.csv(pc_data, "E:/Transcriptomics_V1/Integration/PCs/IT/shared_mouse_pc_data_downsample_subsample_with_subclass.csv", row.names = FALSE)
+
+# Shared Space (Opossum)
+mouse_pc_data <- as.data.frame(Embeddings(obj.mouse.IT.DS.SSP.SVF.OP, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+mouse_pc_data$subclass <- obj.mouse.IT.DS.SSP.SVF.OP@meta.data$subclass  # Add subclass metadata
+mouse_pc_data$species <- "Mouse"
+opossum_pc_data <- as.data.frame(Embeddings(obj.opossum.IT.SSP.SVF.OP, reduction = "pca")[, 1:30])  # Extract first 3 PCs
+opossum_pc_data$subclass <- obj.opossum.IT.SSP.SVF.OP@meta.data$subclass  # Add subclass metadata
+opossum_pc_data$species <- "Opossum"
+pc_data <- rbind(mouse_pc_data, opossum_pc_data)
+write.csv(pc_data, "E:/Transcriptomics_V1/Integration/PCs/IT/shared_opossum_pc_data_downsample_subsample_with_subclass.csv", row.names = FALSE)
+
+```
+

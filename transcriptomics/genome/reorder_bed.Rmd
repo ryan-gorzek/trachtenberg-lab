@@ -7,8 +7,12 @@ output: html_notebook
 
 ```{r}
 
-df <- read.table("E:/_genomes/Mouse/mouse_gene.bed")
-df <- df[df$V1 %in% as.character(1:19), ]
+library(plyr)
+
+df <- read.table("E:/_genomes/Mouse/intergenic_reads_mouse_RS.bed")
+# df <- df[df$V1 %in% as.character(1:19), ] # genome
+df <- df[df$V1 %in% paste0("chr", as.character(1:19)), ] # reads
+df$V1 <- mapvalues(df$V1, from = paste0("chr", as.character(1:19)), to = as.character(1:19))
 df <- df[!duplicated(df$V2), ]
 df <- df[order(df$V1), ]
 df$V6 <- df$V5
@@ -16,7 +20,7 @@ df$V5 <- ""
 
 View(df)
 
-write.table(df, "E:/_genomes/Mouse/mouse_gene_sort.bed", row.names = FALSE, col.names = FALSE, sep = "\t", quote = FALSE)
+write.table(df, "E:/_genomes/Mouse/intergenic_reads_mouse_RS_sort.bed", row.names = FALSE, col.names = FALSE, sep = "\t", quote = FALSE)
 
 ```
 

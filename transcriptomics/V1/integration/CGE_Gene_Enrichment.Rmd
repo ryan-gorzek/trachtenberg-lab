@@ -1,0 +1,361 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(SeuratWrappers)
+library(monocle3)
+library(pheatmap)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+colors_list <- GetColors()
+
+obj.opossum.gabaergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_gabaergic_processed.rds")
+obj.mouse.gabaergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_gabaergic_processed.rds")
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.gabaergic) <- "subclass"
+obj.opossum.CGE <- subset(obj.opossum.gabaergic, idents = c("Vip", "Lamp5", "Frem1"))
+obj.opossum.CGE <- NormalizePCA(obj.opossum.CGE)
+
+Idents(obj.mouse.gabaergic) <- "subclass"
+obj.mouse.CGE <- subset(obj.mouse.gabaergic, idents = c("Vip", "Lamp5", "Frem1"))
+obj.mouse.CGE <- NormalizePCA(obj.mouse.CGE)
+
+```
+
+
+```{r}
+
+subclass.markers.opossum <- FindAllMarkers(obj.opossum.CGE, min.pct = 0.1, only.pos = TRUE)
+subclass.markers.mouse <- FindAllMarkers(obj.mouse.CGE, min.pct = 0.1, only.pos = TRUE)
+
+cluster_pairs = list(c("Vip", "Vip"), c("Lamp5", "Lamp5"), c("Frem1", "Frem1"))
+
+PlotSubclassGeneCountCDFDiff(list(subclass = subclass.markers.opossum), 
+                             list(subclass = subclass.markers.mouse), 
+                             cluster_pairs, as.character(colors_list[c("Vip", "Lamp5", "Frem1")]), 
+                             min.pct = 0.1, max.pval = 0.05)
+
+```
+
+
+```{r}
+
+subclass_pairs = list(list(c("Vip", "Lamp5"), c("Vip", "Lamp5")), 
+                      list(c("Lamp5", "Frem1"), c("Lamp5", "Frem1")), 
+                      list(c("Vip", "Frem1"), c("Vip", "Frem1")))
+
+de_results_opossum <- list()
+de_results_mouse <- list()
+
+for (pair in subclass_pairs) {
+  
+  sbcl_1_1 <- pair[[1]][1]
+  sbcl_1_2 <- pair[[1]][2]
+  sbcl_2_1 <- pair[[2]][1]
+  sbcl_2_2 <- pair[[2]][2]
+  
+  # Perform differential expression analysis for both species
+  de_results_opossum[[paste(sbcl_1_1, sbcl_1_2, sep = "_vs_")]] <- FindMarkers(obj.opossum.CGE, ident.1 = sbcl_1_1, ident.2 = sbcl_1_2, test.use = "wilcox")
+  de_results_mouse[[paste(sbcl_2_1, sbcl_2_2, sep = "_vs_")]] <- FindMarkers(obj.mouse.CGE, ident.1 = sbcl_2_1, ident.2 = sbcl_2_2, test.use = "wilcox")
+  
+}
+
+# Example Usage
+p <- PlotPairwiseSubclassGeneCountCDFDiff(de_results_opossum, de_results_mouse, 
+                                      subclass_pairs, 
+                                      as.character(colors_list[c("Vip", "Lamp5", "Frem1")]), 
+                                      min.pct = 0.25, 
+                                      max.pval = 0.05) + ylim(-100, 100)
+
+print(p)
+ggsave("E:/Opossum_Paper/Figure 2/CGE_DE_Difference.svg", plot = p)
+
+```
+
+
+```{r}
+
+PlotSubclassComparisonBars <- function(de_results_1, de_results_2, subclass_pairs, log2FC_threshold, min_pct, max_pval) {
+  bar_data <- data.frame()
+  
+  for (pair in subclass_pairs) {
+    sbcl_1_1 <- pair[[1]][1]
+    sbcl_1_2 <- pair[[1]][2]
+    sbcl_2_1 <- pair[[2]][1]
+    sbcl_2_2 <- pair[[2]][2]
+    
+    df_filtered_1 <- de_results_1[[paste(sbcl_1_1, sbcl_1_2, sep = "_vs_")]] %>%
+      filter(avg_log2FC > log2FC_threshold & pct.1 > min_pct & p_val_adj < max_pval)
+    df_filtered_2 <- de_results_2[[paste(sbcl_2_1, sbcl_2_2, sep = "_vs_")]] %>%
+      filter(avg_log2FC > log2FC_threshold & pct.1 > min_pct & p_val_adj < max_pval)
+    
+    shared_genes <- intersect(rownames(df_filtered_1), rownames(df_filtered_2))
+    opossum_specific <- setdiff(rownames(df_filtered_1), shared_genes)
+    mouse_specific <- setdiff(rownames(df_filtered_2), shared_genes)
+    
+    bar_data <- rbind(bar_data, data.frame(
+      Comparison = paste(sbcl_1_1, "vs", sbcl_1_2, "compared to", sbcl_2_1, "vs", sbcl_2_2),
+      Category = c("Opossum-Specific", "Shared", "Mouse-Specific"),
+      Count = c(length(opossum_specific), length(shared_genes), length(mouse_specific))
+    ))
+  }
+  
+  ggplot(bar_data, aes(x = Comparison, y = Count, fill = Category)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    theme_minimal() +
+    labs(title = "Comparison of DE Gene Categories Across Species", x = "Comparison", y = "Gene Count", fill = "Category") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+}
+
+PlotSubclassComparisonBars(de_results_opossum, de_results_mouse, 
+                                      subclass_pairs, 
+                                      log2FC_threshold = 1,
+                                      min_pct = 0.25, 
+                                      max_pval = 0.05)
+
+```
+
+
+```{r}
+
+extract_top_genes <- function(seurat_obj, n_percent = 5) {
+  # Ensure that the Seurat object has PCA computed
+  if (!"pca" %in% Reductions(seurat_obj)) {
+    stop("PCA has not been computed for this Seurat object. Please run RunPCA() first.")
+  }
+  
+  # Extract PC loadings and convert to data frame
+  pc_loadings <- as.data.frame(Loadings(seurat_obj[["pca"]]))
+  
+  # Validate the percentage
+  if (n_percent <= 0 || n_percent > 100) {
+    stop("n_percent should be a value between 0 and 100.")
+  }
+  
+  # Calculate the number of top genes to extract
+  num_genes <- round(nrow(pc_loadings) * (n_percent / 100))
+  
+  # Extract top n% of genes for PC1 and PC2
+  top_genes <- list(
+    PC1 = pc_loadings %>%
+      rownames_to_column("gene") %>%
+      arrange(dplyr::desc(abs(PC_1))) %>%
+      slice_head(n = num_genes) %>%
+      pull(gene),
+    PC2 = pc_loadings %>%
+      rownames_to_column("gene") %>%
+      arrange(dplyr::desc(abs(PC_2))) %>%
+      slice_head(n = num_genes) %>%
+      pull(gene)
+  )
+  
+  return(c(top_genes$PC1, top_genes$PC2))
+}
+
+```
+
+
+```{r}
+
+library(rbioapi)
+library(tibble)
+
+opossum.genes <- extract_top_genes(obj.opossum.IT, n_percent = 3)
+mouse.genes <- extract_top_genes(obj.mouse.IT, n_percent = 2)
+ortho.genes <- read.table(paste0("E:/Transcriptomics_V1/Integration/All_Shared_Genes.txt"))$V1
+
+opossum.genes <- opossum.genes[(opossum.genes %in% mouse.genes) == FALSE]
+opossum.genes <- opossum.genes[(opossum.genes %in% ortho.genes) == TRUE]
+mouse.genes <- mouse.genes[(mouse.genes %in% opossum.genes) == FALSE]
+
+enr.mouse <- rba_panther_enrich(genes = mouse.genes, organism = 10090, annot_dataset = "GO:0008150", cutoff = 1, ref_genes = ortho.genes, ref_organism = 10090)
+enr.opossum <- rba_panther_enrich(genes = opossum.genes, organism = 10090, annot_dataset = "GO:0008150", cutoff = 1, ref_genes = ortho.genes, ref_organism = 10090)
+
+```
+
+
+```{r}
+
+View(enr.opossum$result)
+View(enr.mouse$result)
+
+```
+
+
+```{r}
+
+markers.IT_D <- FindMarkers(obj.opossum.IT, ident.1 = "IT_D", logfc.threshold = 1, only.pos = TRUE)
+markers.IT_D.sig <- markers.IT_D[markers.IT_D$p_val_adj < 1e-25,]
+IT_D.genes <- rownames(markers.IT_D.sig)
+enr.IT_D <- rba_panther_enrich(genes = IT_D.genes[(IT_D.genes %in% ortho.genes) == TRUE], organism = 10090, annot_dataset = "GO:0008150", cutoff = 1, ref_genes = ortho.genes, ref_organism = 10090)
+View(enr.IT_D$result)
+
+```
+
+
+```{r}
+
+mouse.polygon <- read.csv("E:/Transcriptomics_V1/Integration/mouse_polygon.csv")
+mouse.polygon <- mouse.polygon[c(1, 3, 4, 2), ]
+mouse.polygon <- rbind(mouse.polygon, mouse.polygon[1, ])
+subclasses.mouse <- c("L2/3", "L4", "L5IT", "L6IT")
+Idents(obj.mouse.IT) <- "subclass"
+levels(obj.mouse.IT) <- subclasses.mouse
+DimPlot(obj.mouse.IT, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-16, 20) + ylim(-22, 14) + coord_equal() +
+  geom_point(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+  geom_path(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+# DimPlot(obj.mouse.IT, reduction = "pca", dims = c(1, 3), cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-16, 20) + ylim(-22, 14) + coord_equal()
+# DimPlot(obj.mouse.IT, reduction = "pca", dims = c(2, 3), cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 16) + ylim(-22, 14) + coord_equal()
+
+opossum.polygon <- read.csv("E:/Transcriptomics_V1/Integration/opossum_polygon.csv")
+opossum.polygon <- rbind(opossum.polygon, opossum.polygon[1, ])
+subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D")
+Idents(obj.opossum.IT) <- "subclass"
+levels(obj.opossum.IT) <- subclasses.opossum
+DimPlot(obj.opossum.IT, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-18, 24) + coord_equal() +
+  geom_point(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+  geom_path(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+
+```
+
+
+```{r}
+
+# Step 1: Compute distances from cells to polygon vertices
+compute_distances <- function(seurat_obj, polygon, reduction = "pca") {
+  coords <- Embeddings(seurat_obj, reduction) %>% as.data.frame()
+  distances <- apply(coords, 1, function(cell) {
+    min(sqrt((polygon$X..X - cell[1])^2 + (polygon$Y - cell[2])^2))
+  })
+  distances
+}
+
+# Mouse Distances
+mouse_distances <- compute_distances(obj.mouse.IT, mouse.polygon)
+
+# Opossum Distances
+opossum_distances <- compute_distances(obj.opossum.IT, opossum.polygon)
+
+# Step 2: Subset cells based on distance threshold
+distance_threshold <- 8  # Example threshold
+mouse_keep <- mouse_distances < distance_threshold
+opossum_keep <- opossum_distances < distance_threshold
+
+# Filter Seurat Objects
+obj.mouse.IT.filtered <- subset(obj.mouse.IT, cells = colnames(obj.mouse.IT)[mouse_keep])
+obj.opossum.IT.filtered <- subset(obj.opossum.IT, cells = colnames(obj.opossum.IT)[opossum_keep])
+
+# Step 3: Perform differential expression analysis
+# Example using `FindAllMarkers`
+mouse_markers <- FindAllMarkers(obj.mouse.IT.filtered, only.pos = TRUE, min.pct = 0.5, logfc.threshold = 1)
+opossum_markers <- FindAllMarkers(obj.opossum.IT.filtered, only.pos = TRUE, min.pct = 0.5, logfc.threshold = 1)
+
+```
+
+
+```{r}
+
+DimPlot(obj.mouse.IT.filtered, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-16, 20) + ylim(-22, 14) + coord_equal() +
+  geom_point(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+  geom_path(data = mouse.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+
+DimPlot(obj.opossum.IT.filtered, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 22) + ylim(-18, 24) + coord_equal() +
+  geom_point(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", size = 2) + 
+  geom_path(data = opossum.polygon, aes(x = X..X, y = Y), color = "black", linetype = "dashed", size = 1)
+
+```
+
+
+```{r, fig.width=15}
+
+# Load required libraries
+library(rbioapi)
+library(dplyr)
+library(tidyr)
+
+# Example DEGs (replace with actual subclass DEGs)
+mouse.genes.by.subclass <- split(mouse_markers$gene, mouse_markers$cluster)  # Replace `cluster` with your subclass column
+opossum.genes.by.subclass <- split(opossum_markers$gene, opossum_markers$cluster)
+
+# Function for running enrichment analysis
+run_enrichment <- function(genes, subclass, species, ortho.genes) {
+  tryCatch({
+    result <<- rba_panther_enrich(
+      genes = genes,
+      organism = 10090,
+      annot_dataset = "GO:0008150",
+      cutoff = 1,
+    )
+    print(head(result$result))
+    if (!is.null(result$result)) {
+      result <- as.data.frame(result$result)
+      result$subclass <- subclass
+      result$species <- species
+      return(result)
+    }
+  }, error = function(e) {
+    message(sprintf("Error for %s - %s: %s", species, subclass, e$message))
+    return(NULL)
+  })
+}
+
+# Run enrichment for mouse subclasses
+mouse_enrichment <- do.call(
+  rbind,
+  lapply(names(mouse.genes.by.subclass), function(subclass) {
+    run_enrichment(mouse.genes.by.subclass[[subclass]], subclass, "Mouse", ortho.genes)
+  })
+)
+
+# Run enrichment for opossum subclasses
+opossum_enrichment <- do.call(
+  rbind,
+  lapply(names(opossum.genes.by.subclass), function(subclass) {
+    run_enrichment(opossum.genes.by.subclass[[subclass]], subclass, "Opossum", ortho.genes)
+  })
+)
+
+# Combine results
+combined_enrichment <- rbind(mouse_enrichment, opossum_enrichment)
+
+# Step 4: Visualization
+# Example: Top enriched terms across subclasses and species
+top_enriched <- combined_enrichment %>%
+  filter(pValue < 0.05) %>%
+  group_by(species, subclass) %>%
+  top_n(-10, pValue)  # Select top 10 terms per subclass and species
+
+library(ggplot2)
+ggplot(top_enriched, aes(x = reorder(term.label, -log10(pValue)), y = -log10(pValue), fill = species)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  coord_flip() +
+  facet_wrap(~ subclass, scales = "free_y") +
+  labs(title = "Enriched GO Terms by Subclass and Species", x = "GO Term", y = "-log10(p-value)") +
+  theme_minimal()
+
+```
+

@@ -37,8 +37,6 @@ objs.opossum$Nonneuronal <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossu
 
 ```{r}
 
-DimPlot(objs.opossum$Glutamatergic, reduction = "umap", group.by = "SCT_snn_res.1", label = FALSE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
-
 objs.opossum$Glutamatergic$all_SCT_snn_res.1 <- objs.opossum$Glutamatergic$SCT_snn_res.1
 objs.opossum$GABAergic$all_SCT_snn_res.1 <- objs.opossum$GABAergic$SCT_snn_res.1
 objs.opossum$Nonneuronal$all_SCT_snn_res.1 <- objs.opossum$Nonneuronal$SCT_snn_res.1
@@ -46,6 +44,50 @@ objs.opossum$Nonneuronal$all_SCT_snn_res.1 <- objs.opossum$Nonneuronal$SCT_snn_r
 objs.opossum$Glutamatergic <- ClusterSCT(objs.opossum$Glutamatergic, 1)
 objs.opossum$GABAergic <- ClusterSCT(objs.opossum$GABAergic, 1)
 objs.opossum$Nonneuronal <- ClusterSCT(objs.opossum$Nonneuronal, 1)
+
+```
+
+
+```{r}
+
+p <- DimPlot(objs.opossum$Glutamatergic, reduction = "umap", group.by = "SCT_snn_res.1", label = TRUE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure S1/Glutamatergic_UMAP_res1.svg", plot = p, width = 6, height = 5, dpi = 300)
+p <- DimPlot(objs.opossum$GABAergic, reduction = "umap", group.by = "SCT_snn_res.1", label = TRUE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure S1/GABAergic_UMAP_res1.svg", plot = p, width = 6, height = 5, dpi = 300)
+p <- DimPlot(objs.opossum$Nonneuronal, reduction = "umap", group.by = "SCT_snn_res.1", label = TRUE, raster = FALSE, shuffle = TRUE) + xlim(-18, 18) + ylim(-18, 18) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure S1/Nonneuronal_UMAP_res1.svg", plot = p, width = 6, height = 5, dpi = 300)
+
+```
+
+
+```{r, fig.width=5, fig.height=8}
+
+DoubletBar <- function(obj) {
+    # Summarize doublets by cluster
+  df <- obj[[]]
+  df$active.ident <- obj@active.ident
+  df_summary <- df %>%
+    dplyr::group_by(active.ident, predicted_doublets) %>%
+    dplyr::summarise(count = n()) %>%
+    dplyr::mutate(fraction = count / sum(count))
+  # Create the stacked bar plot
+  barplot2 <- ggplot(df_summary, aes(y = active.ident, x = fraction, fill = predicted_doublets)) +
+    geom_bar(stat = "identity") +
+    labs(x = "Clusters", y = "Doublet Fraction", fill = "Value") +
+    theme_minimal()
+}
+
+levels(objs.opossum$Glutamatergic) <- rev(c(10, 9, 3, 8, 15, 14, 4, 2, 13, 17, 11, 5, 7, 16, 6, 19, 1, 12, 18))
+p <- DoubletBar(objs.opossum$Glutamatergic)
+ggsave("E:/Opossum_Paper/Figure S1/Glutamatergic_doublet_bar.svg", plot = p, width = 5, height = 8, dpi = 300)
+
+levels(objs.opossum$GABAergic) <- rev(c(1, 3, 5, 13, 7, 2, 8, 16, 4, 6, 9, 18, 10, 17, 12, 14, 11, 15))
+p <- DoubletBar(objs.opossum$GABAergic)
+ggsave("E:/Opossum_Paper/Figure S1/GABAergic_doublet_bar.svg", plot = p, width = 5, height = 8, dpi = 300)
+
+levels(objs.opossum$Nonneuronal) <- rev(c(8, 1, 16, 10, 6, 2, 4, 5, 9, 13, 15, 3, 14, 11, 7, 12))
+p <- DoubletBar(objs.opossum$Nonneuronal)
+ggsave("E:/Opossum_Paper/Figure S1/Nonneuronal_doublet_bar.svg", plot = p, width = 5, height = 8, dpi = 300)
 
 ```
 
@@ -64,8 +106,8 @@ objs.mouse$Nonneuronal <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P
 
 iteration.list = list("Opossum" = list(), "Mouse" = list())
 for (cl in classes) {
-  iteration.list$Opossum[[cl]] <- SubsampleObjectMultipleIterations(objs.opossum[[cl]], "SCT_snn_res.1", 100, 100)
-  iteration.list$Mouse[[cl]] <- SubsampleObjectMultipleIterations(objs.mouse[[cl]], "subclass", 100, 100)
+  iteration.list$Opossum[[cl]] <- SubsampleObjectMultipleIterations(objs.opossum[[cl]], "SCT_snn_res.1", 100, 10)
+  iteration.list$Mouse[[cl]] <- SubsampleObjectMultipleIterations(objs.mouse[[cl]], "subclass", 100, 10)
 }
 
 for (cl in classes) {
@@ -200,30 +242,28 @@ mapping.classes.perm <- mapping.species.perm$Opossum
 ```
 
 
-```{r, fig.width=6, fig.height=5}
+```{r, fig.width=5, fig.height=8}
 
 source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
 
 p <- PlotSubsampledMappedLabelsHeatmap(mapping.classes$Glutamatergic$SCT_snn_res.1, mapping.classes$Glutamatergic$predicted.subclass, 
                                   c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"), normalize = "row", 
-                                  ident.order = c("8", "9", "4", "1", "17", "10", "13", "15", "20", "14", "24", "11", "5", 
+                                  ident.order = c(10, 9, 3, 8, 15, 14, 4, 2, 13, 17, 11, 5, 7, 16, 6, 19, 1, 12, 18, 
                                                   "L2/3", "L4", "L5IT", "L5NP", "L5PT", "L6IT", "L6CT", "L6b", "")) + scale_fill_gradient2(low = "white", mid = "red", high = "blue", midpoint = 50)
 print(p)
-# ggsave("E:/Opossum_Paper/Figure 2/Opossum_Mouse_Mapping_Confusion_Subsampled_Glutamatergic.png", plot = p, width = 6, height = 5, dpi = 300)
-# ggsave("E:/Opossum_Paper/Figure 2/Opossum_Mouse_Mapping_Confusion_Subsampled_Glutamatergic.svg", plot = p, width = 6, height = 5, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure S1/Opossum_Mouse_Mapping_Confusion_Subsampled_Glutamatergic_res1.svg", plot = p, width = 5, height = 8.5, dpi = 300)
 
 ```
 
 
-```{r, fig.width=5, fig.height=4.5}
+```{r, fig.width=5, fig.height=8.5}
 
-p <- PlotSubsampledMappedLabelsHeatmap(mapping.classes$GABAergic$all_SCT_snn_res.1, mapping.classes$GABAergic$predicted.subclass, 
+p <- PlotSubsampledMappedLabelsHeatmap(mapping.classes$GABAergic$SCT_snn_res.1, mapping.classes$GABAergic$predicted.subclass, 
                                   c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1"), normalize = "row", 
-                                  ident.order = c("25", "6", "18", "16", "22", "21", "23",
+                                  ident.order = c(1, 3, 5, 13, 7, 2, 8, 16, 4, 6, 9, 18, 10, 17, 12, 14, 11, 15,
                                                   "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")) + scale_fill_gradient2(low = "white", mid = "red", high = "blue", midpoint = 50)
 print(p)
-# ggsave("E:/Opossum_Paper/Figure 2/Opossum_Mouse_Mapping_Confusion_Subsampled_GABAergic.png", plot = p, width = 5, height = 4.5, dpi = 300)
-# ggsave("E:/Opossum_Paper/Figure 2/Opossum_Mouse_Mapping_Confusion_Subsampled_GABAergic.svg", plot = p, width = 5, height = 4.5, dpi = 300)
+ggsave("E:/Opossum_Paper/Figure S1/Opossum_Mouse_Mapping_Confusion_Subsampled_GABAergic_res1.svg", plot = p, width = 5, height = 8.5, dpi = 300)
 
 ```
 
@@ -231,13 +271,14 @@ print(p)
 
 
 
-```{r, fig.width=5, fig.height=4.5}
+```{r, fig.width=5, fig.height=8.5}
 
-p <- PlotSubsampledMappedLabelsHeatmap(mapping.classes$Nonneuronal$all_SCT_snn_res.1, mapping.classes$Nonneuronal$predicted.subclass, 
+p <- PlotSubsampledMappedLabelsHeatmap(mapping.classes$Nonneuronal$SCT_snn_res.1, mapping.classes$Nonneuronal$predicted.subclass, 
                                   c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC"), normalize = "row", 
-                                  ident.order = c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC")) + scale_fill_gradient2(low = "white", mid = "red", high = "blue", midpoint = 50)
-# ggsave("E:/Opossum_Paper/Figure 2/Opossum_Mouse_Mapping_Confusion_Subsampled_Nonneuronal.png", plot = p, width = 5, height = 4.5, dpi = 300)
-# ggsave("E:/Opossum_Paper/Figure 2/Opossum_Mouse_Mapping_Confusion_Subsampled_Nonneuronal.svg", plot = p, width = 5, height = 4.5, dpi = 300)
+                                  ident.order = c(8, 1, 16, 10, 6, 2, 4, 5, 9, 13, 15, 3, 14, 11, 7, 12,
+                                    "Astro", "Micro", "OD", "OPC", "Endo", "VLMC")) + scale_fill_gradient2(low = "white", mid = "red", high = "blue", midpoint = 50)
+print(p)
+ggsave("E:/Opossum_Paper/Figure S1/Opossum_Mouse_Mapping_Confusion_Subsampled_Nonneuronal_res1.svg", plot = p, width = 5, height = 8.5, dpi = 300)
 
 ```
 

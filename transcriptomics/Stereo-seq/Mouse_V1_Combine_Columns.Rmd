@@ -16,6 +16,7 @@ for (n in 1:4) {
 
   path <- paste0("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COL", n, ".rds")
   objs.col[[n]] <- readRDS(path)
+  objs.col[[n]]$sample <- paste0("COL", n)
   
 }
 
@@ -40,7 +41,7 @@ max_height <- max(heights)
 
 counts <- list()
 coords <- data.frame()
-xshifts <- c(0, 2550, 3975, 5800)
+xshifts <- c(0, 2600, 3925, 5450)
 
 for (i in 1:4) {
   
@@ -59,7 +60,7 @@ for (i in 1:4) {
   scale_factor <- max_height / current_height
   
   # Scale y-axis (height) and x-axis (width) to preserve aspect ratio (optional)
-  ccoords <- ccoords * scale_factor
+  # ccoords <- ccoords * scale_factor
   
   # Calculate shifts
   x_shift <- xshifts[i]
@@ -95,12 +96,25 @@ fov <- fov[Cells(obj.combined)]
 
 obj.combined[["COL"]] <- fov
 
+# obj.i <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLs_integrated.rds")
+
 ```
 
 
 ```{r}
 
-ImageDimPlot(obj.combined, fov = "COL", cols = "red", size = 1) + NoLegend()
+obj.combined.plot <- obj.combined[, colnames(obj.i)[colnames(obj.i) %in% colnames(obj.combined)]]
+obj.combined.plot$subclass <- obj.i$subclass_nn[colnames(obj.i) %in% colnames(obj.combined)]
+
+colors <- hcl.colors(8, palette = "Dynamic")
+
+obj.combined.plot <- subset(obj.combined.plot, subclass %in% c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"))
+Idents(obj.combined.plot) <- "subclass"
+levels(obj.combined.plot) <- c("L2/3", "L4", "L5IT", "L5NP", "L5PT", "L6IT", "L6CT", "L6b")
+
+p <- ImageDimPlot(obj.combined.plot, fov = "COL", size = 1, cols = colors) + NoLegend()
+
+ggsave("E:/Opossum_Paper/Figure S3/Mouse_V1_Columns.svg", plot = p)
 
 ```
 
@@ -148,6 +162,7 @@ max_height <- max(heights)
 
 counts <- list()
 coords <- data.frame()
+samples <- c()
 
 for (i in 1:4) {
   
@@ -181,6 +196,7 @@ for (i in 1:4) {
   
   counts[[i]] <- ccounts
   coords <- rbind(coords, ccoords)
+  samples <- c(samples, obj$sample)
 
 }
 
@@ -189,6 +205,7 @@ merged_counts <- do.call(cbind, counts)
 
 # Create the new Seurat object
 obj.combined <- CreateSeuratObject(counts = merged_counts)
+obj.combined$sample <- samples
 
 cents.df <- data.frame(coords[, 1], coords[, 2])
 colnames(cents.df) <- c("X", "Y")

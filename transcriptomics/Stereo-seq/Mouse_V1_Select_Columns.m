@@ -7,7 +7,7 @@ x_coords = table2array(readtable("E:/STOmics/seurat/Mouse/raw/y_coords.csv")) * 
 region_params = [];
 
 % Example region parameters (manually defined or in a loop)
-angle_deg = 30; % rotation angle in degrees
+angle_deg = 8; % rotation angle in degrees
 theta = deg2rad(angle_deg);
 
 % Rotate coordinates
@@ -23,8 +23,8 @@ title(sprintf('Rotated by %d°', angle_deg));
 set(gca, "Box", "on", "LineWidth", 2, "TickDir", "out", "FontSize", 10);
 
 % 🔻 Manually define region boundaries after visual inspection:
-x1 = -1700; x2 = -250;
-y1 = -14100; y2 = -12700;
+x1 = -7650; x2 = -6250;
+y1 = -6850; y2 = -5600;
 
 % Save parameters
 region_params = [region_params; angle_deg, x1, x2, y1, y2];

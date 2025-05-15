@@ -10,12 +10,13 @@ library(SeuratObject)
 source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
 source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
 
-objs.col <- list(COL1 = NA, COL2 = NA)
+objs.col <- list(COL1 = NA, COL2 = NA, COL3 = NA)
 
-for (n in 1:2) {
+for (n in 1:3) {
 
   path <- paste0("E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_COL", n, "_EXT.rds")
   objs.col[[n]] <- readRDS(path)
+  objs.col[[n]]$sample <- paste0("COL", n)
   
 }
 
@@ -24,14 +25,14 @@ for (n in 1:2) {
 
 ```{r}
 
-obj.col <- merge(objs.col[[1]], y = objs.col[2])
+obj.col <- merge(objs.col[[1]], y = objs.col[2:3])
 
 ```
 
 
 ```{r}
 
-heights <- sapply(1:4, function(i) {
+heights <- sapply(1:3, function(i) {
   ccoords <- objs.col[[i]][[paste0("COL", i)]]$centroids@coords
   max(ccoords[,1]) - min(ccoords[,1])
 })
@@ -40,9 +41,9 @@ max_height <- max(heights)
 
 counts <- list()
 coords <- data.frame()
-xshifts <- c(0, 2550, 3975, 5800)
+xshifts <- c(0, 2200, 4345)
 
-for (i in 1:4) {
+for (i in 1:3) {
   
   obj <- objs.col[[i]]
 
@@ -59,7 +60,7 @@ for (i in 1:4) {
   scale_factor <- max_height / current_height
   
   # Scale y-axis (height) and x-axis (width) to preserve aspect ratio (optional)
-  ccoords <- ccoords * scale_factor
+  # ccoords <- ccoords * scale_factor
   
   # Calculate shifts
   x_shift <- xshifts[i]
@@ -95,50 +96,37 @@ fov <- fov[Cells(obj.combined)]
 
 obj.combined[["COL"]] <- fov
 
-```
-
-
-```{r}
-
-ImageDimPlot(obj.combined, fov = "COL", cols = "red", size = 1) + NoLegend()
+# obj.i <- readRDS("E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_COLs_EXT_integrated.rds")
 
 ```
 
 
 ```{r}
 
-cell_mask <- Reduce(intersect, list(WhichCells(obj.combined, expression = nFeature_RNA > 50),
-                                    WhichCells(obj.combined, expression = nCount_RNA > 100)))
-  
-gene_mask <- rownames(obj.combined)[Matrix::rowSums(obj.combined[["RNA"]]@counts > 0) > 8]
+obj.combined.plot <- obj.combined[, colnames(obj.i)[colnames(obj.i) %in% colnames(obj.combined)]]
+obj.combined.plot$subclass <- obj.i$subclass_nn[colnames(obj.i) %in% colnames(obj.combined)]
 
-obj.combined <- subset(obj.combined, features = gene_mask, cells = cell_mask)
+colors <- hcl.colors(8, palette = "Dynamic")
 
-```
+obj.combined.plot <- subset(obj.combined.plot, subclass %in% c("IT_A", "IT_B", "IT_C", "IT_D", "L5NP", "L5PT", "L6CT", "L6b"))
+Idents(obj.combined.plot) <- "subclass"
+levels(obj.combined.plot) <- c("IT_A", "IT_B", "IT_C", "L5NP", "L5PT", "IT_D", "L6CT", "L6b")
 
+p <- ImageDimPlot(obj.combined.plot, fov = "COL", size = 1, cols = colors) + NoLegend()
 
-```{r}
-
-ImageDimPlot(obj.combined, fov = "COL", cols = "red", size = 1) + NoLegend()
-
-```
-
-
-```{r}
-
-saveRDS(obj.combined, "E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLS_spaced.rds")
+ggsave("E:/Opossum_Paper/Figure S3/Opossum_V1_Columns.svg", plot = p)
 
 ```
 
 
 ```{r}
 
-widths <- sapply(1:2, function(i) {
+widths <- sapply(1:3, function(i) {
   ccoords <- objs.col[[i]][[paste0("COL", i)]]$centroids@coords
   max(ccoords[,2]) - min(ccoords[,2])
 })
 
-heights <- sapply(1:2, function(i) {
+heights <- sapply(1:3, function(i) {
   ccoords <- objs.col[[i]][[paste0("COL", i)]]$centroids@coords
   max(ccoords[,1]) - min(ccoords[,1])
 })
@@ -148,8 +136,9 @@ max_height <- max(heights)
 
 counts <- list()
 coords <- data.frame()
+samples <- c()
 
-for (i in 1:2) {
+for (i in 1:3) {
   
   obj <- objs.col[[i]]
 
@@ -181,6 +170,7 @@ for (i in 1:2) {
   
   counts[[i]] <- ccounts
   coords <- rbind(coords, ccoords)
+  samples <- c(samples, obj$sample)
 
 }
 
@@ -189,6 +179,7 @@ merged_counts <- do.call(cbind, counts)
 
 # Create the new Seurat object
 obj.combined <- CreateSeuratObject(counts = merged_counts)
+obj.combined$sample <- samples
 
 cents.df <- data.frame(coords[, 1], coords[, 2])
 colnames(cents.df) <- c("X", "Y")

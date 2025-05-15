@@ -52,7 +52,7 @@ fov <- CreateFOV(
   key = Key("FOV", quiet = TRUE)
 )
 
-section.cells <- read.csv("E:/STOmics/seurat/Opossum/selected_barcodes.csv", header = FALSE)
+section.cells <- read.csv("E:/STOmics/seurat/Opossum/selected_barcodes_section1.csv", header = FALSE)
 
 fov <- fov[as.character(section.cells$V1)]
 

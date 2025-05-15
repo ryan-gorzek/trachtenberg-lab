@@ -24,7 +24,7 @@ set(gca, "Box", "on", "LineWidth", 2, "TickDir", "out", "FontSize", 10);
 
 % 🔻 Manually define region boundaries after visual inspection:
 x1 = -7000; x2 = -5000;
-y1 = -13050; y2 = -12700;
+y1 = -14600; y2 = -13050;
 
 % Save parameters
 region_params = [region_params; angle_deg, x1, x2, y1, y2];

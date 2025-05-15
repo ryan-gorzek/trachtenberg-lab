@@ -1,8 +1,8 @@
 
 % Load and plot original data
-y_coords = table2array(readtable("E:/STOmics/seurat/Mouse/raw/x_coords.csv")) * -1;
-x_coords = table2array(readtable("E:/STOmics/seurat/Mouse/raw/y_coords.csv")) * -1;
-barcodes = string(table2array(readtable("E:/STOmics/seurat/Mouse/raw/barcodes.tsv", "FileType", "text", 'Delimiter', '\t')));
+y_coords = table2array(readtable("E:/STOmics/seurat/Opossum/raw/x_coords.csv")) * -1;
+x_coords = table2array(readtable("E:/STOmics/seurat/Opossum/raw/y_coords.csv")) * -1;
+barcodes = string(table2array(readtable("E:/STOmics/seurat/Opossum/raw/barcodes.tsv", "FileType", "text", 'Delimiter', '\t')));
 
 % Plot the spatial transcriptomics data
 figure;
@@ -47,6 +47,6 @@ in_roi = inpolygon(x_coords, y_coords, x_roi, y_roi);
 selected_barcodes = barcodes(in_roi);
 
 % Save selected barcodes to a file
-writematrix(selected_barcodes, "E:/STOmics/seurat/Mouse/selected_barcodes_section2.csv");
+writematrix(selected_barcodes, "E:/STOmics/seurat/Opossum/selected_barcodes_section2.csv");
 
 disp('Selected barcodes saved to selected_barcodes.txt');

@@ -41,6 +41,21 @@ obj.ctx <- readRDS("E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_COLS_EXT.rds
 
 ```{r}
 
+obj.ctx <- ClusterSCT(obj.ctx, 1)
+
+```
+
+
+```{r}
+
+p <- DimPlot(obj.ctx, group.by = "SCT_snn_res.1", label = TRUE) + NoLegend() + xlim(-6, 6) + ylim(-6, 6) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure S3/Opossum_Stereoseq_UMAP.svg", plot = p)
+
+```
+
+
+```{r}
+
 obj$method <- "snRNA-seq"
 obj.ctx$method <- "Stereo-seq"
 obj.i <- IntegrateObjects(obj, obj.ctx, resolutions = c(0.5), subsample = TRUE)
@@ -65,7 +80,8 @@ obj.i <- LabelByNearestNeighbors(obj.i, "class", fraction = 0.05, n.neighbors = 
 
 ```{r}
 
-DimPlot(obj.i, group.by = "class_nn", label = TRUE) + NoLegend() + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
+p <- DimPlot(obj.i, group.by = "class_nn", cols = c("#F8766D", "#00BA38", "#fad102", "#619CFF", "#AAAAAA"), label = TRUE) + NoLegend() + xlim(-9, 9) + ylim(-8, 10) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure S3/Opossum_Stereoseq_Class_NN.svg", plot = p)
 
 ```
 
@@ -117,6 +133,21 @@ obj.i <- LabelByNearestNeighbors(obj.i, "subclass", fraction = 0.25, n.neighbors
 
 DimPlot(obj.i, group.by = "subclass", label = TRUE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 DimPlot(obj.i, group.by = "subclass_nn", label = TRUE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+```
+
+
+```{r}
+
+hcl_colors <- hcl.colors(20, palette = "Dynamic")
+subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D", "L5NP", "L5PT", "L6CT", "L6b", "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "OD", "OPC", "Astro", "Endo", "Micro", "None")
+Idents(obj.i) <- "subclass_nn"
+levels(obj.i) <- subclasses.opossum
+colors <- as.character(colors_list[subclasses.opossum])
+colors[14:19] <- c(hcl_colors[5:9], "#fad102")
+p <- DimPlot(obj.i, cols = colors, label = TRUE, raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+ggsave("E:/Opossum_Paper/Figure S3/Opossum_Subclass_NN.svg", plot = p)
 
 ```
 
@@ -336,7 +367,7 @@ p <- ggplot(df, aes(x = y, color = subclass)) +
     aspect.ratio = 1
   ) + coord_flip() + scale_x_continuous(breaks = c(0, 400, 800, 1200, 1600))
 
-ggsave("E:/Opossum_Paper/Figure 3/Opossum_Nonneuronal_Density.svg", plot = p)
+ggsave("E:/Opossum_Paper/Figure S3/Opossum_Nonneuronal_Density.svg", plot = p)
 
 # Outlined histograms without bin borders
 p <- ggplot(df, aes(x = y, color = subclass)) +
@@ -352,7 +383,7 @@ p <- ggplot(df, aes(x = y, color = subclass)) +
     aspect.ratio = 1
   ) + coord_flip() + scale_x_continuous(breaks = c(0, 400, 800, 1200, 1600))
 
-ggsave("E:/Opossum_Paper/Figure 3/Opossum_Nonneuronal_Histogram.svg", plot = p)
+ggsave("E:/Opossum_Paper/Figure S3/Opossum_Nonneuronal_Histogram.svg", plot = p)
 
 ```
 
@@ -366,6 +397,43 @@ saveRDS(obj.ctx.nonneuronal, "E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_no
 ```
 
 
+```{r}
+
+library(Seurat)
+library(dplyr)
+library(tibble)
+
+# Parameters
+target_subclass <- "Pvalb"
+spatial_resolution <- 0.5  # microns per pixel
+area_per_pixel <- spatial_resolution ^ 2  # µm^2
+
+# Get metadata and spatial coords
+meta <- obj.ctx.gabaergic@meta.data
+coords <- GetTissueCoordinates(obj.ctx.gabaergic)  # returns a data frame with rownames = cell names
+
+# Add spatial coords and subclass to metadata
+meta <- meta %>%
+  rownames_to_column("cell") %>%
+  inner_join(coords, by = "cell")
+
+# Filter for the target subclass
+meta_subclass <- meta %>% filter(subclass_nn == target_subclass)
+
+# Calculate density by sample
+density_by_sample <- meta_subclass %>%
+  group_by(sample) %>%
+  dplyr::summarise(
+    n_cells = n(),
+    x_range = diff(range(x)) * spatial_resolution,
+    y_range = diff(range(y)) * spatial_resolution,
+    area = x_range * y_range,  # µm^2
+    density = n_cells / area  # cells per µm^2
+  )
+
+print(density_by_sample)
+
+```
 
 
 

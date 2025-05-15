@@ -1,27 +1,8 @@
 
-%% Mouse Fit (Shuffled PC Space)
-
-addpath(genpath(fullfile("C:/Users/TLab/Documents/Ryan/particode/")));
-
-% Load data from CSV
-input = readtable('E:/Transcriptomics_V1/Integration/PCs/IT/mouse_pc_data_shuffle_subsample_with_subclass.csv');
-
-% Extract the first three PCs
-data = [];
-for pc = 1:30
-    data = [data, input.(sprintf('pca_%i', pc))];  % Assuming first column is PC1
-end
-
-labels = input.subclass;
-ident = {'subclass'};
-
-[arc, arcOrig, pc, errs, pval, coefs] = ParTI(data, 1, 5, labels, ...
-    ident, 0, [], [], [], 0.2, 'Mouse_IT_3PCs_Shuffle');
-
 %% Mouse 3D
 
 % Load data from CSV
-data = readtable('E:/Transcriptomics_V1/Integration/PCs/IT/mouse_pc_data_shuffle_subsample_with_subclass.csv');
+data = readtable('E:/Transcriptomics_V1/Integration/PCs/IT/mouse_pc_data_shared_subsample_within_with_subclass.csv');
 
 % Extract the first three PCs
 pc1 = data.pca_1;  % Assuming first column is PC1
@@ -47,7 +28,7 @@ for i = 1:length(subclass_groups)
 end
 
 % Load the tetrahedron coordinates from MAT file
-load('Mouse_IT_3PCs_Shuffle_Workspace.mat', 'arcOrig');
+load('Mouse_IT_Shared_Within_30PCs.mat', 'arcOrig');
 
 % Plot the tetrahedron edges
 % Assuming 'arc' contains a 4x3 matrix where each row is a vertex [x, y, z]
@@ -67,34 +48,18 @@ zlabel('PC3');
 title('3D Scatter Plot of Principal Components');
 grid on;
 
-%% Opossum Fit (Shuffled PC Space)
-
-addpath(genpath(fullfile("C:/Users/TLab/Documents/Ryan/particode/")));
-
-% Load data from CSV
-input = readtable('E:/Transcriptomics_V1/Integration/PCs/IT/opossum_pc_data_shuffle_subsample_with_subclass.csv');
-
-% Extract the first three PCs
-data = [];
-for pc = 1:30
-    data = [data, input.(sprintf('pca_%i', pc))];  % Assuming first column is PC1
-end
-
-labels = input.subclass;
-ident = {'subclass'};
-
-[arc, arcOrig, pc, errs, pval, coefs] = ParTI(data, 1, 5, labels, ...
-    ident, 0, [], [], [], 0.2, 'Opossum_IT_3PCs_Shuffle');
+view(156, 18);
+% view(-12.7, 18);
 
 %% Opossum 3D
 
 % Load data from CSV
-data = readtable('E:/Transcriptomics_V1/Integration/PCs/IT/opossum_pc_data_shuffle_subsample_with_subclass.csv');
+data = readtable('E:/Transcriptomics_V1/Integration/PCs/IT/opossum_pc_data_shared_subsample_within_with_subclass.csv');
 
 % Extract the first three PCs
 pc1 = data.pca_1 * -1;  % Assuming first column is PC1
 pc2 = data.pca_3;  % Assuming second column is PC2
-pc3 = data.pca_2 * -1;  % Assuming third column is PC3
+pc3 = data.pca_2;  % Assuming third column is PC3
 
 % Convert subclass to categorical and assign unique numerical values
 [subclass_groups, ~, subclass_idx] = unique(data.subclass, 'stable');
@@ -115,15 +80,13 @@ for i = 1:length(subclass_groups)
 end
 
 % Load the tetrahedron coordinates from MAT file
-load('Opossum_IT_3PCs_Shuffle_Workspace.mat', 'arcOrig');
-arcOrig = arcOrig .* [1.25, 1.25, 1, ones(1, 27)];
+load('Opossum_IT_Shared_Within_30PCs.mat', 'arcOrig');
 
 % Plot the tetrahedron edges
 % Assuming 'arc' contains a 4x3 matrix where each row is a vertex [x, y, z]
 tetra_edges = [1 2; 1 3; 1 4; 2 3; 2 4; 3 4]; % Indices defining the edges of a tetrahedron
 for k = 1:size(tetra_edges, 1)
-    plot3(arcOrig(tetra_edges(k, :), 1) * -1, arcOrig(tetra_edges(k, :), 3), arcOrig(tetra_edges(k, :), 2) * -1, '-k', 'LineWidth', 1.5);
-    % plot3((arcOrig(tetra_edges(k, :), 1) * -1), arcOrig(tetra_edges(k, :), 3), arcOrig(tetra_edges(k, :), 2), '-k', 'LineWidth', 1.5);
+    plot3(arcOrig(tetra_edges(k, :), 1) * -1, arcOrig(tetra_edges(k, :), 3), arcOrig(tetra_edges(k, :), 2), '-k', 'LineWidth', 1.5);
 end
 
 axis equal;
