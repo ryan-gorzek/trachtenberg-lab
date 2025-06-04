@@ -1,0 +1,91 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(SeuratWrappers)
+library(monocle3)
+library(pheatmap)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+colors_list <- GetColors()
+
+obj.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
+obj.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+
+```
+
+
+```{r}
+
+Idents(obj.opossum.glutamatergic) <- "subclass"
+obj.opossum.IT <- subset(obj.opossum.glutamatergic, idents = c("IT_A", "IT_B", "IT_C", "IT_D"))
+obj.opossum.IT <- NormalizePCA(obj.opossum.IT)
+
+Idents(obj.mouse.glutamatergic) <- "subclass"
+obj.mouse.IT <- subset(obj.mouse.glutamatergic, idents = c("L2/3", "L4", "L5IT", "L6IT"))
+obj.mouse.IT <- NormalizePCA(obj.mouse.IT)
+
+```
+
+
+```{r}
+
+subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D")
+DimPlot(obj.opossum.IT, reduction = "pca", cols = colors_list[subclasses.opossum], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-18, 22) + coord_equal()
+subclasses.mouse <- c("L2/3", "L4", "L5IT", "L6IT")
+DimPlot(obj.mouse.IT, reduction = "pca", cols = colors_list[subclasses.mouse], pt.size = 1, label = TRUE, shuffle = TRUE, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-24, 16) + coord_equal()
+
+```
+
+
+```{r, fig.width=4, fig.height=10}
+
+dopa.genes <- c("Drd1", "Drd2", "Drd3", "Drd4", "Drd5")
+sert.genes <- c("Htr1a", "Htr1b", "Htr1d", "Htr1f", "Htr2a", "Htr2b", "Htr2c", "Htr3a", "Htr3b", "Htr4", "Htr5a", "Htr5b", "Htr6", "Htr7")
+adrg.genes <- c("Adra1a", "Adra1b", "Adra1d", "Adra2a", "Adra2b", "Adra2c", "Adrb1", "Adrb2", "Adrb3")
+mACh.genes <- c("Chrm1", "Chrm2", "Chrm3", "Chrm4", "Chrm5")
+nACh.genes <- c("Chrna1", "Chrna2", "Chrna3", "Chrna4", "Chrna5", "Chrna6", "Chrna7", "Chrna9", "Chrna10",
+                "Chrnb1", "Chrnb2", "Chrnb3", "Chrnb4")
+
+all.genes <- c(dopa.genes, sert.genes, adrg.genes, mACh.genes, nACh.genes)
+
+Idents(obj.opossum.IT) <- "subclass"
+levels(obj.opossum.IT) <- c("IT_A", "IT_B", "IT_C", "IT_D")
+DotPlot(obj.opossum.IT, features = rev(all.genes), scale = F, scale.by = "radius", scale.max = 75, col.max = 3) + coord_flip() + theme(axis.text.x=element_text(angle = 90, vjust = 0.4))
+
+Idents(obj.mouse.IT) <- "subclass"
+levels(obj.mouse.IT) <- c("L2/3", "L4", "L5IT", "L6IT")
+DotPlot(obj.mouse.IT, features = rev(all.genes), scale = F, scale.by = "radius", scale.max = 75, col.max = 3) + coord_flip() + theme(axis.text.x=element_text(angle = 90, vjust = 0.4))
+
+# FeaturePlot(obj.opossum.IT, "Chrm1", pt.size = 1, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-18, 22) + coord_equal()
+# FeaturePlot(obj.opossum.IT, "Chrna7", pt.size = 1, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-18, 22) + coord_equal()
+
+```
+
+
+```{r}
+
+FeaturePlot(obj.mouse.IT, "Chrm1", pt.size = 1, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-24, 16) + coord_equal()
+FeaturePlot(obj.mouse.IT, "Chrna7", pt.size = 1, raster = FALSE) + NoLegend() + xlim(-20, 20) + ylim(-24, 16) + coord_equal()
+
+```
+
