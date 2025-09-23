@@ -1,6 +1,6 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output: 
 ---
 
 
@@ -41,6 +41,7 @@ obj.ctx <- readRDS("E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_COLS_EXT.rds
 
 ```{r}
 
+obj.glutamatergic <- ClusterSCT(obj.glutamatergic, 0.3)
 obj.ctx <- ClusterSCT(obj.ctx, 1)
 
 ```
@@ -52,7 +53,6 @@ p <- DimPlot(obj.ctx, group.by = "SCT_snn_res.1", label = TRUE) + NoLegend() + x
 ggsave("E:/Opossum_Paper/Figure S3/Opossum_Stereoseq_UMAP.svg", plot = p)
 
 ```
-
 
 ```{r}
 
@@ -80,8 +80,15 @@ obj.i <- LabelByNearestNeighbors(obj.i, "class", fraction = 0.05, n.neighbors = 
 
 ```{r}
 
-p <- DimPlot(obj.i, group.by = "class_nn", cols = c("#F8766D", "#00BA38", "#fad102", "#619CFF", "#AAAAAA"), label = TRUE) + NoLegend() + xlim(-9, 9) + ylim(-8, 10) + coord_equal()
-ggsave("E:/Opossum_Paper/Figure S3/Opossum_Stereoseq_Class_NN.svg", plot = p)
+p <- DimPlot(obj.i, group.by = "class_nn", cols = c("#F8766D", "#00BA38", "#fad102", "#619CFF", "#AAAAAA"), label = TRUE) + NoLegend() + xlim(-9, 10) + ylim(-10, 9) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure S3/Mouse_Stereoseq_Class_NN.svg", plot = p)
+
+```
+
+
+```{r}
+
+DimPlot(obj.i, group.by = "class_nn", label = TRUE) + NoLegend() + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
 
 ```
 
@@ -131,7 +138,6 @@ obj.i <- LabelByNearestNeighbors(obj.i, "subclass", fraction = 0.25, n.neighbors
 
 ```{r}
 
-DimPlot(obj.i, group.by = "subclass", label = TRUE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 DimPlot(obj.i, group.by = "subclass_nn", label = TRUE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
 
 ```
@@ -139,15 +145,26 @@ DimPlot(obj.i, group.by = "subclass_nn", label = TRUE) + NoLegend() + xlim(-15, 
 
 ```{r}
 
-hcl_colors <- hcl.colors(20, palette = "Dynamic")
-subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "IT_D", "L5NP", "L5PT", "L6CT", "L6b", "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "OD", "OPC", "Astro", "Endo", "Micro", "None")
-Idents(obj.i) <- "subclass_nn"
-levels(obj.i) <- subclasses.opossum
-colors <- as.character(colors_list[subclasses.opossum])
-colors[14:19] <- c(hcl_colors[5:9], "#fad102")
-p <- DimPlot(obj.i, cols = colors, label = TRUE, raster = FALSE) + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+obj.i <- LabelByNearestNeighbors(obj.i, "SCT_snn_res.0.3", fraction = 0.25, n.neighbors = 100)
+assigned_clusters <- obj.i$SCT_snn_res.0.3_nn[!is.na(obj.i$SCT_snn_res.0.3_nn)]
+cell_ids <- names(assigned_clusters)
+obj.ctx$SCT_snn_res.0.3_nn <- NA
+obj.ctx$SCT_snn_res.0.3_nn[cell_ids] <- assigned_clusters
 
-ggsave("E:/Opossum_Paper/Figure S3/Opossum_Subclass_NN.svg", plot = p)
+```
+
+
+```{r}
+
+hcl_colors <- hcl.colors(20, palette = "Dynamic")
+subclasses.mouse <- c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b", "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac", "OD", "OPC", "Astro", "Endo", "Micro", "VLMC", "None")
+Idents(obj.i) <- "subclass_nn"
+levels(obj.i) <- subclasses.mouse
+colors <- as.character(colors_list[subclasses.mouse])
+colors[15:21] <- c(hcl_colors[5:9], "#fad102")
+p <- DimPlot(obj.i, cols = colors, label = TRUE, raster = FALSE) + NoLegend() + xlim(-15, 15) + ylim(-15, 15) + coord_equal()
+
+ggsave("E:/Opossum_Paper/Figure S3/Mouse_Subclass_NN.svg", plot = p)
 
 ```
 
@@ -189,6 +206,83 @@ PlotClusterImageDim(obj.ctx, ident = "subclass_nn", colors_list = colors_list)
 ```{r}
 
 colors <- hcl.colors(8, palette = "Dynamic")
+colors[2] <- "#6d6e71"
+
+```
+
+
+```{r}
+
+obj.ctx.glutamatergic <- subset(obj.ctx, subclass_nn %in% c("IT_A", "IT_B", "IT_C", "IT_D", "L5NP", "L5PT", "L6CT", "L6b"))
+Idents(obj.ctx.glutamatergic) <- "SCT_snn_res.0.2_nn"
+obj.ctx.glutamatergic.12 <- obj.ctx.glutamatergic[, obj.ctx.glutamatergic$SCT_snn_res.0.2_nn %in% c(1, 2)]
+ImageDimPlot(obj.ctx.glutamatergic.12, fov = "COL", size = 3, axes = TRUE)
+
+```
+
+
+```{r}
+
+obj.glutamatergic.IT <- subset(obj.glutamatergic, SCT_snn_res.0.2 %in% c(1, 2, 4, 5))
+Idents(obj.glutamatergic.IT) <- "SCT_snn_res.0.2"
+degs <- FindAllMarkers(obj.glutamatergic.IT, only.pos = T)
+degs$cluster <- as.character(degs$cluster)
+for (cl in unique(degs$cluster)) {
+degs_cl <- degs[degs$cluster == cl, ]
+print(degs_cl %>%
+  summarise(
+    frac_op = mean(grepl("^ENSMODG", gene))
+  ))
+}
+
+```
+
+
+```{r}
+
+# 2. Extract coordinates and subclass labels
+coords <- GetTissueCoordinates(obj.ctx.glutamatergic.12)
+df <- data.frame(
+  y = coords$x,
+  cluster = obj.ctx.glutamatergic.12$SCT_snn_res.0.2_nn
+)
+
+# 3. Filter and set subclass as a factor to enforce order
+df <- df %>%
+  filter(!is.na(cluster) & cluster != "None") %>%
+  mutate(cluster = factor(cluster, levels = c(1, 2)))
+
+# 4. Plot smooth density profiles
+ggplot(df, aes(x = y, color = cluster)) +
+  geom_density(
+    size = 2,
+    # adjust = 0.2         # Smoothing factor (increase if you want smoother lines)
+  ) +
+  scale_color_manual(values = colors[1:2]) +
+  scale_fill_manual(values = colors[1:2]) +
+  theme_minimal() +
+  theme(
+    legend.title = element_blank(),
+    aspect.ratio = 1
+  ) + coord_flip() + ylim(0, 0.0035)
+
+# ggsave("E:/Opossum_Paper/Figure 3/Mouse_Glutamatergic_Density.svg", plot = p)
+
+# # Outlined histograms without bin borders
+# p <- ggplot(df, aes(x = y, color = subclass)) +
+#   stat_bin(
+#     geom = "step",
+#     bins = 30,
+#     size = 1  # Adjust line thickness
+#   ) +
+#   scale_color_manual(values = colors) +
+#   theme_minimal() +
+#   theme(
+#     legend.title = element_blank(),
+#     aspect.ratio = 1
+#   ) + coord_flip()
+
+# ggsave("E:/Opossum_Paper/Figure 3/Mouse_Glutamatergic_Histogram.svg", plot = p)
 
 ```
 
@@ -198,21 +292,21 @@ colors <- hcl.colors(8, palette = "Dynamic")
 obj.ctx.glutamatergic <- subset(obj.ctx, subclass_nn %in% c("IT_A", "IT_B", "IT_C", "IT_D", "L5NP", "L5PT", "L6CT", "L6b"))
 Idents(obj.ctx.glutamatergic) <- "subclass_nn"
 levels(obj.ctx.glutamatergic) <- c("IT_A", "IT_B", "IT_C", "L5NP", "L5PT", "IT_D", "L6CT", "L6b")
-ImageDimPlot(obj.ctx.glutamatergic, fov = "COL", size = 3, cols = colors, axes = TRUE) + coord_fixed(ratio = 0.77) + scale_y_continuous(breaks = c(0, 400, 800, 1200, 1600))
+p <- ImageDimPlot(obj.ctx.glutamatergic, fov = "COL", size = 3, cols = colors, axes = TRUE)
 
-# ggsave("E:/Opossum_Paper/Figure 3/Opossum_Glutamatergic_Column.svg", plot = p, width = 7, height = 5)
+ggsave("E:/Opossum_Paper/Figure 3/Opossum_Glutamatergic_Column_UPD.svg", plot = p, width = 9, height = 5)
 
 ```
 
 
 ```{r, fig.width=7, fig.height=5}
 
-obj.ctx.IT <- subset(obj.ctx, subclass_nn %in% c("IT_A", "IT_B", "IT_C"))
+obj.ctx.IT <- subset(obj.ctx, subclass_nn %in% c("L2/3", "L4", "L5IT"))
 Idents(obj.ctx.IT) <- "subclass_nn"
-levels(obj.ctx.IT) <- c("IT_A", "IT_B", "IT_C")
-p <- ImageDimPlot(obj.ctx.IT, fov = "COL", size = 3, cols = colors, axes = TRUE) + coord_fixed(ratio = 0.77) + scale_y_continuous(breaks = c(0, 400, 800, 1200, 1600))
+levels(obj.ctx.IT) <- c("L2/3", "L4", "L5IT")
+p <- ImageDimPlot(obj.ctx.IT, fov = "COL", size = 3, cols = colors, axes = TRUE)
 
-ggsave("E:/Opossum_Paper/Figure 3/Opossum_IT_Column.svg", plot = p, width = 7, height = 5)
+ggsave("E:/Opossum_Paper/Figure 3/Mouse_IT_Column.svg", plot = p, width = 7, height = 5)
 
 ```
 
@@ -232,7 +326,7 @@ df <- df %>%
   mutate(subclass = factor(subclass, levels = c("IT_A", "IT_B", "IT_C", "L5NP", "L5PT", "IT_D", "L6CT", "L6b")))
 
 # 4. Plot smooth density profiles
-p <- ggplot(df, aes(x = y, color = subclass)) +
+ggplot(df, aes(x = y, color = subclass)) +
   geom_density(
     size = 2,
     # adjust = 0.2         # Smoothing factor (increase if you want smoother lines)
@@ -243,9 +337,9 @@ p <- ggplot(df, aes(x = y, color = subclass)) +
   theme(
     legend.title = element_blank(),
     aspect.ratio = 1
-  ) + coord_flip() + scale_x_continuous(breaks = c(0, 400, 800, 1200, 1600)) + ylim(0, 0.003)
+  ) + coord_flip() + ylim(0, 0.0035)
 
-ggsave("E:/Opossum_Paper/Figure 3/Opossum_Glutamatergic_Density.svg", plot = p)
+# ggsave("E:/Opossum_Paper/Figure 3/Mouse_Glutamatergic_Density.svg", plot = p)
 
 # # Outlined histograms without bin borders
 # p <- ggplot(df, aes(x = y, color = subclass)) +
@@ -259,21 +353,21 @@ ggsave("E:/Opossum_Paper/Figure 3/Opossum_Glutamatergic_Density.svg", plot = p)
 #   theme(
 #     legend.title = element_blank(),
 #     aspect.ratio = 1
-#   ) + coord_flip() + scale_x_continuous(breaks = c(0, 400, 800, 1200, 1600))
-# 
-# ggsave("E:/Opossum_Paper/Figure 3/Opossum_Glutamatergic_Histogram.svg", plot = p)
+#   ) + coord_flip()
+
+# ggsave("E:/Opossum_Paper/Figure 3/Mouse_Glutamatergic_Histogram.svg", plot = p)
 
 ```
 
 
 ```{r, fig.width=7, fig.height=5}
 
-obj.ctx.gabaergic <- subset(obj.ctx, subclass_nn %in% c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1"))
+obj.ctx.gabaergic <- subset(obj.ctx, subclass_nn %in% c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac"))
 Idents(obj.ctx.gabaergic) <- "subclass_nn"
-levels(obj.ctx.gabaergic) <- c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1")
-ImageDimPlot(obj.ctx.gabaergic, fov = "COL", size = 3, cols = colors[1:6], axes = TRUE) + coord_fixed(ratio = 0.77) + scale_y_continuous(breaks = c(0, 400, 800, 1200, 1600))
+levels(obj.ctx.gabaergic) <- c("Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")
+p <- ImageDimPlot(obj.ctx.gabaergic, fov = "COL", size = 3, cols = colors[1:6], axes = TRUE)
 
-# ggsave("E:/Opossum_Paper/Figure 3/Opossum_GABAergic_Column.svg", plot = p, width = 7, height = 5)
+# ggsave("E:/Opossum_Paper/Figure 3/Mouse_GABAergic_Column.svg", plot = p, width = 7, height = 5)
 
 ```
 
@@ -304,9 +398,9 @@ p <- ggplot(df, aes(x = y, color = subclass)) +
   theme(
     legend.title = element_blank(),
     aspect.ratio = 1
-  ) + coord_flip() + scale_x_continuous(breaks = c(0, 400, 800, 1200, 1600)) + ylim(0, 1.35e-03)
+  ) + coord_flip() + ylim(0, 1.35e-03)
 
-ggsave("E:/Opossum_Paper/Figure 3/Opossum_GABAergic_Density.svg", plot = p)
+ggsave("E:/Opossum_Paper/Figure 3/Mouse_GABAergic_Density.svg", plot = p)
 
 # # Outlined histograms without bin borders
 # p <- ggplot(df, aes(x = y, color = subclass)) +
@@ -320,21 +414,21 @@ ggsave("E:/Opossum_Paper/Figure 3/Opossum_GABAergic_Density.svg", plot = p)
 #   theme(
 #     legend.title = element_blank(),
 #     aspect.ratio = 1
-#   ) + coord_flip() + scale_x_continuous(breaks = c(0, 400, 800, 1200, 1600))
-# 
-# ggsave("E:/Opossum_Paper/Figure 3/Opossum_GABAergic_Histogram.svg", plot = p)
+#   ) + coord_flip()
+
+# ggsave("E:/Opossum_Paper/Figure 3/Mouse_GABAergic_Histogram.svg", plot = p)
 
 ```
 
 
 ```{r, fig.width=7, fig.height=5}
 
-obj.ctx.nonneuronal <- subset(obj.ctx, subclass_nn %in% c("OD", "OPC", "Micro", "Astro", "Endo"))
+obj.ctx.nonneuronal <- subset(obj.ctx, subclass_nn %in% c("OD", "OPC", "Micro", "Astro", "Endo", "VLMC"))
 Idents(obj.ctx.nonneuronal) <- "subclass_nn"
-levels(obj.ctx.nonneuronal) <- c("OD", "OPC", "Micro", "Astro", "Endo")
-p <- ImageDimPlot(obj.ctx.nonneuronal, fov = "COL", size = 3, cols = colors[1:6], axes = TRUE) + coord_fixed(ratio = 0.77) + scale_y_continuous(breaks = c(0, 400, 800, 1200, 1600))
+levels(obj.ctx.nonneuronal) <- c("OD", "OPC", "Micro", "Astro", "Endo", "VLMC")
+p <- ImageDimPlot(obj.ctx.nonneuronal, fov = "COL", size = 3, cols = colors[1:6], axes = TRUE)
 
-ggsave("E:/Opossum_Paper/Figure 3/Opossum_Nonneuronal_Column.svg", plot = p, width = 7, height = 5)
+ggsave("E:/Opossum_Paper/Figure 3/Mouse_Nonneuronal_Column.svg", plot = p, width = 7, height = 5)
 
 ```
 
@@ -365,9 +459,9 @@ p <- ggplot(df, aes(x = y, color = subclass)) +
   theme(
     legend.title = element_blank(),
     aspect.ratio = 1
-  ) + coord_flip() + scale_x_continuous(breaks = c(0, 400, 800, 1200, 1600))
+  ) + coord_flip() + ylim(0, 0.0016)
 
-ggsave("E:/Opossum_Paper/Figure S3/Opossum_Nonneuronal_Density.svg", plot = p)
+ggsave("E:/Opossum_Paper/Figure S3/Mouse_Nonneuronal_Density.svg", plot = p)
 
 # Outlined histograms without bin borders
 p <- ggplot(df, aes(x = y, color = subclass)) +
@@ -381,18 +475,18 @@ p <- ggplot(df, aes(x = y, color = subclass)) +
   theme(
     legend.title = element_blank(),
     aspect.ratio = 1
-  ) + coord_flip() + scale_x_continuous(breaks = c(0, 400, 800, 1200, 1600))
+  ) + coord_flip()
 
-ggsave("E:/Opossum_Paper/Figure S3/Opossum_Nonneuronal_Histogram.svg", plot = p)
+ggsave("E:/Opossum_Paper/Figure S3/Mouse_Nonneuronal_Histogram.svg", plot = p)
 
 ```
 
 
 ```{r}
 
-saveRDS(obj.ctx.glutamatergic, "E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_glutamatergic_COLs_EXT_integrated.rds")
-saveRDS(obj.ctx.gabaergic, "E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_gabaergic_COLs_EXT_integrated.rds")
-saveRDS(obj.ctx.nonneuronal, "E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_nonneuronal_COLs_EXT_integrated.rds")
+saveRDS(obj.ctx.glutamatergic, "E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_glutamatergic_COLs_EXT_integrated.rds")
+saveRDS(obj.ctx.gabaergic, "E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_gabaergic_COLs_EXT_integrated.rds")
+saveRDS(obj.ctx.nonneuronal, "E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_nonneuronal_COLs_EXT_integrated.rds")
 
 ```
 
@@ -404,13 +498,13 @@ library(dplyr)
 library(tibble)
 
 # Parameters
-target_subclass <- "Pvalb"
+target_subclass <- "OD"
 spatial_resolution <- 0.5  # microns per pixel
 area_per_pixel <- spatial_resolution ^ 2  # µm^2
 
 # Get metadata and spatial coords
-meta <- obj.ctx.gabaergic@meta.data
-coords <- GetTissueCoordinates(obj.ctx.gabaergic)  # returns a data frame with rownames = cell names
+meta <- obj.ctx.nonneuronal@meta.data
+coords <- GetTissueCoordinates(obj.ctx.nonneuronal)  # returns a data frame with rownames = cell names
 
 # Add spatial coords and subclass to metadata
 meta <- meta %>%
@@ -434,25 +528,3 @@ density_by_sample <- meta_subclass %>%
 print(density_by_sample)
 
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

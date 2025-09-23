@@ -1,0 +1,17 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+obj.ctx.mouse.orig <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLs_integrated.rds")
+obj.ctx.mouse.orig <- obj.ctx.mouse.orig[, obj.ctx.mouse.orig$method == "Stereo-seq"]
+
+obj.ctx.mouse.upd <- readRDS("E:/STOmics/obj_ctx_all_Mouse.rds")
+
+```
+
+
+
+

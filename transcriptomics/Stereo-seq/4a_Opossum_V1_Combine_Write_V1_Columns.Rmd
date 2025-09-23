@@ -14,7 +14,7 @@ objs.col <- list(COL1 = NA, COL2 = NA, COL3 = NA)
 
 for (n in 1:3) {
 
-  path <- paste0("E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_COL", n, "_EXT.rds")
+  path <- paste0("E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_COL", n, "_EXTEXT.rds")
   objs.col[[n]] <- readRDS(path)
   objs.col[[n]]$sample <- paste0("COL", n)
   
@@ -227,7 +227,7 @@ ImageDimPlot(obj.combined, fov = "COL", cols = "red", size = 1) + NoLegend()
 
 ```{r}
 
-saveRDS(obj.combined, "E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_COLS_EXT.rds")
+saveRDS(obj.combined, "E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_COLS_EXTEXT.rds")
 
 ```
 

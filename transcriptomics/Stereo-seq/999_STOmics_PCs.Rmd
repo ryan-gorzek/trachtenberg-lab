@@ -25,8 +25,15 @@ source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R"
 source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
 colors_list <- GetColors()
 
-obj.i.mouse <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLs_integrated.rds")
+obj.i.mouse <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLs_EXT_integrated.rds")
 obj.i.opossum <- readRDS("E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_COLs_EXT_integrated.rds")
+
+```
+
+
+```{r}
+
+DimPlot(obj.i.opossum, group.by = "SCT_snn_res.0.2", label = TRUE)
 
 ```
 
@@ -58,11 +65,11 @@ subclasses.mouse <- c("L2/3", "L4", "L5IT", "None")
 Idents(obj.i.mouse.IT) <- "subclass"
 DimPlot(obj.i.mouse.IT, reduction = "pca", dims = c(2, 3), cols = colors_list[subclasses.mouse], label = TRUE) + NoLegend() + xlim(-30, 25) + ylim(-20, 35) + coord_equal()
 df <- data.frame(cell = colnames(obj.i.mouse.IT), method = obj.i.mouse.IT$method, X = obj.i.mouse.IT@reductions$pca@cell.embeddings[, 2], Y = obj.i.mouse.IT@reductions$pca@cell.embeddings[, 3])
-write.csv(df, "E:/Opossum_Paper/Figure 3/mouse_triangle_integrated.csv", row.names = FALSE)
+# write.csv(df, "E:/Opossum_Paper/Figure 3/mouse_triangle_integrated.csv", row.names = FALSE)
 
 Idents(obj.i.mouse.IT) <- "subclass_nn"
-p <- DimPlot(obj.i.mouse.IT, reduction = "pca", dims = c(2, 3), cols = colors_list[subclasses.mouse], label = TRUE) + NoLegend() + xlim(-30, 25) + ylim(-20, 35) + coord_equal()
-ggsave("E:/Opossum_Paper/Figure 3/mouse_pc_gradient_methods.svg", plot = p)
+DimPlot(obj.i.mouse.IT, reduction = "pca", dims = c(2, 3), cols = colors_list[subclasses.mouse], label = TRUE) + NoLegend() + xlim(-30, 25) + ylim(-20, 35) + coord_equal()
+# ggsave("E:/Opossum_Paper/Figure 3/mouse_pc_gradient_methods.svg", plot = p)
 
 ```
 
@@ -73,11 +80,13 @@ subclasses.opossum <- c("IT_A", "IT_B", "IT_C", "None")
 Idents(obj.i.opossum.IT) <- "subclass"
 DimPlot(obj.i.opossum.IT, reduction = "pca", dims = c(2, 3), cols = colors_list[subclasses.opossum], label = TRUE) + NoLegend() + xlim(-30, 35) + ylim(-30, 35) + coord_equal()
 df <- data.frame(cell = colnames(obj.i.opossum.IT), method = obj.i.opossum.IT$method, X = obj.i.opossum.IT@reductions$pca@cell.embeddings[, 2], Y = obj.i.opossum.IT@reductions$pca@cell.embeddings[, 3])
-write.csv(df, "E:/Opossum_Paper/Figure 3/opossum_triangle_integrated.csv", row.names = FALSE)
+# write.csv(df, "E:/Opossum_Paper/Figure 3/opossum_triangle_integrated.csv", row.names = FALSE)
 
 Idents(obj.i.opossum.IT) <- "subclass_nn"
-p <- DimPlot(obj.i.opossum.IT, reduction = "pca", dims = c(2, 3), cols = colors_list[subclasses.opossum], label = TRUE) + NoLegend() + xlim(-30, 35) + ylim(-30, 35) + coord_equal()
-ggsave("E:/Opossum_Paper/Figure 3/opossum_pc_gradient_methods.svg", plot = p)
+DimPlot(obj.i.opossum.IT, reduction = "pca", dims = c(2, 3), cols = colors_list[subclasses.opossum], label = TRUE, pt.size = 2) + NoLegend() + xlim(-30, 35) + ylim(-30, 35) + coord_equal()
+Idents(obj.i.opossum.IT) <- "SCT_snn_res.0.2"
+DimPlot(obj.i.opossum.IT, reduction = "pca", dims = c(2, 3), label = TRUE, pt.size = 2) + NoLegend() + xlim(-30, 35) + ylim(-30, 35) + coord_equal()
+# ggsave("E:/Opossum_Paper/Figure 3/opossum_pc_gradient_methods.svg", plot = p)
 
 ```
 

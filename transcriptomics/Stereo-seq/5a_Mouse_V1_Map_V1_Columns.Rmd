@@ -1,6 +1,6 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output: 
 ---
 
 
@@ -52,7 +52,6 @@ p <- DimPlot(obj.ctx, group.by = "SCT_snn_res.1", label = TRUE) + NoLegend() + x
 ggsave("E:/Opossum_Paper/Figure S3/Mouse_Stereoseq_UMAP.svg", plot = p)
 
 ```
-
 
 ```{r}
 
@@ -160,7 +159,7 @@ ggsave("E:/Opossum_Paper/Figure S3/Mouse_Subclass_NN.svg", plot = p)
 
 ```{r}
 
-saveRDS(obj.i, "E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLs_integrated.rds")
+saveRDS(obj.i, "E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLs_EXT_integrated.rds")
 
 ```
 
@@ -168,6 +167,15 @@ saveRDS(obj.i, "E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLs_integrated.rds"
 ```{r}
 
 obj.i <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLs_integrated.rds")
+
+```
+
+
+```{r}
+
+obj.glutamatergic.l5it <- obj.glutamatergic[, obj.glutamatergic$subclass %in% c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b")]
+Idents(obj.glutamatergic.l5it) <- "subclass"
+degs <- FindMarkers(obj.glutamatergic.l5it, ident.1 = "L5IT")
 
 ```
 
@@ -195,6 +203,7 @@ PlotClusterImageDim(obj.ctx, ident = "subclass_nn", colors_list = colors_list)
 ```{r}
 
 colors <- hcl.colors(8, palette = "Dynamic")
+colors[2] <- "#6d6e71"
 
 ```
 
@@ -204,9 +213,9 @@ colors <- hcl.colors(8, palette = "Dynamic")
 obj.ctx.glutamatergic <- subset(obj.ctx, subclass_nn %in% c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b"))
 Idents(obj.ctx.glutamatergic) <- "subclass_nn"
 levels(obj.ctx.glutamatergic) <- c("L2/3", "L4", "L5IT", "L5NP", "L5PT", "L6IT", "L6CT", "L6b")
-ImageDimPlot(obj.ctx.glutamatergic, fov = "COL", size = 3, cols = colors, axes = TRUE)
+p <- ImageDimPlot(obj.ctx.glutamatergic, fov = "COL", size = 3, cols = colors, axes = TRUE)
 
-# ggsave("E:/Opossum_Paper/Figure 3/Mouse_Glutamatergic_Column.svg", plot = p, width = 7, height = 5)
+ggsave("E:/Opossum_Paper/Figure 3/Mouse_Glutamatergic_Column_UPD.svg", plot = p, width = 7, height = 5)
 
 ```
 
@@ -238,7 +247,7 @@ df <- df %>%
   mutate(subclass = factor(subclass, levels = c("L2/3", "L4", "L5IT", "L5NP", "L5PT", "L6IT", "L6CT", "L6b")))
 
 # 4. Plot smooth density profiles
-p <- ggplot(df, aes(x = y, color = subclass)) +
+ggplot(df, aes(x = y, color = subclass)) +
   geom_density(
     size = 2,
     # adjust = 0.2         # Smoothing factor (increase if you want smoother lines)
@@ -249,9 +258,9 @@ p <- ggplot(df, aes(x = y, color = subclass)) +
   theme(
     legend.title = element_blank(),
     aspect.ratio = 1
-  ) + coord_flip() + ylim(0, 0.003)
+  ) + coord_flip() + ylim(0, 0.0035)
 
-ggsave("E:/Opossum_Paper/Figure 3/Mouse_Glutamatergic_Density.svg", plot = p)
+# ggsave("E:/Opossum_Paper/Figure 3/Mouse_Glutamatergic_Density.svg", plot = p)
 
 # # Outlined histograms without bin borders
 # p <- ggplot(df, aes(x = y, color = subclass)) +
@@ -396,9 +405,9 @@ ggsave("E:/Opossum_Paper/Figure S3/Mouse_Nonneuronal_Histogram.svg", plot = p)
 
 ```{r}
 
-saveRDS(obj.ctx.glutamatergic, "E:/STOmics/seurat/Opossum/mouse_stereoseq_ctx_glutamatergic_COLs_EXT_integrated.rds")
-saveRDS(obj.ctx.gabaergic, "E:/STOmics/seurat/Opossum/mouse_stereoseq_ctx_gabaergic_COLs_EXT_integrated.rds")
-saveRDS(obj.ctx.nonneuronal, "E:/STOmics/seurat/Opossum/mouse_stereoseq_ctx_nonneuronal_COLs_EXT_integrated.rds")
+saveRDS(obj.ctx.glutamatergic, "E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_glutamatergic_COLs_EXT_integrated.rds")
+saveRDS(obj.ctx.gabaergic, "E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_gabaergic_COLs_EXT_integrated.rds")
+saveRDS(obj.ctx.nonneuronal, "E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_nonneuronal_COLs_EXT_integrated.rds")
 
 ```
 
@@ -440,23 +449,3 @@ density_by_sample <- meta_subclass %>%
 print(density_by_sample)
 
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -1,0 +1,56 @@
+---
+title: "R Notebook"
+output: 
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+colors_list <- GetColors()
+
+obj.ctx.opossum <- readRDS("E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_COLs_EXT_integrated.rds")
+obj.ctx.opossum <- obj.ctx.opossum[, obj.ctx.opossum$method == "Stereo-seq"]
+obj.ctx.mouse <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLs_integrated.rds")
+obj.ctx.mouse <- obj.ctx.mouse[, obj.ctx.mouse$method == "Stereo-seq"]
+
+```
+
+
+```{r}
+
+path <- "C:/Users/TLab/Downloads/"
+
+bc.opossum <- as.character(read.csv(paste0(path, "GSM9038419_Stereo-seq_Opossum_barcodes.tsv.gz"), sep = "\t", header = F)$V1)
+meta.opossum <- obj.ctx.opossum@meta.data[bc.opossum, ]
+rownames(meta.opossum) <- bc.opossum
+meta.opossum$orig.ident[!is.na(meta.opossum$orig.ident)] <- "Opossum_V1"
+meta.opossum <- meta.opossum[, c("orig.ident", "method", "nCount_RNA", "nFeature_RNA", "sample", "nCount_SCT", "nFeature_SCT", "SCT_snn_res.1", "seurat_clusters", 
+                                 "class_nn", "subclass_nn")]
+write.table(meta.opossum, paste0(path, "GSM9038419_Stereo-seq_Opossum_metadata.tsv"), sep = "\t")
+bc.mouse <- as.character(read.csv(paste0(path, "GSM9038420_Stereo-seq_Mouse_barcodes.tsv.gz"), sep = "\t", header = F)$V1)
+meta.mouse <- obj.ctx.mouse@meta.data[bc.mouse, ]
+rownames(meta.mouse) <- bc.mouse
+meta.mouse$orig.ident[!is.na(meta.mouse$orig.ident)] <- "Mouse_V1"
+meta.mouse <- meta.mouse[, c("orig.ident", "method", "nCount_RNA", "nFeature_RNA", "sample", "nCount_SCT", "nFeature_SCT", "SCT_snn_res.1", "seurat_clusters", 
+                             "class_nn", "subclass_nn")]
+write.table(meta.mouse, paste0(path, "GSM9038420_Stereo-seq_Mouse_metadata.tsv"), sep = "\t")
+
+```
+

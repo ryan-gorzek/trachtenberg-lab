@@ -1,0 +1,61 @@
+---
+title: "R Notebook"
+output: 
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+colors_list <- GetColors()
+
+obj.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
+obj.glutamatergic$class <- "glutamatergic"
+obj.gabaergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_gabaergic_processed.rds")
+obj.gabaergic$class <- "gabaergic"
+obj.nonneuronal <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_nonneuronal_processed.rds")
+
+obj <- merge(obj.glutamatergic, y = c(obj.gabaergic, obj.nonneuronal))
+
+```
+
+
+```{r}
+
+path <- "C:/Users/TLab/Downloads/"
+
+bc.3A <- paste0("OpossumV1-3A_", read.csv(paste0(path, "GSM9038449_snRNA-seq_OpossumV1-3A_barcodes.tsv.gz"), sep = "\t", header = F)$V1)
+meta.3A <- obj@meta.data[bc.3A, ]
+rownames(meta.3A) <- bc.3A
+write.csv(meta.3A, paste0(path, "GSM9038449_snRNA-seq_OpossumV1-3A_metadata.tsv"), sep = "\t")
+bc.3B <- paste0("OpossumV1-3B_", read.csv(paste0(path, "GSM9038449_snRNA-seq_OpossumV1-3B_barcodes.tsv.gz"), sep = "\t", header = F)$V1)
+meta.3B <- obj@meta.data[bc.3B, ]
+rownames(meta.3B) <- bc.3B
+write.csv(meta.3B, paste0(path, "GSM9038449_snRNA-seq_OpossumV1-3B_metadata.tsv"), sep = "\t")
+bc.4A <- paste0("OpossumV1-4A_", read.csv(paste0(path, "GSM9038450_snRNA-seq_OpossumV1-4A_barcodes.tsv.gz"), sep = "\t", header = F)$V1)
+meta.4A <- obj@meta.data[bc.4A, ]
+rownames(meta.4A) <- bc.4A
+write.csv(meta.4A, paste0(path, "GSM9038450_snRNA-seq_OpossumV1-4A_metadata.tsv"), sep = "\t")
+bc.4B <- paste0("OpossumV1-4B_", read.csv(paste0(path, "GSM9038450_snRNA-seq_OpossumV1-4B_barcodes.tsv.gz"), sep = "\t", header = F)$V1)
+meta.4B <- obj@meta.data[bc.4B, ]
+rownames(meta.4B) <- bc.4B
+write.csv(meta.4B, paste0(path, "GSM9038450_snRNA-seq_OpossumV1-4B_metadata.tsv"), sep = "\t")
+
+```
+

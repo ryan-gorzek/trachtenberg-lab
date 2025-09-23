@@ -1,6 +1,6 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output: 
 ---
 
 
@@ -49,7 +49,7 @@ fov <- CreateFOV(
   key = Key("FOV", quiet = TRUE)
 )
 
-section.cells <- read.csv("E:/STOmics/seurat/Mouse/selected_barcodes_section2.csv", header = FALSE)
+section.cells <- read.csv("E:/STOmics/seurat/Mouse/selected_barcodes_section1.csv", header = FALSE)
 
 fov <- fov[as.character(section.cells$V1)]
 
@@ -146,7 +146,7 @@ for (i in 1:ceiling(ncol(obj.section) / 1000)) {
   
 }
 
-saveRDS(df, "E:/STOmics/seurat/Mouse/mouse_section2_subclass_labels.rds")
+# saveRDS(df, "E:/STOmics/seurat/Mouse/mouse_section1_subclass_labels.rds")
 
 ```
 
@@ -160,8 +160,8 @@ DimPlot(obj.i, group.by = "subclass_nn")
 
 ```{r}
 
-# Read the data
-df <- readRDS("E:/STOmics/seurat/Mouse/mouse_section_subclass_labels.rds")
+# # Read the data
+# df <- readRDS("E:/STOmics/seurat/Mouse/mouse_section_subclass_labels.rds")
 
 # Assign to spatial Seurat object
 obj.section$subclass_nn <- NA
@@ -184,8 +184,3 @@ p <- ImageDimPlot(obj.section.plot, cols = colors, size = 2.5)
 ggsave("E:/Opossum_Paper/Figure 3/Mouse_Section.svg", plot = p)
 
 ```
-
-
-
-
-

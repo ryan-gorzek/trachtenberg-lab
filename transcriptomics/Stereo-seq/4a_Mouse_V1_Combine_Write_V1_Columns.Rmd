@@ -1,6 +1,6 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output: 
 ---
 
 ```{r}
@@ -14,7 +14,7 @@ objs.col <- list(COL1 = NA, COL2 = NA, COL3 = NA, COL4 = NA)
 
 for (n in 1:4) {
 
-  path <- paste0("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COL", n, ".rds")
+  path <- paste0("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COL", n, "_EXT.rds")
   objs.col[[n]] <- readRDS(path)
   objs.col[[n]]$sample <- paste0("COL", n)
   
@@ -112,9 +112,9 @@ obj.combined.plot <- subset(obj.combined.plot, subclass %in% c("L2/3", "L4", "L5
 Idents(obj.combined.plot) <- "subclass"
 levels(obj.combined.plot) <- c("L2/3", "L4", "L5IT", "L5NP", "L5PT", "L6IT", "L6CT", "L6b")
 
-p <- ImageDimPlot(obj.combined.plot, fov = "COL", size = 1, cols = colors) + NoLegend()
+ImageDimPlot(obj.combined.plot, fov = "COL", size = 1, cols = colors) + NoLegend()
 
-ggsave("E:/Opossum_Paper/Figure S3/Mouse_V1_Columns.svg", plot = p)
+# ggsave("E:/Opossum_Paper/Figure S3/Mouse_V1_Columns.svg", plot = p)
 
 ```
 
@@ -126,7 +126,7 @@ cell_mask <- Reduce(intersect, list(WhichCells(obj.combined, expression = nFeatu
   
 gene_mask <- rownames(obj.combined)[Matrix::rowSums(obj.combined[["RNA"]]@counts > 0) > 8]
 
-obj.combined <- subset(obj.combined, features = gene_mask, cells = cell_mask)
+obj.combined <- subset(obj.combined, features = gene_mask) # cells = cell_mask
 
 ```
 
@@ -239,7 +239,7 @@ cell_mask <- Reduce(intersect, list(WhichCells(obj.combined, expression = nFeatu
   
 gene_mask <- rownames(obj.combined)[Matrix::rowSums(obj.combined[["RNA"]]@counts > 0) > 8]
 
-obj.combined <- subset(obj.combined, features = gene_mask, cells = cell_mask)
+obj.combined <- subset(obj.combined, features = gene_mask) # , cells = cell_mask
 
 ```
 
@@ -253,7 +253,7 @@ ImageDimPlot(obj.combined, fov = "COL", cols = "red", size = 1) + NoLegend()
 
 ```{r}
 
-saveRDS(obj.combined, "E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLS.rds")
+saveRDS(obj.combined, "E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLS_EXT_nofilt.rds")
 
 ```
 

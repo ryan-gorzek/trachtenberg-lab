@@ -1,0 +1,285 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+colors_list <- GetColors()
+
+obj.mouse.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+obj.mouse.glutamatergic$class <- "glutamatergic"
+obj.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
+obj.opossum.glutamatergic$class <- "glutamatergic"
+
+```
+
+
+```{r}
+
+obj.mouse.IT <- subset(obj.mouse.glutamatergic, subclass %in% c("L2/3", "L4", "L5IT"))
+obj.opossum.IT <- subset(obj.opossum.glutamatergic, SCT_snn_res.0.2 %in% c(1, 2, 4, 5))
+Idents(obj.opossum.IT) <- "SCT_snn_res.0.2"
+degs <- FindAllMarkers(obj.opossum.IT, only.pos = T)
+degs$cluster <- as.character(degs$cluster)
+for (cl in unique(degs$cluster)) {
+degs_cl <- degs[degs$cluster == cl, ]
+print(degs_cl %>%
+  summarise(
+    frac_op = mean(grepl("^ENSMODG", gene))
+  ))
+}
+
+```
+
+
+```{r}
+
+# Correlate class-level gene-expression patterns across Seurat objects using HVGs
+# - Computes class-wise average expression (per class = mean of log-normalized "data" slot)
+# - Restricts genes to HVGs (union across objects by default, or user-supplied)
+# - Returns a correlation matrix of classes vs classes
+# Dependencies: Seurat (v4+), dplyr, Matrix, purrr, tibble, tidyr
+
+suppressPackageStartupMessages({
+  library(Seurat)
+  library(dplyr)
+  library(Matrix)
+  library(purrr)
+  library(tibble)
+  library(tidyr)
+})
+
+# avg expression per class from a Seurat object
+.avg_expr_by_group <- function(obj, group_col, genes = NULL, assay = NULL) {
+  if (is.null(assay)) assay <- DefaultAssay(obj)
+  mat <- GetAssayData(obj, assay = assay, slot = "data")  # log-normalized recommended
+  md  <- obj@meta.data
+  stopifnot(group_col %in% colnames(md))
+  groups <- droplevels(factor(md[[group_col]]))
+  if (!is.null(genes)) {
+    genes <- intersect(genes, rownames(mat))
+    mat <- mat[genes, , drop = FALSE]
+  }
+  # fast group means: split column indices by group, then rowMeans
+  idx_list <- split(seq_len(ncol(mat)), groups)
+  means_list <- lapply(names(idx_list), function(g) {
+    idx <- idx_list[[g]]
+    if (length(idx) == 1L) {
+      as.numeric(mat[, idx])
+    } else {
+      Matrix::rowMeans(mat[, idx, drop = FALSE])
+    }
+  })
+  M <- do.call(cbind, means_list)
+  colnames(M) <- names(idx_list)
+  M
+}
+
+# main: correlate classes across 1+ Seurat objects
+CorrelateClassesHVG <- function(
+  seurat_list,
+  group_cols,                # named character vector: names(seurat_list) -> group column in that object
+  class_keep = NULL,         # optional named list: names(seurat_list) -> character vector of classes to keep
+  hvgs = NULL,               # optional character vector of genes to use; if NULL, union of VariableFeatures across objs
+  hvgs_n = 2000,             # if hvgs is NULL and some objects lack VariableFeatures, compute with FindVariableFeatures
+  assay = NULL,              # per-object default assay; if NULL uses each object's DefaultAssay
+  cor_method = c("pearson", "spearman"),
+  scale_by_gene = FALSE      # if TRUE, z-score genes (rows) before correlation
+) {
+  cor_method <- match.arg(cor_method)
+
+  # ensure list
+  if (inherits(seurat_list, "Seurat")) {
+    seurat_list <- list(obj1 = seurat_list)
+    if (length(group_cols) == 1 && is.null(names(group_cols))) {
+      names(group_cols) <- "obj1"
+    }
+  }
+  stopifnot(is.list(seurat_list), length(seurat_list) >= 1)
+
+  # collect HVGs if not provided
+  if (is.null(hvgs)) {
+    hvgs_vec <- character()
+    for (nm in names(seurat_list)) {
+      obj <- seurat_list[[nm]]
+      v <- VariableFeatures(obj)
+      if (length(v) == 0L) {
+        # compute HVGs if absent
+        obj <- suppressWarnings(FindVariableFeatures(obj, nfeatures = hvgs_n))
+        seurat_list[[nm]] <- obj
+        v <- VariableFeatures(obj)
+      }
+      hvgs_vec <- union(hvgs_vec, v)
+    }
+    hvgs <- hvgs_vec
+  }
+
+  # build class-average matrices for each object
+  mats <- list()
+  class_labels <- character()
+  for (nm in names(seurat_list)) {
+    obj <- seurat_list[[nm]]
+    gcol <- group_cols[[nm]]
+    stopifnot(!is.null(gcol), gcol %in% colnames(obj@meta.data))
+
+    # filter to kept classes if provided
+    if (!is.null(class_keep) && !is.null(class_keep[[nm]])) {
+      keep <- intersect(levels(factor(obj@meta.data[[gcol]])), class_keep[[nm]])
+      cells_keep <- rownames(obj@meta.data)[obj@meta.data[[gcol]] %in% keep]
+      obj <- subset(obj, cells = cells_keep)
+    }
+
+    M <- .avg_expr_by_group(obj, group_col = gcol, genes = hvgs, assay = assay)
+    # prefix columns by object name to keep identities distinct
+    colnames(M) <- paste0(nm, "::", colnames(M))
+    mats[[nm]] <- M
+    class_labels <- c(class_labels, colnames(M))
+  }
+
+  # intersect genes present across all matrices
+  common_genes <- Reduce(intersect, lapply(mats, rownames))
+  if (length(common_genes) < 10) stop("Fewer than 10 shared genes across inputs; check gene IDs or assays.")
+  mats <- lapply(mats, function(M) M[common_genes, , drop = FALSE])
+
+  # combine gene x class matrix
+  E <- do.call(cbind, mats)  # genes x classes
+  if (scale_by_gene) {
+    # z-score per gene (row)
+    E <- t(scale(t(E)))
+    # handle constant rows (NA after scaling)
+    E[is.na(E)] <- 0
+  }
+
+  # correlation across classes (columns) using genes as observations
+  C <- suppressWarnings(cor(E, method = cor_method, use = "pairwise.complete.obs"))
+  # order rows/cols alphabetically for determinism
+  C <- C[order(rownames(C)), order(colnames(C)), drop = FALSE]
+
+  list(
+    cor_mat = C,                    # class-by-class correlation matrix
+    genes_used = common_genes,      # HVGs actually used (intersection across objects)
+    class_order = colnames(C)
+  )
+}
+
+# ---------------------------
+# Minimal example (replace objects/metadata with your own):
+# Assume:
+#   obj.mouse with meta$subclass including "L2/3","L4"
+#   obj.opossum with meta$subclass including "IT_A","IT_B"
+# Both objects are already NormalizeData()'d and (optionally) FindVariableFeatures()'d.
+
+# Example usage:
+res <- CorrelateClassesHVG(
+  seurat_list = list(mouse = obj.mouse.IT, opossum = obj.opossum.IT),
+  group_cols  = c(mouse = "subclass", opossum = "SCT_snn_res.0.2"),
+  class_keep  = list(mouse = c("L2/3", "L4", "L5IT"), opossum = c("1", "2", "4", "5")),
+  hvgs        = NULL,           # use union of VariableFeatures across inputs
+  hvgs_n      = 3000,           # if HVGs need to be computed
+  cor_method  = "pearson",
+  scale_by_gene = TRUE          # recommended when comparing across species
+)
+res$cor_mat  # matrix; rows/cols are "object::class", e.g., "mouse::L2/3" vs "opossum::IT_A"
+
+pheatmap::pheatmap(res$cor_mat, clustering_method = "average", border_color = NA)
+
+# # Helper to order labels by class_keep if you used it
+# .order_by_keep <- function(cnames, species, keep_vec = NULL) {
+#   lab <- grep(paste0("^", species, "::"), cnames, value = TRUE)
+#   if (is.null(keep_vec)) return(lab)
+#   desired <- paste0(species, "::", keep_vec)
+#   intersect(desired, lab)  # keeps only those present, in given order
+# }
+# 
+# # Extract cross-species block
+# mouse_labs   <- .order_by_keep(colnames(res$cor_mat), "mouse",   keep_vec = c("L2/3","L4","L5IT"))
+# opossum_labs <- .order_by_keep(colnames(res$cor_mat), "opossum", keep_vec = c("1","2","4","5"))
+# 
+# cross_mat <- res$cor_mat[mouse_labs, opossum_labs, drop = FALSE]
+# 
+# # Heatmap
+# pheatmap::pheatmap(
+#   cross_mat,
+#   clustering_distance_rows = "euclidean",
+#   clustering_distance_cols = "euclidean",
+#   clustering_method = "average",
+#   display_numbers = FALSE,
+#   border_color = NA,
+#   main = "Mouse (rows) vs Opossum (cols): HVG expression pattern correlations"
+# )
+
+```
+
+
+```{r}
+
+# Example usage:
+res <- CorrelateClassesHVG(
+  seurat_list = list(mouse = obj.mouse.IT, opossum = obj.opossum.IT),
+  group_cols  = c(mouse = "subclass", opossum = "subclass"),
+  class_keep  = list(mouse = c("L2/3", "L4", "L5IT"), opossum = c("IT_A", "IT_B", "IT_C")),
+  hvgs        = NULL,           # use union of VariableFeatures across inputs
+  hvgs_n      = 3000,           # if HVGs need to be computed
+  cor_method  = "pearson",
+  scale_by_gene = TRUE          # recommended when comparing across species
+)
+res$cor_mat  # matrix; rows/cols are "object::class", e.g., "mouse::L2/3" vs "opossum::IT_A"
+
+pheatmap::pheatmap(res$cor_mat, clustering_method = "average", border_color = NA)
+
+# Helper to order labels by class_keep if you used it
+.order_by_keep <- function(cnames, species, keep_vec = NULL) {
+  lab <- grep(paste0("^", species, "::"), cnames, value = TRUE)
+  if (is.null(keep_vec)) return(lab)
+  desired <- paste0(species, "::", keep_vec)
+  intersect(desired, lab)  # keeps only those present, in given order
+}
+
+# Extract cross-species block
+mouse_labs   <- .order_by_keep(colnames(res$cor_mat), "mouse",   keep_vec = c("L2/3", "L4", "L5IT"))
+opossum_labs <- .order_by_keep(colnames(res$cor_mat), "opossum", keep_vec = c("IT_A", "IT_B", "IT_C"))
+
+cross_mat <- res$cor_mat[mouse_labs, opossum_labs, drop = FALSE]
+
+# Heatmap
+pheatmap::pheatmap(
+  cross_mat,
+  clustering_distance_rows = "euclidean",
+  clustering_distance_cols = "euclidean",
+  clustering_method = "average",
+  display_numbers = FALSE,
+  border_color = NA,
+  main = "Mouse (rows) vs Opossum (cols): HVG expression pattern correlations"
+)
+
+```
+
+
+
+
+
+
+
+
+
+
+

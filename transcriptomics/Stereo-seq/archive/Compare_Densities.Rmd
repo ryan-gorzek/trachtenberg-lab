@@ -1,6 +1,6 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output: 
 ---
 
 
@@ -26,13 +26,7 @@ source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R"
 source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
 colors_list <- GetColors()
 
-# obj.ctx.all.mouse <- readRDS("E:/STOmics/Mouse_obj_ctx_all_filt_ext.rds")
-# subclasses <-  c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b")
-# obj.ctx.glutamatergic.mouse <- subset(obj.ctx.all.mouse, subclass_nn %in% subclasses)
-obj.ctx.glutamatergic.mouse <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLs_EXT_integrated.rds")
-# obj.ctx.all.opossum <- readRDS("E:/STOmics/Opossum_obj_ctx_all_filt_ext.rds")
-# subclasses <-  c("IT_A", "IT_B", "IT_C", "IT_D", "L5NP", "L5PT", "L6CT", "L6b")
-# obj.ctx.glutamatergic.opossum <- subset(obj.ctx.all.opossum, subclass_nn %in% subclasses)
+obj.ctx.glutamatergic.mouse <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_glutamatergic_COLs_EXT_integrated.rds")
 obj.ctx.glutamatergic.opossum <- readRDS("E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_glutamatergic_COLs_EXT_integrated.rds")
 
 ```
@@ -59,68 +53,6 @@ ImageDimPlot(obj.ctx.glutamatergic.mouse, fov = "COL", size = 3, cols = colors, 
 Idents(obj.ctx.glutamatergic.opossum) <- "subclass_nn"
 levels(obj.ctx.glutamatergic.opossum) <- c("IT_A", "IT_B", "IT_C", "L5NP", "L5PT", "IT_D", "L6CT", "L6b")
 ImageDimPlot(obj.ctx.glutamatergic.opossum, fov = "COL", size = 3, cols = colors, axes = TRUE)
-
-```
-
-
-```{r}
-
-# 2. Extract coordinates and subclass labels
-coords <- GetTissueCoordinates(obj.ctx.glutamatergic.mouse)
-df <- data.frame(
-  y = coords$x,
-  subclass = obj.ctx.glutamatergic.mouse$subclass_nn
-)
-
-# 3. Filter and set subclass as a factor to enforce order
-df <- df %>%
-  filter(!is.na(subclass) & subclass != "None") %>%
-  mutate(subclass = factor(subclass, levels = c("L2/3", "L4", "L5IT", "L5NP", "L5PT", "L6IT", "L6CT", "L6b")))
-
-# 4. Plot smooth density profiles
-ggplot(df, aes(x = y, color = subclass)) +
-  geom_density(
-    size = 2, 
-    # adjust = 0.2         # Smoothing factor (increase if you want smoother lines)
-  ) +
-  scale_color_manual(values = colors) +
-  scale_fill_manual(values = colors) +
-  theme_minimal() +
-  theme(
-    legend.title = element_blank(),
-    aspect.ratio = 1
-  ) + coord_flip() + ylim(0, 0.003)
-
-```
-
-
-```{r}
-
-# 2. Extract coordinates and subclass labels
-coords <- GetTissueCoordinates(obj.ctx.glutamatergic.opossum)
-df <- data.frame(
-  y = coords$x,
-  subclass = obj.ctx.glutamatergic.opossum$subclass_nn
-)
-
-# 3. Filter and set subclass as a factor to enforce order
-df <- df %>%
-  filter(!is.na(subclass) & subclass != "None") %>%
-  mutate(subclass = factor(subclass, levels = c("IT_A", "IT_B", "IT_C", "L5NP", "L5PT", "IT_D", "L6CT", "L6b")))
-
-# 4. Plot smooth density profiles
-ggplot(df, aes(x = y, color = subclass)) +
-  geom_density(
-    size = 2, 
-    # adjust = 0.2         # Smoothing factor (increase if you want smoother lines)
-  ) +
-  scale_color_manual(values = colors) +
-  scale_fill_manual(values = colors) +
-  theme_minimal() +
-  theme(
-    legend.title = element_blank(),
-    aspect.ratio = 1
-  ) + coord_flip() + ylim(0, 0.003)
 
 ```
 
@@ -160,7 +92,7 @@ for (s in comps) {
 }
 
 # Scatterplot comparing 1D Gini indices
-ggplot(results_df, aes(x = Gini_Mouse, y = Gini_Opossum)) +
+p <- ggplot(results_df, aes(x = Gini_Mouse, y = Gini_Opossum)) +
   geom_point(size = 4, color = "steelblue") +
   geom_text(aes(label = Subclass_Pair), vjust = -1, size = 3) +
   geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray") +
@@ -168,8 +100,8 @@ ggplot(results_df, aes(x = Gini_Mouse, y = Gini_Opossum)) +
        title = "Spatial Gini Index Comparison (Mouse vs Opossum, X-axis only)") +
   theme_minimal() + xlim(0.4, 0.65) + ylim(0.4, 0.65) + coord_equal()
 
-# print(p)
-# ggsave("E:/Opossum_Paper/Figure 3/Gini_Index.svg", plot = p)
+print(p)
+ggsave("E:/Opossum_Paper/Figure 3/Gini_Index.svg", plot = p)
 
 ```
 

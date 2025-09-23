@@ -1,0 +1,247 @@
+---
+title: "R Notebook"
+output: 
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+colors_list <- GetColors()
+
+obj.glutamatergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_glutamatergic_processed.rds")
+obj.glutamatergic$class <- "glutamatergic"
+obj.gabaergic <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_gabaergic_processed.rds")
+obj.gabaergic$class <- "gabaergic"
+obj.nonneuronal <- readRDS("E:/Transcriptomics_V1/Mouse/seurat/mouse_v1_P38_nonneuronal_processed.rds")
+
+obj <- merge(obj.glutamatergic, y = c(obj.gabaergic, obj.nonneuronal))
+
+obj.ctx <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLS.rds") # _nofilt
+
+```
+
+
+```{r}
+
+obj.ctx <- ClusterSCT(obj.ctx, 1)
+
+```
+
+
+```{r}
+
+p <- DimPlot(obj.ctx, group.by = "SCT_snn_res.1", label = TRUE) + NoLegend() + xlim(-6, 6) + ylim(-6, 6) + coord_equal()
+ggsave("E:/Opossum_Paper/Figure S3/Mouse_Stereoseq_UMAP.svg", plot = p)
+
+```
+
+
+```{r}
+
+obj$method <- "snRNA-seq"
+obj.ctx$method <- "Stereo-seq"
+
+```
+
+
+```{r}
+
+obj.i <- IntegrateObjects(obj, obj.ctx, resolutions = c(0.5), subsample = FALSE)
+obj.i <- LabelByNearestNeighbors(obj.i, "class", fraction = 0.05, n.neighbors = 500)
+
+```
+
+
+```{r}
+
+DimPlot(obj.i, group.by = "class_nn", label = TRUE) + NoLegend() + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.ctx.rd1 <- obj.i[, obj.i$class_nn %in% c("glutamatergic", "gabaergic", "nonneuronal")]
+obj.ctx <- obj.i[, obj.i$class_nn %in% c("None")]
+
+```
+
+
+```{r}
+
+obj.i <- IntegrateObjects(obj, obj.ctx, resolutions = c(0.5), subsample = FALSE)
+obj.i <- LabelByNearestNeighbors(obj.i, "class", fraction = 0.05, n.neighbors = 500)
+
+```
+
+
+```{r}
+
+DimPlot(obj.i, group.by = "class_nn", label = TRUE) + NoLegend() + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.ctx.rd2 <- obj.i[, obj.i$class_nn %in% c("glutamatergic", "gabaergic", "nonneuronal")]
+
+```
+
+
+```{r}
+
+obj.i.rd1 <- IntegrateObjects(obj, obj.ctx.rd1, resolutions = c(0.5), subsample = FALSE)
+obj.i.rd1 <- LabelByNearestNeighbors(obj.i.rd1, "subclass", fraction = 0.25, n.neighbors = 100)
+
+```
+
+
+```{r}
+
+DimPlot(obj.i.rd1, group.by = "class_nn", label = TRUE) + NoLegend() + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
+DimPlot(obj.i.rd1, group.by = "subclass_nn", label = TRUE) + NoLegend() + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.ctx.rd1.glutamatergic <- obj.ctx.rd1[, obj.ctx.rd1$class_nn == "glutamatergic"]
+obj.ctx.rd1.glutamatergic <- IntegrateObjects(obj.glutamatergic, obj.ctx.rd1.glutamatergic, resolutions = c(0.5), subsample = FALSE)
+obj.ctx.rd1.glutamatergic <- LabelByNearestNeighbors(obj.ctx.rd1.glutamatergic, "subclass", fraction = 0.25, n.neighbors = 250)
+obj.ctx.rd1.gabaergic <- obj.ctx.rd1[, obj.ctx.rd1$class_nn == "gabaergic"]
+obj.ctx.rd1.gabaergic <- IntegrateObjects(obj.gabaergic, obj.ctx.rd1.gabaergic, resolutions = c(0.5), subsample = FALSE)
+obj.ctx.rd1.gabaergic <- LabelByNearestNeighbors(obj.ctx.rd1.gabaergic, "subclass", fraction = 0.25, n.neighbors = 150)
+obj.ctx.rd1.nonneuronal <- obj.ctx.rd1[, obj.ctx.rd1$class_nn == "nonneuronal"]
+obj.ctx.rd1.nonneuronal <- IntegrateObjects(obj.nonneuronal, obj.ctx.rd1.nonneuronal, resolutions = c(0.5), subsample = FALSE)
+obj.ctx.rd1.nonneuronal <- LabelByNearestNeighbors(obj.ctx.rd1.nonneuronal, "subclass", fraction = 0.25, n.neighbors = 250)
+
+```
+
+
+```{r}
+
+DimPlot(obj.ctx.rd1.glutamatergic, group.by = "subclass_nn", label = TRUE) + NoLegend() + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
+DimPlot(obj.ctx.rd1.gabaergic, group.by = "subclass_nn", label = TRUE) + NoLegend() + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
+DimPlot(obj.ctx.rd1.nonneuronal, group.by = "subclass_nn", label = TRUE) + NoLegend() + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.ctx.rd2.glutamatergic <- obj.ctx.rd2[, obj.ctx.rd2$class_nn == "glutamatergic"]
+obj.ctx.rd2.glutamatergic <- IntegrateObjects(obj.glutamatergic, obj.ctx.rd2.glutamatergic, resolutions = c(0.5), subsample = FALSE)
+obj.ctx.rd2.glutamatergic <- LabelByNearestNeighbors(obj.ctx.rd2.glutamatergic, "subclass", fraction = 0.25, n.neighbors = 250)
+obj.ctx.rd2.gabaergic <- obj.ctx.rd2[, obj.ctx.rd2$class_nn == "gabaergic"]
+obj.ctx.rd2.gabaergic <- IntegrateObjects(obj.gabaergic, obj.ctx.rd2.gabaergic, resolutions = c(0.5), subsample = FALSE)
+obj.ctx.rd2.gabaergic <- LabelByNearestNeighbors(obj.ctx.rd2.gabaergic, "subclass", fraction = 0.25, n.neighbors = 150)
+obj.ctx.rd2.nonneuronal <- obj.ctx.rd2[, obj.ctx.rd2$class_nn == "nonneuronal"]
+obj.ctx.rd2.nonneuronal <- IntegrateObjects(obj.nonneuronal, obj.ctx.rd2.nonneuronal, resolutions = c(0.5), subsample = FALSE)
+obj.ctx.rd2.nonneuronal <- LabelByNearestNeighbors(obj.ctx.rd2.nonneuronal, "subclass", fraction = 0.25, n.neighbors = 250)
+
+```
+
+
+```{r}
+
+DimPlot(obj.ctx.rd2.glutamatergic, group.by = "subclass_nn", label = TRUE) + NoLegend() + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
+DimPlot(obj.ctx.rd2.gabaergic, group.by = "subclass_nn", label = TRUE) + NoLegend() + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
+DimPlot(obj.ctx.rd2.nonneuronal, group.by = "subclass_nn", label = TRUE) + NoLegend() + xlim(-12, 12) + ylim(-12, 12) + coord_equal()
+
+```
+
+
+```{r}
+
+obj.ctx.rd1 <- merge(obj.ctx.rd1.glutamatergic, y = c(obj.ctx.rd1.gabaergic, obj.ctx.rd1.nonneuronal))
+obj.ctx.rd2 <- merge(obj.ctx.rd2.glutamatergic, y = c(obj.ctx.rd2.gabaergic, obj.ctx.rd2.nonneuronal))
+
+```
+
+
+```{r}
+
+
+obj.ctx.all <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLS.rds")
+obj.ctx.all$subclass_nn <- NA
+# Round 1
+assigned_subclasses <- obj.ctx.rd1$subclass_nn[!is.na(obj.ctx.rd1$subclass_nn)]
+cell_ids <- names(assigned_subclasses)
+obj.ctx.all$subclass_nn[cell_ids] <- assigned_subclasses
+# Round 2
+assigned_subclasses <- obj.ctx.rd2$subclass_nn[!is.na(obj.ctx.rd2$subclass_nn)]
+cell_ids <- names(assigned_subclasses)
+obj.ctx.all$subclass_nn[cell_ids] <- assigned_subclasses
+
+```
+
+
+```{r}
+
+saveRDS(obj.ctx.all, "E:/STOmics/Mouse_obj_ctx_all_filt_noext.rds")
+
+```
+
+
+```{r}
+
+idx <- 8
+
+subclasses <-  c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b")
+colors <- hcl.colors(8, palette = "Dynamic")
+
+obj.ctx.glutamatergic <- subset(obj.ctx.all, subclass_nn %in% subclasses[idx])
+Idents(obj.ctx.glutamatergic) <- "subclass_nn"
+levels(obj.ctx.glutamatergic) <- subclasses[idx]
+ImageDimPlot(obj.ctx.glutamatergic, fov = "COL", size = 3, cols = colors[idx], axes = TRUE)
+
+```
+
+
+```{r}
+
+idx <- 3
+
+subclasses <-  c("Astro", "Micro", "OD", "OPC", "Endo", "VLMC")
+colors <- hcl.colors(6, palette = "Dynamic")
+
+obj.ctx.nonneuronal <- subset(obj.ctx.all, subclass_nn %in% subclasses[idx])
+Idents(obj.ctx.nonneuronal) <- "subclass_nn"
+levels(obj.ctx.nonneuronal) <- subclasses[idx]
+ImageDimPlot(obj.ctx.nonneuronal, fov = "COL", size = 3, cols = colors[idx], axes = TRUE)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
