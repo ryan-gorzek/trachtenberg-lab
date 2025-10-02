@@ -27,9 +27,9 @@ colors_list <- GetColors()
 
 obj.mouse <- list("glutamatergic" = NA, "gabaergic" = NA, "nonneuronal" = NA)
 
-obj.mouse$glutamatergic <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_glutamatergic_COLs_EXT_integrated.rds")
-obj.mouse$gabaergic <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_gabaergic_COLs_EXT_integrated.rds")
-obj.mouse$nonneuronal <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_nonneuronal_COLs_EXT_integrated.rds")
+obj.mouse$glutamatergic <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_glutamatergic_COLs_integrated.rds")
+obj.mouse$gabaergic <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_gabaergic_COLs_integrated.rds")
+obj.mouse$nonneuronal <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_nonneuronal_COLs_integrated.rds")
 
 obj.opossum <- list("glutamatergic" = NA, "gabaergic" = NA, "nonneuronal" = NA)
 
@@ -98,11 +98,11 @@ ImageFeaturePlotOrdered <- function(obj, feature, max.cutoff = 1, ratio = 1, siz
 
 ```{r}
 
-# Cux2, Rorb, Kcnh1, Gria4, Foxp2, Fezf2, Tle4, Sox5
+# Cux2, Rorb, Kcnh1, Gria4, Foxp2, Deptor, Fezf2, Sox5
 
-feature <- "Cntnap5a"
-ImageFeaturePlotOrdered(obj.mouse$glutamatergic, feature, max.cutoff = 1, ratio = 1.5, yticks = c(0, 500, 1000, 1500))
-ImageFeaturePlotOrdered(obj.opossum$glutamatergic, feature, max.cutoff = 1, ratio = 0.77 * 1.5, yticks = c(0, 400, 800, 1200, 1600))
+feature <- "Sox5"
+ImageFeaturePlotOrdered(obj.mouse$glutamatergic, feature, max.cutoff = 2, ratio = 1.5, yticks = c(0, 500, 1000, 1500))
+ImageFeaturePlotOrdered(obj.opossum$glutamatergic, feature, max.cutoff = 2, ratio = 0.77 * 1.5, yticks = c(0, 400, 800, 1200, 1600))
 
 # ggsave(paste0("E:/Opossum_Paper/Figure 3/Mouse_Glutamatergic_", feature, ".svg"), plot = pm, width = 7, height = 5)
 # ggsave(paste0("E:/Opossum_Paper/Figure 3/Opossum_Glutamatergic_", feature, ".svg"), plot = po, width = 7, height = 5)

@@ -35,18 +35,8 @@ obj.opossum.glutamatergic$class <- "glutamatergic"
 
 ```{r}
 
-obj.mouse.IT <- subset(obj.mouse.glutamatergic, subclass %in% c("L2/3", "L4", "L5IT"))
-obj.opossum.IT <- subset(obj.opossum.glutamatergic, SCT_snn_res.0.2 %in% c(1, 2, 4, 5))
-Idents(obj.opossum.IT) <- "SCT_snn_res.0.2"
-degs <- FindAllMarkers(obj.opossum.IT, only.pos = T)
-degs$cluster <- as.character(degs$cluster)
-for (cl in unique(degs$cluster)) {
-degs_cl <- degs[degs$cluster == cl, ]
-print(degs_cl %>%
-  summarise(
-    frac_op = mean(grepl("^ENSMODG", gene))
-  ))
-}
+obj.mouse.IT <- subset(obj.mouse.glutamatergic, subclass %in% c("L2/3", "L4", "L5IT", "L6IT"))
+obj.opossum.IT <- subset(obj.opossum.glutamatergic, subclass %in% c("IT_A", "IT_B", "IT_C", "IT_D"))
 
 ```
 
@@ -191,13 +181,161 @@ CorrelateClassesHVG <- function(
 # Example usage:
 res <- CorrelateClassesHVG(
   seurat_list = list(mouse = obj.mouse.IT, opossum = obj.opossum.IT),
-  group_cols  = c(mouse = "subclass", opossum = "SCT_snn_res.0.2"),
-  class_keep  = list(mouse = c("L2/3", "L4", "L5IT"), opossum = c("1", "2", "4", "5")),
+  group_cols  = c(mouse = "subclass", opossum = "subclass"),
+  class_keep  = list(mouse = c("L2/3", "L4", "L5IT", "L6IT"), opossum = c("IT_A", "IT_B", "IT_C", "IT_D")),
   hvgs        = NULL,           # use union of VariableFeatures across inputs
   hvgs_n      = 3000,           # if HVGs need to be computed
-  cor_method  = "pearson",
+  cor_method  = "spearman",
   scale_by_gene = TRUE          # recommended when comparing across species
 )
+
+```
+
+
+```{r}
+
+# Scatter of within-species subclass-pair correlations:
+#   x-axis = mouse pairwise correlation
+#   y-axis = opossum pairwise correlation
+# Requires: a class-by-class correlation matrix from CorrelateClassesHVG()
+
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(tidyr)
+  library(tibble)
+  library(ggplot2)
+  library(ggrepel)
+  library(stringr)
+})
+
+# mapping: named character vector, names = opossum subclasses, values = mouse subclasses
+#   e.g., c("IT_A"="L2/3","IT_B"="L4","IT_C"="L5IT","IT_D"="L6IT")
+# species tags must match the prefixes you used in CorrelateClassesHVG() colnames, e.g., "opossum::", "mouse::"
+PlotWithinSpeciesPairCorrScatter <- function(
+  cor_mat,
+  mapping,
+  opp_tag   = "opossum",
+  mouse_tag = "mouse",
+  label_points = TRUE
+) {
+  stopifnot(is.matrix(cor_mat), length(mapping) >= 2)
+
+  # helper to build full labels like "opossum::IT_A"
+  .lab <- function(tag, cls) paste0(tag, "::", cls)
+
+  # keep only classes present in cor_mat
+  opp_keep   <- names(mapping)[.lab(opp_tag, names(mapping)) %in% colnames(cor_mat)]
+  mouse_keep <- unname(mapping)[.lab(mouse_tag, unname(mapping)) %in% colnames(cor_mat)]
+  mapping    <- setNames(mouse_keep, opp_keep)
+  if (length(mapping) < 2) stop("Fewer than 2 mapped subclasses found in cor_mat after filtering.")
+
+  # species-specific submatrices
+  opp_cols   <- intersect(colnames(cor_mat), .lab(opp_tag, names(mapping)))
+  mouse_cols <- intersect(colnames(cor_mat), .lab(mouse_tag, unname(mapping)))
+  C_opp      <- cor_mat[opp_cols,  opp_cols,  drop = FALSE]
+  C_mouse    <- cor_mat[mouse_cols, mouse_cols, drop = FALSE]
+
+  # consistent order
+  opp_order   <- names(mapping)
+  mouse_order <- unname(mapping)
+  C_opp   <- C_opp[.lab(opp_tag,   opp_order),   .lab(opp_tag,   opp_order),   drop = FALSE]
+  C_mouse <- C_mouse[.lab(mouse_tag, mouse_order), .lab(mouse_tag, mouse_order), drop = FALSE]
+
+  # build all unordered pairs i<j in this aligned order
+  pairs_idx <- which(upper.tri(matrix(NA, nrow = length(mapping), ncol = length(mapping))), arr.ind = TRUE)
+  df <- tibble(
+    opp_1   = opp_order[pairs_idx[,1]],
+    opp_2   = opp_order[pairs_idx[,2]],
+    mouse_1 = mouse_order[pairs_idx[,1]],
+    mouse_2 = mouse_order[pairs_idx[,2]]
+  ) %>%
+    mutate(
+      opp_corr   = mapply(function(a,b) C_opp[.lab(opp_tag,a),   .lab(opp_tag,b)],   opp_1, opp_2),
+      mouse_corr = mapply(function(a,b) C_mouse[.lab(mouse_tag,a), .lab(mouse_tag,b)], mouse_1, mouse_2),
+      pair_opp   = paste0(opp_1, " / ", opp_2),
+      pair_mouse = paste0(mouse_1, " / ", mouse_2),
+      pair_label = paste0(pair_opp, "  |  ", pair_mouse)
+    )
+
+  # plot
+  p <- ggplot(df, aes(x = mouse_corr, y = opp_corr)) +
+    geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+    geom_point(size = 3) +
+    coord_equal(xlim = c(0.25, 0.65), ylim = c(0.25, 0.65), expand = FALSE) +
+    labs(
+      x = paste0(str_to_title(mouse_tag), " within-species subclass-pair correlation"),
+      y = paste0(str_to_title(opp_tag),   " within-species subclass-pair correlation"),
+      title = "Subclass-pair correlation concordance: Mouse (x) vs Opossum (y)"
+    ) +
+    theme_classic(base_size = 12)
+
+  if (label_points) {
+    p <- p + ggrepel::geom_text_repel(aes(label = pair_label), size = 3, max.overlaps = Inf)
+  }
+
+  list(data = df, plot = p)
+}
+
+# ---------------------------
+# Example (adjust names to your objects/labels):
+# Suppose you used:
+#   mouse subclasses: "L2/3","L4","L5IT","L6IT"
+#   opossum subclasses: "IT_A","IT_B","IT_C","IT_D"
+# After running CorrelateClassesHVG() into `res`:
+
+mapping <- c("IT_A"="L2/3", "IT_B"="L4", "IT_C"="L5IT", "IT_D"="L6IT")
+
+out <- PlotWithinSpeciesPairCorrScatter(
+  cor_mat = res$cor_mat,
+  mapping = mapping,
+  opp_tag = "opossum",
+  mouse_tag = "mouse",
+  label_points = TRUE
+)
+
+# svg("E:/Opossum_Paper/Figure 2/Cross_Subclass_Corr.svg", width = 6, height = 6)
+out$data   # table of pairs and correlations
+print(out$plot)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+
+obj.mouse.IT <- subset(obj.mouse.glutamatergic, subclass %in% c("L2/3", "L4", "L5IT"))
+obj.opossum.IT <- subset(obj.opossum.glutamatergic, SCT_snn_res.0.3 %in% c(1, 3, 4, 5, 6, 8))
+obj.opossum.IT$SCT_snn_res.0.3[obj.opossum.IT$SCT_snn_res.0.3 == 8] <- 4
+obj.opossum.IT$SCT_snn_res.0.3[obj.opossum.IT$SCT_snn_res.0.3 == 3] <- 2
+obj.opossum.IT$SCT_snn_res.0.3[obj.opossum.IT$SCT_snn_res.0.3 == 5] <- 8 # Temp for 5
+obj.opossum.IT$SCT_snn_res.0.3[obj.opossum.IT$SCT_snn_res.0.3 == 6] <- 5
+obj.opossum.IT$SCT_snn_res.0.3[obj.opossum.IT$SCT_snn_res.0.3 == 8] <- 6
+# Idents(obj.opossum.IT) <- "SCT_snn_res.0.2"
+# degs <- FindAllMarkers(obj.opossum.IT, only.pos = T)
+# degs$cluster <- as.character(degs$cluster)
+# for (cl in unique(degs$cluster)) {
+# degs_cl <- degs[degs$cluster == cl, ]
+# print(degs_cl %>%
+#   summarise(
+#     frac_op = mean(grepl("^ENSMODG", gene))
+#   ))
+# }
+
+```
+
+
+```{r}
+
+
 res$cor_mat  # matrix; rows/cols are "object::class", e.g., "mouse::L2/3" vs "opossum::IT_A"
 
 pheatmap::pheatmap(res$cor_mat, clustering_method = "average", border_color = NA)
@@ -226,6 +364,53 @@ pheatmap::pheatmap(res$cor_mat, clustering_method = "average", border_color = NA
 #   border_color = NA,
 #   main = "Mouse (rows) vs Opossum (cols): HVG expression pattern correlations"
 # )
+
+```
+
+
+```{r}
+
+# Example usage:
+res <- CorrelateClassesHVG(
+  seurat_list = list(mouse = obj.mouse.IT, opossum = obj.opossum.IT),
+  group_cols  = c(mouse = "subclass", opossum = "SCT_snn_res.0.3"),
+  class_keep  = list(mouse = c("L2/3", "L4", "L5IT"), opossum = c(1, 2, 4, 5, 6)),
+  hvgs        = NULL,           # use union of VariableFeatures across inputs
+  hvgs_n      = 3000,           # if HVGs need to be computed
+  cor_method  = "spearman",
+  scale_by_gene = TRUE          # recommended when comparing across species
+)
+res$cor_mat  # matrix; rows/cols are "object::class", e.g., "mouse::L2/3" vs "opossum::IT_A"
+
+# pheatmap::pheatmap(res$cor_mat, clustering_method = "average", border_color = NA)
+
+# Helper to order labels by class_keep if you used it
+.order_by_keep <- function(cnames, species, keep_vec = NULL) {
+  lab <- grep(paste0("^", species, "::"), cnames, value = TRUE)
+  if (is.null(keep_vec)) return(lab)
+  desired <- paste0(species, "::", keep_vec)
+  intersect(desired, lab)  # keeps only those present, in given order
+}
+
+# Extract cross-species block
+mouse_labs   <- .order_by_keep(colnames(res$cor_mat), "mouse",   keep_vec = c("L2/3", "L4", "L5IT"))
+opossum_labs <- .order_by_keep(colnames(res$cor_mat), "opossum", keep_vec = c(1, 2, 5))
+
+cross_mat <- res$cor_mat[mouse_labs, opossum_labs, drop = FALSE]
+
+# Heatmap
+# svg("E:/Opossum_Paper/Figure S3/Cluster_Subclass_Mapping.svg", width = 6, height = 5)
+pheatmap::pheatmap(
+  cross_mat,
+  clustering_distance_rows = "euclidean",
+  clustering_distance_cols = "euclidean",
+  clustering_method = "average",
+  display_numbers = FALSE,
+  border_color = NA,
+  main = "Mouse (rows) vs Opossum (cols): HVG expression pattern correlations",
+  color = colorRampPalette(c("white", "red"))(100)
+)
+# dev.off()
 
 ```
 

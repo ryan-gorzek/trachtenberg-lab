@@ -1,0 +1,135 @@
+---
+title: "R Notebook"
+output: 
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+colors_list <- GetColors()
+
+```
+
+
+```{r}
+
+# # Run once
+# cell.ids.all <- rownames(obj.ctx@meta.data)
+# cell.ids.in <- cell.ids.all[cell.ids.all %in% rownames(obj.i.opossum@meta.data)]
+# obj.i.opossum@meta.data[cell.ids.in, ]$sample <- obj.ctx@meta.data[cell.ids.in, ]$sample
+
+```
+
+
+```{r}
+
+obj.i.mouse <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLs_EXT_integrated.rds")
+obj.ctx.mouse <- obj.i.mouse[, obj.i.mouse$method == "Stereo-seq"]
+# Remove cells in the bottom 10% of the y-axis (stored in coords$x)
+coords <- GetTissueCoordinates(obj.ctx.mouse)  # rownames = cell barcodes
+y_cut <- quantile(coords$x, probs = 0.10, na.rm = TRUE)
+cells_keep <- coords$cell[!is.na(coords$x) & coords$x > y_cut]
+obj.ctx.mouse <- subset(obj.ctx.mouse, cells = cells_keep)
+
+obj.i.opossum <- readRDS("E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_COLs_EXT_integrated.rds")
+obj.ctx.opossum <- obj.i.opossum[, obj.i.opossum$method == "Stereo-seq"]
+# Remove cells in the bottom 10% of the y-axis (stored in coords$x)
+coords <- GetTissueCoordinates(obj.ctx.opossum)  # rownames = cell barcodes
+y_cut <- quantile(coords$x, probs = 0.10, na.rm = TRUE)
+cells_keep <- coords$cell[!is.na(coords$x) & coords$x > y_cut]
+obj.ctx.opossum <- subset(obj.ctx.opossum, cells = cells_keep)
+
+```
+
+
+```{r}
+
+# Parameters
+# c("L2/3", "L4", "L5IT", "L6IT", "L5NP", "L5PT", "L6CT", "L6b", "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")
+target_subclass <- "Pvalb"
+spatial_resolution <- 0.5  # microns per pixel
+area_per_pixel <- spatial_resolution ^ 2  # µm^2
+
+# Get metadata and spatial coords
+meta <- obj.ctx.mouse@meta.data
+coords <- GetTissueCoordinates(obj.ctx.mouse)  # returns a data frame with rownames = cell names
+
+# Add spatial coords and subclass to metadata
+meta <- meta %>%
+  rownames_to_column("cell") %>%
+  inner_join(coords, by = "cell")
+
+# Filter for the target subclass
+meta_subclass <- meta %>% filter(subclass_nn %in% target_subclass)
+
+# Calculate density by sample
+density_by_sample <- meta_subclass %>%
+  group_by(sample) %>%
+  dplyr::summarise(
+    n_cells = n(),
+    x_range = diff(range(x)) * spatial_resolution,
+    y_range = diff(range(y)) * spatial_resolution,
+    area_um2 = x_range * y_range,  # µm^2
+    area_mm2 = area_um2 / 1e6, # mm^2
+    density = n_cells / area_mm2  # cells per µm^2
+  )
+
+print(density_by_sample)
+
+```
+
+
+```{r}
+
+# Parameters
+# c("IT_A", "IT_B", "IT_C", "IT_D", "L5NP", "L5PT", "L6CT", "L6b", "Pvalb", "Sst", "Vip", "Lamp5", "Frem1", "Stac")
+target_subclass <- "OD"
+spatial_resolution <- 0.5  # microns per pixel
+area_per_pixel <- spatial_resolution ^ 2  # µm^2
+
+# Get metadata and spatial coords
+meta <- obj.ctx.opossum@meta.data
+coords <- GetTissueCoordinates(obj.ctx.opossum)  # returns a data frame with rownames = cell names
+
+# Add spatial coords and subclass to metadata
+meta <- meta %>%
+  rownames_to_column("cell") %>%
+  inner_join(coords, by = "cell")
+
+# Filter for the target subclass
+meta_subclass <- meta %>% filter(subclass_nn %in% target_subclass)
+
+# Calculate density by sample
+density_by_sample <- meta_subclass %>%
+  group_by(sample) %>%
+  dplyr::summarise(
+    n_cells = n(),
+    x_range = diff(range(x)) * spatial_resolution,
+    y_range = diff(range(y)) * spatial_resolution,
+    area_um2 = x_range * y_range,  # µm^2
+    area_mm2 = area_um2 / 1e6, # mm^2
+    density = n_cells / area_mm2  # cells per µm^2
+  )
+
+print(density_by_sample)
+
+```
+

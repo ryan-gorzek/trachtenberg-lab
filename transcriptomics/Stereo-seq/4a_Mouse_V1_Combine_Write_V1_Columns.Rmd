@@ -14,7 +14,7 @@ objs.col <- list(COL1 = NA, COL2 = NA, COL3 = NA, COL4 = NA)
 
 for (n in 1:4) {
 
-  path <- paste0("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COL", n, "_EXT.rds")
+  path <- paste0("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COL", n, ".rds")
   objs.col[[n]] <- readRDS(path)
   objs.col[[n]]$sample <- paste0("COL", n)
   

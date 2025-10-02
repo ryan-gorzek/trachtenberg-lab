@@ -51,4 +51,3 @@ ggplot(df, aes(x = species, y = density, fill = species)) +
 # (counts.mouse.pv / areas.mouse) * 10000
 
 ```
-

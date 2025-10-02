@@ -1,0 +1,89 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(Seurat)
+library(SeuratDisk)
+library(reticulate)
+library(scrubletR)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(data.table)
+library(clustree)
+library(reshape2)
+library(tidyr)
+library(gridExtra)
+library(stringr)
+library(plyr)
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/tools/seurat_integration_functions.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/xgboost_train.R")
+source("C:/Ryan/GitHub/trachtenberg-lab/transcriptomics/xgboost/plottingFxns.R")
+colors_list <- GetColors()
+
+obj.opossum.glutamatergic <- readRDS("E:/Transcriptomics_V1/Opossum/seurat/opossum_v1_glutamatergic_processed.rds")
+obj.opossum.glutamatergic$class <- "glutamatergic"
+
+```
+
+
+```{r}
+
+# obj.opossum.IT <- subset(obj.opossum.glutamatergic, SCT_snn_res.0.2 %in% c(1, 2, 4, 5))
+Idents(obj.opossum.glutamatergic) <- "SCT_snn_res.0.3"
+degs <- FindAllMarkers(obj.opossum.glutamatergic, only.pos = T)
+degs$cluster <- as.character(degs$cluster)
+for (cl in unique(degs$cluster)) {
+degs_cl <- degs[degs$cluster == cl, ]
+print(degs_cl %>%
+  summarise(
+    frac_op = mean(grepl("^ENSMODG", gene))
+  ))
+}
+
+```
+
+
+```{r}
+
+DimPlot(obj.opossum.glutamatergic, group.by = "SCT_snn_res.0.3", label = T)
+
+```
+
+
+```{r}
+
+library(scales)
+
+# Fractions by cluster and barplot of DEGs starting with "ENSMODG"
+# Compute fraction per cluster
+frac_df <- degs %>%
+  mutate(is_modg = grepl("^ENSMODG", gene)) %>%
+  group_by(cluster) %>%
+  dplyr::summarise(
+    frac_op   = mean(is_modg),
+    n_genes   = n(),
+    n_ENSMODG = sum(is_modg),
+    .groups = "drop"
+  ) %>%
+  mutate(cluster = factor(cluster, levels = unique(degs$cluster)))
+
+# Barplot (0–1 scale; percent labels)
+p <- ggplot(frac_df, aes(x = cluster, y = frac_op)) +
+  geom_col(width = 0.7) +
+  scale_y_continuous(labels = percent_format(accuracy = 1), limits = c(0, 1)) +
+  labs(x = "Cluster", y = "Fraction of DEGs starting with ENSMODG") +
+  theme_classic()
+
+ggsave("E:/Opossum_Paper/Figure S3/lncRNAs_SCT_03.svg", plot = p)
+
+# If you want the percentage printed above each bar:
+# + geom_text(aes(label = percent(frac_op, accuracy = 0.1)), vjust = -0.5, size = 3)
+
+```
+

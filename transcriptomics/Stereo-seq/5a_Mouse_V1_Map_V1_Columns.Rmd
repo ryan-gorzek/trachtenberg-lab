@@ -168,7 +168,7 @@ saveRDS(obj.i, "E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLs_EXT_integrated.
 
 ```{r}
 
-obj.i <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLs_integrated.rds")
+obj.i <- readRDS("E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_COLs_EXT_integrated.rds")
 
 ```
 
@@ -418,9 +418,9 @@ ggsave("E:/Opossum_Paper/Figure 3/Mouse_GABAergic_Density.svg", plot = p)
 obj.ctx.nonneuronal <- subset(obj.ctx, subclass_nn %in% c("OD", "OPC", "Micro", "Astro", "Endo", "VLMC"))
 Idents(obj.ctx.nonneuronal) <- "subclass_nn"
 levels(obj.ctx.nonneuronal) <- c("OD", "OPC", "Micro", "Astro", "Endo", "VLMC")
-p <- ImageDimPlot(obj.ctx.nonneuronal, fov = "COL", size = 3, cols = colors[1:6], axes = TRUE)
+ImageDimPlot(obj.ctx.nonneuronal, fov = "COL", size = 3, cols = colors[1:6], axes = TRUE)
 
-ggsave("E:/Opossum_Paper/Figure 3/Mouse_Nonneuronal_Column.svg", plot = p, width = 7, height = 5)
+# ggsave("E:/Opossum_Paper/Figure 3/Mouse_Nonneuronal_Column.svg", plot = p, width = 7, height = 5)
 
 ```
 
@@ -440,7 +440,7 @@ df <- df %>%
   mutate(subclass = factor(subclass, levels = c("OD", "OPC", "Micro", "Astro", "Endo")))
 
 # 4. Plot smooth density profiles
-p <- ggplot(df, aes(x = y, color = subclass)) +
+ggplot(df, aes(x = y, color = subclass)) +
   geom_density(
     size = 2,
     # adjust = 0.2         # Smoothing factor (increase if you want smoother lines)
@@ -453,7 +453,7 @@ p <- ggplot(df, aes(x = y, color = subclass)) +
     aspect.ratio = 1
   ) + coord_flip() + ylim(0, 0.0016)
 
-ggsave("E:/Opossum_Paper/Figure S3/Mouse_Nonneuronal_Density.svg", plot = p)
+# ggsave("E:/Opossum_Paper/Figure S3/Mouse_Nonneuronal_Density.svg", plot = p)
 
 # Outlined histograms without bin borders
 p <- ggplot(df, aes(x = y, color = subclass)) +
@@ -469,16 +469,16 @@ p <- ggplot(df, aes(x = y, color = subclass)) +
     aspect.ratio = 1
   ) + coord_flip()
 
-ggsave("E:/Opossum_Paper/Figure S3/Mouse_Nonneuronal_Histogram.svg", plot = p)
+# ggsave("E:/Opossum_Paper/Figure S3/Mouse_Nonneuronal_Histogram.svg", plot = p)
 
 ```
 
 
 ```{r}
 
-saveRDS(obj.ctx.glutamatergic, "E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_glutamatergic_COLs_EXT_integrated.rds")
-saveRDS(obj.ctx.gabaergic, "E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_gabaergic_COLs_EXT_integrated.rds")
-saveRDS(obj.ctx.nonneuronal, "E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_nonneuronal_COLs_EXT_integrated.rds")
+saveRDS(obj.ctx.glutamatergic, "E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_glutamatergic_COLs_integrated.rds")
+saveRDS(obj.ctx.gabaergic, "E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_gabaergic_COLs_integrated.rds")
+saveRDS(obj.ctx.nonneuronal, "E:/STOmics/seurat/Mouse/mouse_stereoseq_ctx_nonneuronal_COLs_integrated.rds")
 
 ```
 

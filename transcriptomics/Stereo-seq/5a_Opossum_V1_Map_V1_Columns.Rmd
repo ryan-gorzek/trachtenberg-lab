@@ -174,7 +174,7 @@ ggsave("E:/Opossum_Paper/Figure S3/Mouse_Subclass_NN.svg", plot = p)
 
 ```{r}
 
-saveRDS(obj.i, "E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_COLs_EXT_integrated.rds")
+saveRDS(obj.i, "E:/STOmics/seurat/Opossum/opossum_stereoseq_ctx_COLs_EXT_integrated_wCOL3.rds")
 
 ```
 
