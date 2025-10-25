@@ -2,6 +2,7 @@
 
 Code from my PhD in Josh Trachtenberg’s lab (UCLA) spanning systems, anatomy, and transcriptomics of visual cortex across development and evolution. This repo contains analysis notebooks, figure-generation scripts, and lightweight utilities used to process raw data through to publication-quality figures.
 
+![plot]()
 ## Repository layout
 
 * `retinotopy/` — functional imaging and map estimation (stimulus logs → ΔF/F processing → phase maps and visual field fits).
