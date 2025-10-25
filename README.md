@@ -2,15 +2,14 @@
 
 Code from my PhD in Josh Trachtenberg’s lab (UCLA) spanning systems, anatomy, and transcriptomics of visual cortex across development and evolution. This repo contains analysis notebooks, figure-generation scripts, and lightweight utilities used to process raw data through to publication-quality figures.
 
+![plot](https://github.com/ryan-gorzek/trachtenberg-lab/blob/main/plots/TLab_Summary.png)
 Also be sure to check out my other self-contained projects conducted in the lab:
 - [comparatome](https://github.com/ryan-gorzek/comparatome) — R package for cross-species single-cell and spatial transcriptomic analysis.
 - [intergenome](https://github.com/ryan-gorzek/intergenome) — Nextflow pipeline for STARsolo alignment and intergenic read quantification.
 - [electroviz](https://github.com/ryan-gorzek/electroviz) — Python toolkit for extracellular electrophysiology data visualization and analysis.
 - [celltype-tuning-V1](https://github.com/ryan-gorzek/celltype-tuning-V1) — MATLAB workflow for visually evoked neural activity-based ML classification of cortical cell types.
 
-![plot](https://github.com/ryan-gorzek/trachtenberg-lab/blob/main/plots/TLab_Summary.png)
 ## Repository layout
-
 * `retinotopy/` — functional imaging and map estimation (stimulus logs → ΔF/F processing → phase maps and visual field fits).
 * `tuning/` — neuronal response characterization (OSI/DSI, SF/TF tuning, contrast response; per-cell and population summaries).
 * `tracing/` — anatomical projection quantification (registration, ROI masks, axon density metrics, laminar profiles).
