@@ -17,8 +17,6 @@ Also be sure to check out my other self-contained projects conducted in the lab:
 * `transcriptomics/` — single-nucleus/cell and spatial transcriptomics (QC, normalization, DE, clustering, integration, gene-set analyses).
 * `modeling/` — statistical and computational modeling of neural circuits (theoretical connections between simulated cell types).
 
-Structure and top-level folders match the public repo listing. ([GitHub][1])
-
 ## Related Preprints
 
 Use and citation of this code should refer to the relevant manuscript(s):
