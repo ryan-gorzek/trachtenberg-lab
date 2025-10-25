@@ -16,7 +16,6 @@ Also be sure to check out my other self-contained projects conducted in the lab:
 * `tracing/` — anatomical projection quantification (registration, ROI masks, axon density metrics, laminar profiles).
 * `transcriptomics/` — single-nucleus/cell and spatial transcriptomics (QC, normalization, DE, clustering, integration, gene-set analyses).
 * `modeling/` — statistical and computational modeling of neural circuits (theoretical connections between simulated cell types).
-* `README.md`, `LICENSE`, `.gitignore`.
 
 Structure and top-level folders match the public repo listing. ([GitHub][1])
 
