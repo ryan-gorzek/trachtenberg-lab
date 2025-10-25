@@ -10,7 +10,7 @@ Also be sure to check out my other self-contained projects conducted in the lab:
 - [electroviz](https://github.com/ryan-gorzek/electroviz) — Python toolkit for extracellular electrophysiology data visualization and analysis.
 - [celltype-tuning-V1](https://github.com/ryan-gorzek/celltype-tuning-V1) — MATLAB workflow for visually evoked neural activity-based ML classification of cortical cell types.
 
-## Repository layout
+## Repository Layout
 * `retinotopy/` — functional imaging and map estimation (stimulus logs → ΔF/F processing → phase maps and visual field fits).
 * `tuning/` — neuronal response characterization (OSI/DSI, SF/TF tuning, contrast response; per-cell and population summaries).
 * `tracing/` — anatomical projection quantification (registration, ROI masks, axon density metrics, laminar profiles).
@@ -20,7 +20,7 @@ Also be sure to check out my other self-contained projects conducted in the lab:
 
 Structure and top-level folders match the public repo listing. ([GitHub][1])
 
-## Related preprints
+## Related Preprints
 
 Use and citation of this code should refer to the relevant manuscript(s):
 
