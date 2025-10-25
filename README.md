@@ -1,7 +1,6 @@
 # Trachtenberg Lab
 
 Code from my PhD in Josh Trachtenberg’s lab (UCLA) spanning systems, anatomy, and transcriptomics of visual cortex across development and evolution. This repo contains analysis notebooks, figure-generation scripts, and lightweight utilities used to process raw data through to publication-quality figures.
-
 ![plot](https://github.com/ryan-gorzek/trachtenberg-lab/blob/main/plots/TLab_Summary.png)
 Also be sure to check out my other self-contained projects conducted in the lab:
 - [comparatome](https://github.com/ryan-gorzek/comparatome) — R package for cross-species single-cell and spatial transcriptomic analysis.
