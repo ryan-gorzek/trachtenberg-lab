@@ -4,7 +4,7 @@ Code from my PhD in Josh Trachtenberg’s lab at UCLA spanning systems, anatomy,
 
 ![plot](https://github.com/ryan-gorzek/trachtenberg-lab/blob/main/plots/TLab_Summary.png)
 
-Also be sure to check out my other self-contained projects conducted in the lab:
+Also, be sure to check out my other self-contained projects conducted in the lab:
 - [comparatome](https://github.com/ryan-gorzek/comparatome) — R package for cross-species single-cell and spatial transcriptomic analysis.
 - [intergenome](https://github.com/ryan-gorzek/intergenome) — Nextflow pipeline for STARsolo alignment and intergenic read quantification.
 - [electroviz](https://github.com/ryan-gorzek/electroviz) — Python toolkit for extracellular electrophysiology data visualization and analysis.
