@@ -12,8 +12,8 @@ Also, be sure to check out my other self-contained projects conducted in the lab
 
 ## Repository Layout
 * `retinotopy/` — functional imaging and map estimation (stimulus logs → ΔF/F processing → phase maps and visual field fits).
-* `tuning/` — neuronal response characterization (OSI/DSI, SF/TF tuning, contrast response; per-cell and population summaries).
-* `tracing/` — anatomical projection quantification (registration, ROI masks, axon density metrics, laminar profiles).
+* `tuning/` — neuronal response characterization (OSI/DSI, SF/TF tuning, contrast response; single-cell and population summaries).
+* `tracing/` — anatomical projection quantification (registration, ROI masks, axon density metrics, cell counts and laminar distributions).
 * `transcriptomics/` — single-nucleus/cell and spatial transcriptomics (QC, normalization, DE, clustering, integration, gene-set analyses).
 * `modeling/` — statistical and computational modeling of neural circuits (theoretical connections between simulated cell types).
 
