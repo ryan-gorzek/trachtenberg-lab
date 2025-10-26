@@ -22,7 +22,7 @@ Also, be sure to check out my other self-contained projects conducted in the lab
 Use and citation of this code should refer to the relevant manuscript(s):
 
 * Gorzek R, Trachtenberg JT. 2025. **Comparative transcriptomics reveals shifts in cortical architecture at the metatherian/eutherian transition.** *bioRxiv* [doi.org/10.1101/2025.10.03.680397](doi.org/10.1101/2025.10.03.680397).
-  Figure-generation notebooks and cross-species transcriptomic tools live under `transcriptomics/V1` and `transcriptomics/Stereo-seq`. These are currently being curated into a manuscript-specific repository and R package, respectively.
+  Figure-generation notebooks and cross-species transcriptomic tools live under `transcriptomics/V1` and `transcriptomics/Stereo-seq`. These are currently being curated into a manuscript-specific repository and R package.
 
 * Yoo J, Xie F, Butrus S, Xu R, Tan Z, **Gorzek R**, Mirshahidi P, Tring E, Suresh S, Kim J, Fleishman G, Tan L, Ringach D, Trachtenberg JT, Xu X, Zipursky SL, Shekhar K, Jain S. 2025. **Establishing a continuum of cell types in the visual cortex.** *bioRxiv* [doi.org/10.1101/2025.09.22.677893](doi.org/10.1101/2025.09.22.677893).
   Supporting scripts for V1 feedforward connections to LM, RL, and AM/PM in NR vs. DR are located in `tracing/`.
