@@ -1,6 +1,6 @@
 # Trachtenberg Lab
 
-Code from my PhD in Josh Trachtenberg’s lab at UCLA spanning systems, anatomy, and transcriptomics of visual cortex across development and evolution. This repo contains analysis notebooks, figure-generation scripts, and lightweight utilities used to process raw data into publication-quality figures.
+Code from my PhD in Josh Trachtenberg’s lab at UCLA spanning anatomy, systems, and transcriptomics of visual cortex across development and evolution. This repo contains analysis notebooks, figure-generation scripts, and lightweight utilities used to process raw data into publication-quality figures.
 
 ![plot](https://github.com/ryan-gorzek/trachtenberg-lab/blob/main/plots/TLab_Summary.png)
 
