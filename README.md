@@ -19,7 +19,7 @@ Also, be sure to check out my other self-contained projects conducted in the lab
 
 ## Related Preprints
 
-Use and citation of this code should refer to the relevant manuscript(s):
+Use and citation of some code should refer to the relevant manuscript(s):
 
 * Gorzek R, Trachtenberg JT. 2025. **Comparative transcriptomics reveals shifts in cortical architecture at the metatherian/eutherian transition.** *bioRxiv* [doi.org/10.1101/2025.10.03.680397](doi.org/10.1101/2025.10.03.680397).
   Figure-generation notebooks and cross-species transcriptomic tools live under `transcriptomics/V1` and `transcriptomics/Stereo-seq`. These are currently being curated into a manuscript-specific repository and R package.
